@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react'
-import { DollarSign, TrendingUp, Edit2, Check, X, Calendar } from 'lucide-react'
+import { DollarSign, TrendingUp, Edit2, Check, X, Calendar, LogOut } from 'lucide-react'
 import { updateMonthRate } from '../api'
 
 const fmt = (n) => new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 2 }).format(n)
 const fmtUSD = (n) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 2 }).format(n)
 
-export default function Header({ total, usdRate, usdRates, setUsdRates, monthKey, monthLabel, isPromedios }) {
+export default function Header({ total, usdRate, usdRates, setUsdRates, monthKey, monthLabel, isPromedios, user, onSignOut }) {
   const [editing, setEditing] = useState(false)
   const [tempRate, setTempRate] = useState(usdRate)
 
@@ -115,6 +115,31 @@ export default function Header({ total, usdRate, usdRates, setUsdRates, monthKey
             </div>
 
           </div>
+
+          {/* User avatar + logout */}
+          {user && (
+            <div className="flex items-center gap-2 ml-2">
+              {user.user_metadata?.avatar_url ? (
+                <img
+                  src={user.user_metadata.avatar_url}
+                  alt={user.user_metadata?.full_name || 'Usuario'}
+                  className="w-8 h-8 rounded-full ring-2 ring-gray-700"
+                />
+              ) : (
+                <div className="w-8 h-8 rounded-full bg-green-600 flex items-center justify-center text-white text-sm font-bold ring-2 ring-gray-700">
+                  {(user.user_metadata?.full_name || user.email || 'U')[0].toUpperCase()}
+                </div>
+              )}
+              <button
+                onClick={onSignOut}
+                className="text-gray-400 hover:text-red-400 transition-colors p-1.5 rounded-lg hover:bg-gray-800"
+                title="Cerrar sesión"
+              >
+                <LogOut className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+
         </div>
       </div>
     </header>

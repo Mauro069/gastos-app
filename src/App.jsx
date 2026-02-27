@@ -1,10 +1,12 @@
 import { useState, useEffect, useMemo } from 'react'
-import { BarChart2, Table2, Loader2, TrendingUp, ChevronLeft, ChevronRight } from 'lucide-react'
+import { BarChart2, Table2, Loader2, TrendingUp, ChevronLeft, ChevronRight, LogOut } from 'lucide-react'
 import Header from './components/Header'
 import GastosTable from './components/GastosTable'
 import Charts from './components/Charts'
 import Promedios from './components/Promedios'
+import Login from './components/Login'
 import { fetchAll } from './api'
+import { useAuth } from './contexts/AuthContext'
 
 const MONTH_NAMES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
 const MONTH_FULL = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
@@ -17,25 +19,30 @@ export function monthKey(year, month) {
 const DEFAULT_RATE = 1000
 
 export default function App() {
+  const { user, loading: authLoading, signOut } = useAuth()
   const [gastos, setGastos] = useState([])
-  const [usdRates, setUsdRates] = useState({}) // { "2026-01": 1515, "2026-02": 1450, ... }
-  const [loading, setLoading] = useState(true)
+  const [usdRates, setUsdRates] = useState({})
+  const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [activeTab, setActiveTab] = useState('tabla') // 'tabla' | 'charts' | 'promedios'
+  const [activeTab, setActiveTab] = useState('tabla')
 
   const now = new Date()
   const [selectedYear, setSelectedYear] = useState(now.getFullYear())
-  const [selectedMonth, setSelectedMonth] = useState(now.getMonth()) // 0-based
+  const [selectedMonth, setSelectedMonth] = useState(now.getMonth())
 
+  // Load data when user logs in
   useEffect(() => {
+    if (!user) { setGastos([]); setUsdRates({}); return }
+    setLoading(true)
+    setError('')
     fetchAll()
       .then(data => {
         setGastos(data.gastos || [])
         setUsdRates(data.usdRates || {})
       })
-      .catch(() => setError('No se pudo conectar con el servidor. ¿Está corriendo `npm run dev`?'))
+      .catch(() => setError('Error cargando los datos. Recargá la página.'))
       .finally(() => setLoading(false))
-  }, [])
+  }, [user])
 
   // Current month's USD rate (falls back to nearest previous month that has a rate)
   const currentMonthKey = monthKey(selectedYear, selectedMonth)
@@ -87,12 +94,24 @@ export default function App() {
 
   const isPromedios = activeTab === 'promedios'
 
+  // Show spinner while checking auth
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-gray-950 flex items-center justify-center">
+        <Loader2 className="w-10 h-10 animate-spin text-green-500" />
+      </div>
+    )
+  }
+
+  // Not logged in → show login screen
+  if (!user) return <Login />
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-950 flex items-center justify-center">
         <div className="flex flex-col items-center gap-4 text-gray-400">
           <Loader2 className="w-10 h-10 animate-spin text-green-500" />
-          <p className="text-sm">Cargando gastos...</p>
+          <p className="text-sm">Cargando tus gastos...</p>
         </div>
       </div>
     )
@@ -102,9 +121,11 @@ export default function App() {
     return (
       <div className="min-h-screen bg-gray-950 flex items-center justify-center p-6">
         <div className="bg-red-900/30 border border-red-700 rounded-2xl p-8 max-w-md text-center">
-          <p className="text-red-400 font-semibold text-lg mb-2">Error de conexión</p>
+          <p className="text-red-400 font-semibold text-lg mb-2">Error</p>
           <p className="text-gray-400 text-sm">{error}</p>
-          <pre className="mt-4 bg-gray-900 rounded-lg p-3 text-xs text-green-400 text-left">npm run dev</pre>
+          <button onClick={() => window.location.reload()} className="mt-4 bg-gray-800 hover:bg-gray-700 text-white rounded-xl px-4 py-2 text-sm">
+            Recargar
+          </button>
         </div>
       </div>
     )
@@ -120,6 +141,8 @@ export default function App() {
         monthKey={currentMonthKey}
         monthLabel={isPromedios ? `Año ${selectedYear}` : `${MONTH_FULL[selectedMonth]} ${selectedYear}`}
         isPromedios={isPromedios}
+        user={user}
+        onSignOut={signOut}
       />
 
       {/* Navigation bar */}
