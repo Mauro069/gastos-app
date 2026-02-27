@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
-import { BarChart2, Table2, Loader2, TrendingUp, ChevronLeft, ChevronRight } from 'lucide-react'
-import { Header, GastosTable, Charts, Promedios, Landing } from '@/components'
+import { BarChart2, Table2, Loader2, TrendingUp, ChevronLeft, ChevronRight, Upload } from 'lucide-react'
+import { Header, GastosTable, Charts, Promedios, Landing, ImportModal } from '@/components'
 import { fetchAll } from '@/api'
 import { useAuth } from '@/contexts'
 import type { Gasto, UsdRates } from '@/types'
@@ -33,6 +33,7 @@ export default function App() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [activeTab, setActiveTab] = useState<'tabla' | 'charts' | 'promedios'>('tabla')
+  const [showImport, setShowImport] = useState(false)
 
   const now = new Date()
   const [selectedYear, setSelectedYear] = useState(now.getFullYear())
@@ -215,6 +216,16 @@ export default function App() {
             <TrendingUp className="w-3.5 h-3.5" />
             Promedios
           </button>
+
+          <div className="flex-1" />
+
+          <button
+            onClick={() => setShowImport(true)}
+            className="flex-shrink-0 flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg text-gray-400 hover:bg-gray-700 hover:text-white transition-all"
+          >
+            <Upload className="w-3.5 h-3.5" />
+            Importar
+          </button>
         </div>
       </div>
 
@@ -245,6 +256,19 @@ export default function App() {
             </button>
           </div>
         </div>
+      )}
+
+      {showImport && (
+        <ImportModal
+          onClose={() => setShowImport(false)}
+          onImported={() => {
+            fetchAll().then(data => {
+              setGastos(data.gastos || [])
+              setUsdRates(data.usdRates || {})
+            })
+            setShowImport(false)
+          }}
+        />
       )}
 
       <main className="flex-1 overflow-hidden">

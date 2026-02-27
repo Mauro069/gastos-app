@@ -64,9 +64,89 @@ export const demoGastos: Gasto[] = [
   { id: 'feb-30', fecha: '2026-02-21', cantidad: 70000, forma: 'Lemon', concepto: 'Casa', nota: 'Compras', createdAt: '2026-02-21T00:00:00.000Z' },
   { id: 'feb-31', fecha: '2026-02-23', cantidad: 73000, forma: 'Lemon', concepto: 'Fijos', nota: 'Gym', createdAt: '2026-02-23T00:00:00.000Z' },
   { id: 'feb-32', fecha: '2026-02-23', cantidad: 30000, forma: 'Lemon', concepto: 'Transporte', nota: 'Nafta', createdAt: '2026-02-23T00:00:00.000Z' },
+
+  // Marzo
+  { id: 'mar-1', fecha: '2026-03-02', cantidad: 62000, forma: 'Lemon', concepto: 'Casa', nota: 'Alquiler', createdAt: '2026-03-02T00:00:00.000Z' },
+  { id: 'mar-2', fecha: '2026-03-03', cantidad: 18500, forma: 'Lemon', concepto: 'Comida', nota: 'Supermercado', createdAt: '2026-03-03T00:00:00.000Z' },
+  { id: 'mar-3', fecha: '2026-03-05', cantidad: 32000, forma: 'Credito', concepto: 'Fijos', nota: 'Internet + cable', createdAt: '2026-03-05T00:00:00.000Z' },
+  { id: 'mar-4', fecha: '2026-03-10', cantidad: 21000, forma: 'Lemon', concepto: 'Salidas', nota: 'Cena con amigos', createdAt: '2026-03-10T00:00:00.000Z' },
+  { id: 'mar-5', fecha: '2026-03-15', cantidad: 9500, forma: 'Efectivo', concepto: 'Transporte', nota: 'Colectivo / subte', createdAt: '2026-03-15T00:00:00.000Z' },
+
+  // Abril
+  { id: 'abr-1', fecha: '2026-04-01', cantidad: 64000, forma: 'Lemon', concepto: 'Casa', nota: 'Alquiler', createdAt: '2026-04-01T00:00:00.000Z' },
+  { id: 'abr-2', fecha: '2026-04-04', cantidad: 20500, forma: 'Lemon', concepto: 'Comida', nota: 'Super', createdAt: '2026-04-04T00:00:00.000Z' },
+  { id: 'abr-3', fecha: '2026-04-06', cantidad: 31000, forma: 'Credito', concepto: 'Fijos', nota: 'Servicios', createdAt: '2026-04-06T00:00:00.000Z' },
+  { id: 'abr-4', fecha: '2026-04-12', cantidad: 28000, forma: 'Lemon', concepto: 'Salidas', nota: 'Salir a cenar', createdAt: '2026-04-12T00:00:00.000Z' },
+  { id: 'abr-5', fecha: '2026-04-20', cantidad: 12000, forma: 'Efectivo', concepto: 'Otros', nota: 'Regalo', createdAt: '2026-04-20T00:00:00.000Z' },
+
+  // Mayo
+  { id: 'may-1', fecha: '2026-05-02', cantidad: 66000, forma: 'Lemon', concepto: 'Casa', nota: 'Alquiler', createdAt: '2026-05-02T00:00:00.000Z' },
+  { id: 'may-2', fecha: '2026-05-05', cantidad: 23000, forma: 'Lemon', concepto: 'Comida', nota: 'Verdulería + super', createdAt: '2026-05-05T00:00:00.000Z' },
+  { id: 'may-3', fecha: '2026-05-08', cantidad: 35000, forma: 'Credito', concepto: 'Fijos', nota: 'Servicios', createdAt: '2026-05-08T00:00:00.000Z' },
+  { id: 'may-4', fecha: '2026-05-15', cantidad: 19000, forma: 'Lemon', concepto: 'Salidas', nota: 'Cine + cena', createdAt: '2026-05-15T00:00:00.000Z' },
+  { id: 'may-5', fecha: '2026-05-22', cantidad: 8000, forma: 'Mercado Pago', concepto: 'Transporte', nota: 'Nafta', createdAt: '2026-05-22T00:00:00.000Z' },
+
+  // Junio
+  { id: 'jun-1', fecha: '2026-06-01', cantidad: 68000, forma: 'Lemon', concepto: 'Casa', nota: 'Alquiler', createdAt: '2026-06-01T00:00:00.000Z' },
+  { id: 'jun-2', fecha: '2026-06-03', cantidad: 21000, forma: 'Lemon', concepto: 'Comida', nota: 'Super', createdAt: '2026-06-03T00:00:00.000Z' },
+  { id: 'jun-3', fecha: '2026-06-07', cantidad: 33000, forma: 'Credito', concepto: 'Fijos', nota: 'Servicios', createdAt: '2026-06-07T00:00:00.000Z' },
+  { id: 'jun-4', fecha: '2026-06-14', cantidad: 17000, forma: 'Lemon', concepto: 'Salidas', nota: 'Cervezas', createdAt: '2026-06-14T00:00:00.000Z' },
+  { id: 'jun-5', fecha: '2026-06-25', cantidad: 9000, forma: 'Efectivo', concepto: 'Comida', nota: 'Almuerzo trabajo', createdAt: '2026-06-25T00:00:00.000Z' },
+
+  // Julio
+  { id: 'jul-1', fecha: '2026-07-02', cantidad: 70000, forma: 'Lemon', concepto: 'Casa', nota: 'Alquiler', createdAt: '2026-07-02T00:00:00.000Z' },
+  { id: 'jul-2', fecha: '2026-07-04', cantidad: 24000, forma: 'Lemon', concepto: 'Comida', nota: 'Super + pedidos', createdAt: '2026-07-04T00:00:00.000Z' },
+  { id: 'jul-3', fecha: '2026-07-09', cantidad: 36000, forma: 'Credito', concepto: 'Fijos', nota: 'Servicios', createdAt: '2026-07-09T00:00:00.000Z' },
+  { id: 'jul-4', fecha: '2026-07-16', cantidad: 26000, forma: 'Lemon', concepto: 'Salidas', nota: 'Fin de semana', createdAt: '2026-07-16T00:00:00.000Z' },
+  { id: 'jul-5', fecha: '2026-07-23', cantidad: 10000, forma: 'Wise', concepto: 'Educacion', nota: 'Curso online', createdAt: '2026-07-23T00:00:00.000Z' },
+
+  // Agosto
+  { id: 'ago-1', fecha: '2026-08-01', cantidad: 72000, forma: 'Lemon', concepto: 'Casa', nota: 'Alquiler', createdAt: '2026-08-01T00:00:00.000Z' },
+  { id: 'ago-2', fecha: '2026-08-03', cantidad: 22500, forma: 'Lemon', concepto: 'Comida', nota: 'Super', createdAt: '2026-08-03T00:00:00.000Z' },
+  { id: 'ago-3', fecha: '2026-08-08', cantidad: 34000, forma: 'Credito', concepto: 'Fijos', nota: 'Servicios', createdAt: '2026-08-08T00:00:00.000Z' },
+  { id: 'ago-4', fecha: '2026-08-15', cantidad: 21000, forma: 'Lemon', concepto: 'Salidas', nota: 'Cumpleaños', createdAt: '2026-08-15T00:00:00.000Z' },
+  { id: 'ago-5', fecha: '2026-08-26', cantidad: 9500, forma: 'Mercado Pago', concepto: 'Transporte', nota: 'Nafta', createdAt: '2026-08-26T00:00:00.000Z' },
+
+  // Septiembre
+  { id: 'sep-1', fecha: '2026-09-02', cantidad: 74000, forma: 'Lemon', concepto: 'Casa', nota: 'Alquiler', createdAt: '2026-09-02T00:00:00.000Z' },
+  { id: 'sep-2', fecha: '2026-09-05', cantidad: 23000, forma: 'Lemon', concepto: 'Comida', nota: 'Super', createdAt: '2026-09-05T00:00:00.000Z' },
+  { id: 'sep-3', fecha: '2026-09-08', cantidad: 35500, forma: 'Credito', concepto: 'Fijos', nota: 'Servicios', createdAt: '2026-09-08T00:00:00.000Z' },
+  { id: 'sep-4', fecha: '2026-09-17', cantidad: 19500, forma: 'Lemon', concepto: 'Salidas', nota: 'Cena', createdAt: '2026-09-17T00:00:00.000Z' },
+  { id: 'sep-5', fecha: '2026-09-28', cantidad: 11000, forma: 'Efectivo', concepto: 'Comida', nota: 'Almuerzo', createdAt: '2026-09-28T00:00:00.000Z' },
+
+  // Octubre
+  { id: 'oct-1', fecha: '2026-10-01', cantidad: 76000, forma: 'Lemon', concepto: 'Casa', nota: 'Alquiler', createdAt: '2026-10-01T00:00:00.000Z' },
+  { id: 'oct-2', fecha: '2026-10-04', cantidad: 24500, forma: 'Lemon', concepto: 'Comida', nota: 'Super', createdAt: '2026-10-04T00:00:00.000Z' },
+  { id: 'oct-3', fecha: '2026-10-07', cantidad: 37000, forma: 'Credito', concepto: 'Fijos', nota: 'Servicios', createdAt: '2026-10-07T00:00:00.000Z' },
+  { id: 'oct-4', fecha: '2026-10-14', cantidad: 22000, forma: 'Lemon', concepto: 'Salidas', nota: 'Salida con amigos', createdAt: '2026-10-14T00:00:00.000Z' },
+  { id: 'oct-5', fecha: '2026-10-25', cantidad: 9000, forma: 'Wise', concepto: 'Otros', nota: 'Software', createdAt: '2026-10-25T00:00:00.000Z' },
+
+  // Noviembre
+  { id: 'nov-1', fecha: '2026-11-02', cantidad: 78000, forma: 'Lemon', concepto: 'Casa', nota: 'Alquiler', createdAt: '2026-11-02T00:00:00.000Z' },
+  { id: 'nov-2', fecha: '2026-11-06', cantidad: 26000, forma: 'Lemon', concepto: 'Comida', nota: 'Super', createdAt: '2026-11-06T00:00:00.000Z' },
+  { id: 'nov-3', fecha: '2026-11-09', cantidad: 38000, forma: 'Credito', concepto: 'Fijos', nota: 'Servicios', createdAt: '2026-11-09T00:00:00.000Z' },
+  { id: 'nov-4', fecha: '2026-11-18', cantidad: 25000, forma: 'Lemon', concepto: 'Salidas', nota: 'Salidas varias', createdAt: '2026-11-18T00:00:00.000Z' },
+  { id: 'nov-5', fecha: '2026-11-27', cantidad: 15000, forma: 'Mercado Pago', concepto: 'Regalos', nota: 'Cumpleaños', createdAt: '2026-11-27T00:00:00.000Z' },
+
+  // Diciembre
+  { id: 'dic-1', fecha: '2026-12-01', cantidad: 80000, forma: 'Lemon', concepto: 'Casa', nota: 'Alquiler', createdAt: '2026-12-01T00:00:00.000Z' },
+  { id: 'dic-2', fecha: '2026-12-05', cantidad: 30000, forma: 'Lemon', concepto: 'Comida', nota: 'Fiestas', createdAt: '2026-12-05T00:00:00.000Z' },
+  { id: 'dic-3', fecha: '2026-12-10', cantidad: 42000, forma: 'Credito', concepto: 'Fijos', nota: 'Servicios', createdAt: '2026-12-10T00:00:00.000Z' },
+  { id: 'dic-4', fecha: '2026-12-20', cantidad: 50000, forma: 'Lemon', concepto: 'Viaje España', nota: 'A cuenta vacaciones', createdAt: '2026-12-20T00:00:00.000Z' },
+  { id: 'dic-5', fecha: '2026-12-27', cantidad: 20000, forma: 'Efectivo', concepto: 'Regalos', nota: 'Navidad', createdAt: '2026-12-27T00:00:00.000Z' },
 ]
 
 export const demoUsdRates: UsdRates = {
   '2026-01': 1515,
   '2026-02': 1450,
+  '2026-03': 1500,
+  '2026-04': 1520,
+  '2026-05': 1490,
+  '2026-06': 1480,
+  '2026-07': 1470,
+  '2026-08': 1495,
+  '2026-09': 1510,
+  '2026-10': 1530,
+  '2026-11': 1550,
+  '2026-12': 1575,
 }
