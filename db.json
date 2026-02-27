@@ -1,0 +1,575 @@
+{
+  "gastos": [
+    {
+      "id": "ene-1",
+      "fecha": "2026-01-02",
+      "cantidad": 28414,
+      "forma": "Lemon",
+      "concepto": "Casa",
+      "nota": "Tender",
+      "createdAt": "2026-01-02T00:00:00.000Z"
+    },
+    {
+      "id": "ene-2",
+      "fecha": "2026-01-04",
+      "cantidad": 55612,
+      "forma": "Lemon",
+      "concepto": "Casa",
+      "nota": "Cuota de la Luz",
+      "createdAt": "2026-01-04T00:00:00.000Z"
+    },
+    {
+      "id": "ene-3",
+      "fecha": "2026-01-05",
+      "cantidad": 22919,
+      "forma": "Lemon",
+      "concepto": "Comida",
+      "nota": "Milanesa pedidos ya",
+      "createdAt": "2026-01-05T00:00:00.000Z"
+    },
+    {
+      "id": "ene-4",
+      "fecha": "2026-01-05",
+      "cantidad": 316071,
+      "forma": "Credito",
+      "concepto": "Creditos",
+      "nota": "Creditos",
+      "createdAt": "2026-01-05T00:00:00.000Z"
+    },
+    {
+      "id": "ene-5",
+      "fecha": "2026-01-06",
+      "cantidad": 20000,
+      "forma": "Lemon",
+      "concepto": "Peluquería",
+      "nota": "Cortesaki del luca",
+      "createdAt": "2026-01-06T00:00:00.000Z"
+    },
+    {
+      "id": "ene-6",
+      "fecha": "2026-01-06",
+      "cantidad": 20000,
+      "forma": "Lemon",
+      "concepto": "Ropa",
+      "nota": "x2 Boxers en solido",
+      "createdAt": "2026-01-06T00:00:00.000Z"
+    },
+    {
+      "id": "ene-7",
+      "fecha": "2026-01-06",
+      "cantidad": 64700,
+      "forma": "Lemon",
+      "concepto": "Ropa",
+      "nota": "Crocs",
+      "createdAt": "2026-01-06T00:00:00.000Z"
+    },
+    {
+      "id": "ene-8",
+      "fecha": "2026-01-06",
+      "cantidad": 21468,
+      "forma": "Lemon",
+      "concepto": "Casa",
+      "nota": "Comida y pastillas para la perra",
+      "createdAt": "2026-01-06T00:00:00.000Z"
+    },
+    {
+      "id": "ene-9",
+      "fecha": "2026-01-06",
+      "cantidad": 45849,
+      "forma": "Lemon",
+      "concepto": "Salidas",
+      "nota": "Hamburguesas con Isma y Zari",
+      "createdAt": "2026-01-06T00:00:00.000Z"
+    },
+    {
+      "id": "ene-10",
+      "fecha": "2026-01-07",
+      "cantidad": 37649,
+      "forma": "Lemon",
+      "concepto": "Fijos",
+      "nota": "Cuota del celu atrasad",
+      "createdAt": "2026-01-07T00:00:00.000Z"
+    },
+    {
+      "id": "ene-11",
+      "fecha": "2026-01-16",
+      "cantidad": 5399,
+      "forma": "Wise",
+      "concepto": "Fijos",
+      "nota": "Uber One",
+      "createdAt": "2026-01-16T00:00:00.000Z"
+    },
+    {
+      "id": "ene-12",
+      "fecha": "2026-01-17",
+      "cantidad": 581213.75,
+      "forma": "Lemon",
+      "concepto": "Otros",
+      "nota": "Gastos en BRASIL",
+      "createdAt": "2026-01-17T00:00:00.000Z"
+    },
+    {
+      "id": "ene-13",
+      "fecha": "2026-01-19",
+      "cantidad": 41999,
+      "forma": "Lemon",
+      "concepto": "Otros",
+      "nota": "Cabezales maquina de afeitar",
+      "createdAt": "2026-01-19T00:00:00.000Z"
+    },
+    {
+      "id": "ene-14",
+      "fecha": "2026-01-20",
+      "cantidad": 18144,
+      "forma": "Lemon",
+      "concepto": "Salidas",
+      "nota": "Asado con los pibes",
+      "createdAt": "2026-01-20T00:00:00.000Z"
+    },
+    {
+      "id": "ene-15",
+      "fecha": "2026-01-21",
+      "cantidad": 73000,
+      "forma": "Lemon",
+      "concepto": "Fijos",
+      "nota": "Cuota del Gym",
+      "createdAt": "2026-01-21T00:00:00.000Z"
+    },
+    {
+      "id": "ene-16",
+      "fecha": "2026-01-21",
+      "cantidad": 2000,
+      "forma": "Efectivo",
+      "concepto": "Comida",
+      "nota": "Powerade en el gym",
+      "createdAt": "2026-01-21T00:00:00.000Z"
+    },
+    {
+      "id": "ene-17",
+      "fecha": "2026-01-22",
+      "cantidad": 30000,
+      "forma": "Lemon",
+      "concepto": "Transporte",
+      "nota": "Le cargue nafta al auto",
+      "createdAt": "2026-01-22T00:00:00.000Z"
+    },
+    {
+      "id": "ene-18",
+      "fecha": "2026-01-22",
+      "cantidad": 87948,
+      "forma": "Lemon",
+      "concepto": "Fijos",
+      "nota": "Cuota del celu",
+      "createdAt": "2026-01-22T00:00:00.000Z"
+    },
+    {
+      "id": "ene-19",
+      "fecha": "2026-01-23",
+      "cantidad": 10256.55,
+      "forma": "Wise",
+      "concepto": "Fijos",
+      "nota": "Copilot PRO",
+      "createdAt": "2026-01-23T00:00:00.000Z"
+    },
+    {
+      "id": "ene-20",
+      "fecha": "2026-01-23",
+      "cantidad": 35579,
+      "forma": "Lemon",
+      "concepto": "Educacion",
+      "nota": "Libro \"Deep work\"",
+      "createdAt": "2026-01-23T00:00:00.000Z"
+    },
+    {
+      "id": "ene-21",
+      "fecha": "2026-01-24",
+      "cantidad": 20000,
+      "forma": "Lemon",
+      "concepto": "Salidas",
+      "nota": "Juntada con los pibe",
+      "createdAt": "2026-01-24T00:00:00.000Z"
+    },
+    {
+      "id": "ene-22",
+      "fecha": "2026-01-26",
+      "cantidad": 2400,
+      "forma": "Lemon",
+      "concepto": "Comida",
+      "nota": "Queso rayado + Chicles",
+      "createdAt": "2026-01-26T00:00:00.000Z"
+    },
+    {
+      "id": "ene-23",
+      "fecha": "2026-01-26",
+      "cantidad": 30000,
+      "forma": "Lemon",
+      "concepto": "Salud",
+      "nota": "Consulta para revisarme las orejas",
+      "createdAt": "2026-01-26T00:00:00.000Z"
+    },
+    {
+      "id": "ene-24",
+      "fecha": "2026-01-26",
+      "cantidad": 11000,
+      "forma": "Lemon",
+      "concepto": "Comida",
+      "nota": "Starbucks",
+      "createdAt": "2026-01-26T00:00:00.000Z"
+    },
+    {
+      "id": "ene-25",
+      "fecha": "2026-01-26",
+      "cantidad": 10000,
+      "forma": "Lemon",
+      "concepto": "Transporte",
+      "nota": "Le pague a Alejo lo q salia el uber para ir a rosario",
+      "createdAt": "2026-01-26T00:00:00.000Z"
+    },
+    {
+      "id": "ene-26",
+      "fecha": "2026-01-27",
+      "cantidad": 6500,
+      "forma": "Lemon",
+      "concepto": "Casa",
+      "nota": "Mundo infinito",
+      "createdAt": "2026-01-27T00:00:00.000Z"
+    },
+    {
+      "id": "ene-27",
+      "fecha": "2026-01-28",
+      "cantidad": 19100,
+      "forma": "Lemon",
+      "concepto": "Comida",
+      "nota": "Pan lactal, pan panchos, queso rayado, fiambre",
+      "createdAt": "2026-01-28T00:00:00.000Z"
+    },
+    {
+      "id": "ene-28",
+      "fecha": "2026-01-29",
+      "cantidad": 219520,
+      "forma": "Uala",
+      "concepto": "Inversiones",
+      "nota": "x18 CEDEARS de NVIDIA",
+      "createdAt": "2026-01-29T00:00:00.000Z"
+    },
+    {
+      "id": "ene-29",
+      "fecha": "2026-01-29",
+      "cantidad": 5377,
+      "forma": "Uala",
+      "concepto": "Inversiones",
+      "nota": "x6 BONOS AL30",
+      "createdAt": "2026-01-29T00:00:00.000Z"
+    },
+    {
+      "id": "ene-30",
+      "fecha": "2026-01-29",
+      "cantidad": 11600,
+      "forma": "Lemon",
+      "concepto": "Salidas",
+      "nota": "Fernets viendo la copa funes",
+      "createdAt": "2026-01-29T00:00:00.000Z"
+    },
+    {
+      "id": "ene-31",
+      "fecha": "2026-01-31",
+      "cantidad": 13500,
+      "forma": "Lemon",
+      "concepto": "Salidas",
+      "nota": "Sanguchitos de mamina",
+      "createdAt": "2026-01-31T00:00:00.000Z"
+    },
+    {
+      "id": "1",
+      "fecha": "2026-02-01",
+      "cantidad": 13000,
+      "forma": "Lemon",
+      "concepto": "Salidas",
+      "nota": "Le di al Figo del fernet",
+      "createdAt": "2026-02-01T00:00:00.000Z"
+    },
+    {
+      "id": "2",
+      "fecha": "2026-02-02",
+      "cantidad": 55644.76,
+      "forma": "Lemon",
+      "concepto": "Casa",
+      "nota": "Cuota de la luz",
+      "createdAt": "2026-02-02T00:00:00.000Z"
+    },
+    {
+      "id": "3",
+      "fecha": "2026-02-02",
+      "cantidad": 2500,
+      "forma": "Lemon",
+      "concepto": "Comida",
+      "nota": "Gatorade en el gym",
+      "createdAt": "2026-02-02T00:00:00.000Z"
+    },
+    {
+      "id": "4",
+      "fecha": "2026-02-03",
+      "cantidad": 5900,
+      "forma": "Lemon",
+      "concepto": "Salidas",
+      "nota": "Le mande a Nadal de TBS la otra vez",
+      "createdAt": "2026-02-03T00:00:00.000Z"
+    },
+    {
+      "id": "5",
+      "fecha": "2026-02-03",
+      "cantidad": 200000,
+      "forma": "Lemon",
+      "concepto": "Casa",
+      "nota": "150k arreglo lavarropa + lavado de ropa",
+      "createdAt": "2026-02-03T00:00:00.000Z"
+    },
+    {
+      "id": "6",
+      "fecha": "2026-02-04",
+      "cantidad": 32819,
+      "forma": "Lemon",
+      "concepto": "Comida",
+      "nota": "x2 burgers en smash",
+      "createdAt": "2026-02-04T00:00:00.000Z"
+    },
+    {
+      "id": "7",
+      "fecha": "2026-02-05",
+      "cantidad": 21500,
+      "forma": "Lemon",
+      "concepto": "Salidas",
+      "nota": "Le pase al tute de la crean",
+      "createdAt": "2026-02-05T00:00:00.000Z"
+    },
+    {
+      "id": "8",
+      "fecha": "2026-02-06",
+      "cantidad": 8100,
+      "forma": "Lemon",
+      "concepto": "Comida",
+      "nota": "Cosas de cristian",
+      "createdAt": "2026-02-06T00:00:00.000Z"
+    },
+    {
+      "id": "9",
+      "fecha": "2026-02-06",
+      "cantidad": 5000,
+      "forma": "Lemon",
+      "concepto": "Salidas",
+      "nota": "Cerveza viendo la copa funes",
+      "createdAt": "2026-02-06T00:00:00.000Z"
+    },
+    {
+      "id": "10",
+      "fecha": "2026-02-07",
+      "cantidad": 17700,
+      "forma": "Lemon",
+      "concepto": "Salidas",
+      "nota": "TBS con Zari y Tute",
+      "createdAt": "2026-02-07T00:00:00.000Z"
+    },
+    {
+      "id": "11",
+      "fecha": "2026-02-09",
+      "cantidad": 34600,
+      "forma": "Lemon",
+      "concepto": "Salidas",
+      "nota": "Le di a Tute de la comida del otro dia + el fernet",
+      "createdAt": "2026-02-09T00:00:00.000Z"
+    },
+    {
+      "id": "12",
+      "fecha": "2026-02-09",
+      "cantidad": 242135.52,
+      "forma": "Credito",
+      "concepto": "Creditos",
+      "nota": "Pague tarjeta de credito",
+      "createdAt": "2026-02-09T00:00:00.000Z"
+    },
+    {
+      "id": "13",
+      "fecha": "2026-02-09",
+      "cantidad": 77000,
+      "forma": "Lemon",
+      "concepto": "Salud",
+      "nota": "2 pares de lentes de contacto",
+      "createdAt": "2026-02-09T00:00:00.000Z"
+    },
+    {
+      "id": "14",
+      "fecha": "2026-02-10",
+      "cantidad": 20000,
+      "forma": "Lemon",
+      "concepto": "Peluquería",
+      "nota": "Cortesaki con el Luca",
+      "createdAt": "2026-02-10T00:00:00.000Z"
+    },
+    {
+      "id": "15",
+      "fecha": "2026-02-12",
+      "cantidad": 30000,
+      "forma": "Lemon",
+      "concepto": "Transporte",
+      "nota": "Le cargue nafta al auto",
+      "createdAt": "2026-02-12T00:00:00.000Z"
+    },
+    {
+      "id": "16",
+      "fecha": "2026-02-12",
+      "cantidad": 1000,
+      "forma": "Efectivo",
+      "concepto": "Otros",
+      "nota": "Le di al loco q me limpio los vidrios",
+      "createdAt": "2026-02-12T00:00:00.000Z"
+    },
+    {
+      "id": "17",
+      "fecha": "2026-02-12",
+      "cantidad": 4000,
+      "forma": "Lemon",
+      "concepto": "Comida",
+      "nota": "2 barritas proteicas",
+      "createdAt": "2026-02-12T00:00:00.000Z"
+    },
+    {
+      "id": "18",
+      "fecha": "2026-02-13",
+      "cantidad": 10000,
+      "forma": "Lemon",
+      "concepto": "Otros",
+      "nota": "ni puta idea",
+      "createdAt": "2026-02-13T00:00:00.000Z"
+    },
+    {
+      "id": "19",
+      "fecha": "2026-02-11",
+      "cantidad": 1535260,
+      "forma": "Wise",
+      "concepto": "Viaje España",
+      "nota": "Pasaje ida y vuelta 17/03 hasta 07/04 a Madrid",
+      "createdAt": "2026-02-11T00:00:00.000Z"
+    },
+    {
+      "id": "20",
+      "fecha": "2026-02-14",
+      "cantidad": 56300,
+      "forma": "Lemon",
+      "concepto": "Salidas",
+      "nota": "Ir a boludear con el tute",
+      "createdAt": "2026-02-14T00:00:00.000Z"
+    },
+    {
+      "id": "21",
+      "fecha": "2026-02-16",
+      "cantidad": 14500,
+      "forma": "Wise",
+      "concepto": "Fijos",
+      "nota": "Github Copilot PRO",
+      "createdAt": "2026-02-16T00:00:00.000Z"
+    },
+    {
+      "id": "22",
+      "fecha": "2026-02-16",
+      "cantidad": 5311.39,
+      "forma": "Lemon",
+      "concepto": "Fijos",
+      "nota": "Spotify",
+      "createdAt": "2026-02-16T00:00:00.000Z"
+    },
+    {
+      "id": "23",
+      "fecha": "2026-02-16",
+      "cantidad": 14112,
+      "forma": "Lemon",
+      "concepto": "Salidas",
+      "nota": "Comida con isma y zari (isma debe 7k)",
+      "createdAt": "2026-02-16T00:00:00.000Z"
+    },
+    {
+      "id": "24",
+      "fecha": "2026-02-17",
+      "cantidad": 5500,
+      "forma": "Lemon",
+      "concepto": "Salidas",
+      "nota": "Partidito",
+      "createdAt": "2026-02-17T00:00:00.000Z"
+    },
+    {
+      "id": "25",
+      "fecha": "2026-02-17",
+      "cantidad": 1600,
+      "forma": "Lemon",
+      "concepto": "Otros",
+      "nota": "Curitas en la axion",
+      "createdAt": "2026-02-17T00:00:00.000Z"
+    },
+    {
+      "id": "26",
+      "fecha": "2026-02-18",
+      "cantidad": 4500,
+      "forma": "Lemon",
+      "concepto": "Comida",
+      "nota": "Pan lactal grande",
+      "createdAt": "2026-02-18T00:00:00.000Z"
+    },
+    {
+      "id": "27",
+      "fecha": "2026-02-19",
+      "cantidad": 11131.83,
+      "forma": "Lemon",
+      "concepto": "Casa",
+      "nota": "Litoral Gas 1",
+      "createdAt": "2026-02-19T00:00:00.000Z"
+    },
+    {
+      "id": "28",
+      "fecha": "2026-02-19",
+      "cantidad": 30814.78,
+      "forma": "Lemon",
+      "concepto": "Casa",
+      "nota": "Litoral Gas 2",
+      "createdAt": "2026-02-19T00:00:00.000Z"
+    },
+    {
+      "id": "29",
+      "fecha": "2026-02-20",
+      "cantidad": 16500,
+      "forma": "Lemon",
+      "concepto": "Salidas",
+      "nota": "Juntada del Tute",
+      "createdAt": "2026-02-20T00:00:00.000Z"
+    },
+    {
+      "id": "30",
+      "fecha": "2026-02-21",
+      "cantidad": 70000,
+      "forma": "Lemon",
+      "concepto": "Casa",
+      "nota": "Compras",
+      "createdAt": "2026-02-21T00:00:00.000Z"
+    },
+    {
+      "id": "31",
+      "fecha": "2026-02-23",
+      "cantidad": 73000,
+      "forma": "Lemon",
+      "concepto": "Fijos",
+      "nota": "Gym",
+      "createdAt": "2026-02-23T00:00:00.000Z"
+    },
+    {
+      "id": "32",
+      "fecha": "2026-02-23",
+      "cantidad": 30000,
+      "forma": "Lemon",
+      "concepto": "Transporte",
+      "nota": "Nafta",
+      "createdAt": "2026-02-23T00:00:00.000Z"
+    }
+  ],
+  "usdRates": {
+    "2026-01": 1515,
+    "2026-02": 1450
+  }
+}
