@@ -1,33 +1,34 @@
 import { useState, useEffect } from 'react'
 import { X, Save, Plus } from 'lucide-react'
-import { FORMAS, CONCEPTOS, FORMA_BG, CONCEPTO_BG } from '../constants'
+import { FORMAS, CONCEPTOS, FORMA_BG, CONCEPTO_BG } from '@/constants'
+import type { GastoModalProps, GastoFormState } from '@/types'
 
-const today = () => new Date().toISOString().split('T')[0]
+const today = (): string => new Date().toISOString().split('T')[0]
 
-const emptyForm = {
+const emptyForm = (): GastoFormState => ({
   fecha: today(),
   cantidad: '',
   forma: 'Lemon',
   concepto: 'Salidas',
-  nota: ''
-}
+  nota: '',
+})
 
-export default function GastoModal({ gasto, defaultDate, onClose, onSave }) {
-  const [form, setForm] = useState(emptyForm)
+export default function GastoModal({ gasto, defaultDate, onClose, onSave }: GastoModalProps) {
+  const [form, setForm] = useState<GastoFormState>(emptyForm())
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
   useEffect(() => {
     if (gasto) {
-      setForm({ ...gasto })
+      setForm({ ...gasto, cantidad: gasto.cantidad, nota: gasto.nota ?? '' })
     } else {
-      setForm({ ...emptyForm, fecha: defaultDate || today() })
+      setForm({ ...emptyForm(), fecha: defaultDate || today() })
     }
-  }, [gasto])
+  }, [gasto, defaultDate])
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!form.fecha || !form.cantidad || !form.forma || !form.concepto) {
+    if (!form.fecha || form.cantidad === '' || !form.forma || !form.concepto) {
       setError('Completá todos los campos obligatorios')
       return
     }
@@ -41,7 +42,7 @@ export default function GastoModal({ gasto, defaultDate, onClose, onSave }) {
     try {
       await onSave({ ...form, cantidad: amount })
       onClose()
-    } catch (err) {
+    } catch {
       setError('Error al guardar')
     } finally {
       setLoading(false)
@@ -51,7 +52,6 @@ export default function GastoModal({ gasto, defaultDate, onClose, onSave }) {
   return (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <div className="bg-gray-900 border border-gray-700 rounded-2xl w-full max-w-md shadow-2xl">
-        {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-800">
           <div className="flex items-center gap-2">
             <Plus className="w-5 h-5 text-green-400" />
@@ -68,7 +68,6 @@ export default function GastoModal({ gasto, defaultDate, onClose, onSave }) {
         </div>
 
         <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4">
-          {/* Fecha + Cantidad */}
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="text-xs text-gray-400 uppercase tracking-wider block mb-1.5">
@@ -99,7 +98,6 @@ export default function GastoModal({ gasto, defaultDate, onClose, onSave }) {
             </div>
           </div>
 
-          {/* Forma */}
           <div>
             <label className="text-xs text-gray-400 uppercase tracking-wider block mb-2">
               Forma de pago *
@@ -122,7 +120,6 @@ export default function GastoModal({ gasto, defaultDate, onClose, onSave }) {
             </div>
           </div>
 
-          {/* Concepto */}
           <div>
             <label className="text-xs text-gray-400 uppercase tracking-wider block mb-2">
               Concepto *
@@ -145,7 +142,6 @@ export default function GastoModal({ gasto, defaultDate, onClose, onSave }) {
             </div>
           </div>
 
-          {/* Nota */}
           <div>
             <label className="text-xs text-gray-400 uppercase tracking-wider block mb-1.5">
               Nota
@@ -160,14 +156,12 @@ export default function GastoModal({ gasto, defaultDate, onClose, onSave }) {
             />
           </div>
 
-          {/* Error */}
           {error && (
             <div className="bg-red-900/40 border border-red-700 rounded-lg px-3 py-2 text-red-400 text-sm">
               {error}
             </div>
           )}
 
-          {/* Actions */}
           <div className="flex gap-3 pt-2">
             <button
               type="button"

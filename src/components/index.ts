@@ -1,0 +1,7 @@
+export { default as Header } from './Header'
+export { default as GastosTable } from './GastosTable'
+export { default as GastoModal } from './GastoModal'
+export { default as Charts } from './Charts'
+export { default as Promedios } from './Promedios'
+export { default as Login } from './Login'
+export { default as Landing } from './Landing'

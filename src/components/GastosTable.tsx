@@ -1,30 +1,49 @@
 import { useState, useMemo } from 'react'
 import { Plus, Pencil, Trash2, Search, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react'
-import { FORMAS, CONCEPTOS, FORMA_BG, CONCEPTO_BG } from '../constants'
+import { FORMAS, CONCEPTOS, FORMA_BG, CONCEPTO_BG } from '@/constants'
 import GastoModal from './GastoModal'
-import { createGasto, updateGasto, deleteGasto } from '../api'
+import { createGasto, updateGasto, deleteGasto } from '@/api'
+import type { GastosTableProps, Gasto } from '@/types'
 
-const fmt = (n) => new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 2 }).format(n)
+const fmt = (n: number) =>
+  new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 2 }).format(n)
 
-function SortIcon({ field, sortField, sortDir }) {
+function SortIcon({
+  field,
+  sortField,
+  sortDir,
+}: {
+  field: string
+  sortField: string
+  sortDir: 'asc' | 'desc'
+}) {
   if (sortField !== field) return <ChevronsUpDown className="w-3.5 h-3.5 text-gray-600" />
-  return sortDir === 'asc'
-    ? <ChevronUp className="w-3.5 h-3.5 text-green-400" />
-    : <ChevronDown className="w-3.5 h-3.5 text-green-400" />
+  return sortDir === 'asc' ? (
+    <ChevronUp className="w-3.5 h-3.5 text-green-400" />
+  ) : (
+    <ChevronDown className="w-3.5 h-3.5 text-green-400" />
+  )
 }
 
-export default function GastosTable({ gastos, setGastos, allGastos, selectedYear, selectedMonth, demo }) {
-  const [modal, setModal] = useState(null) // null | 'new' | gasto object
-  const [deleteConfirm, setDeleteConfirm] = useState(null)
+export default function GastosTable({
+  gastos,
+  setGastos,
+  allGastos,
+  selectedYear,
+  selectedMonth,
+  demo,
+}: GastosTableProps) {
+  const [modal, setModal] = useState<null | 'new' | Gasto>(null)
+  const [deleteConfirm, setDeleteConfirm] = useState<Gasto | null>(null)
   const [search, setSearch] = useState('')
   const [filterForma, setFilterForma] = useState('')
   const [filterConcepto, setFilterConcepto] = useState('')
   const [sortField, setSortField] = useState('fecha')
-  const [sortDir, setSortDir] = useState('desc')
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
 
-  const handleSort = (field) => {
+  const handleSort = (field: string) => {
     if (sortField === field) {
-      setSortDir(d => d === 'asc' ? 'desc' : 'asc')
+      setSortDir(d => (d === 'asc' ? 'desc' : 'asc'))
     } else {
       setSortField(field)
       setSortDir('desc')
@@ -35,18 +54,23 @@ export default function GastosTable({ gastos, setGastos, allGastos, selectedYear
     let result = [...gastos]
     if (search) {
       const s = search.toLowerCase()
-      result = result.filter(g =>
-        g.nota?.toLowerCase().includes(s) ||
-        g.concepto?.toLowerCase().includes(s) ||
-        g.forma?.toLowerCase().includes(s)
+      result = result.filter(
+        g =>
+          g.nota?.toLowerCase().includes(s) ||
+          g.concepto?.toLowerCase().includes(s) ||
+          g.forma?.toLowerCase().includes(s)
       )
     }
     if (filterForma) result = result.filter(g => g.forma === filterForma)
     if (filterConcepto) result = result.filter(g => g.concepto === filterConcepto)
 
     result.sort((a, b) => {
-      let va = a[sortField], vb = b[sortField]
-      if (sortField === 'cantidad') { va = Number(va); vb = Number(vb) }
+      let va: string | number = a[sortField as keyof Gasto]
+      let vb: string | number = b[sortField as keyof Gasto]
+      if (sortField === 'cantidad') {
+        va = Number(va)
+        vb = Number(vb)
+      }
       if (va < vb) return sortDir === 'asc' ? -1 : 1
       if (va > vb) return sortDir === 'asc' ? 1 : -1
       return 0
@@ -54,20 +78,21 @@ export default function GastosTable({ gastos, setGastos, allGastos, selectedYear
     return result
   }, [gastos, search, filterForma, filterConcepto, sortField, sortDir])
 
-  const handleSave = async (data) => {
+  const handleSave = async (
+    data: Partial<Gasto> & { fecha: string; cantidad: number; forma: string; concepto: string; nota?: string }
+  ) => {
     if (modal && modal !== 'new') {
-      const updated = await updateGasto(modal.id, data)
-      setGastos(prev => prev.map(g => g.id === modal.id ? updated : g))
+      const updated = await updateGasto(modal.id, { ...modal, ...data } as Gasto)
+      setGastos(prev => prev.map(g => (g.id === modal.id ? updated : g)))
     } else {
       const created = await createGasto(data)
       setGastos(prev => [created, ...prev])
     }
   }
 
-  // Default date for new expense = first day of selected month/year
   const defaultDate = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}-01`
 
-  const handleDelete = async (id) => {
+  const handleDelete = async (id: string) => {
     await deleteGasto(id)
     setGastos(prev => prev.filter(g => g.id !== id))
     setDeleteConfirm(null)
@@ -77,9 +102,7 @@ export default function GastosTable({ gastos, setGastos, allGastos, selectedYear
 
   return (
     <div className="flex flex-col h-full">
-      {/* Toolbar */}
       <div className="flex flex-wrap gap-3 mb-4">
-        {/* Search */}
         <div className="relative flex-1 min-w-[200px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
           <input
@@ -91,27 +114,32 @@ export default function GastosTable({ gastos, setGastos, allGastos, selectedYear
           />
         </div>
 
-        {/* Filter Forma */}
         <select
           value={filterForma}
           onChange={e => setFilterForma(e.target.value)}
           className="bg-gray-800 border border-gray-700 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-green-500"
         >
           <option value="">Todas las formas</option>
-          {FORMAS.map(f => <option key={f} value={f}>{f}</option>)}
+          {FORMAS.map(f => (
+            <option key={f} value={f}>
+              {f}
+            </option>
+          ))}
         </select>
 
-        {/* Filter Concepto */}
         <select
           value={filterConcepto}
           onChange={e => setFilterConcepto(e.target.value)}
           className="bg-gray-800 border border-gray-700 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-green-500"
         >
           <option value="">Todos los conceptos</option>
-          {CONCEPTOS.map(c => <option key={c} value={c}>{c}</option>)}
+          {CONCEPTOS.map(c => (
+            <option key={c} value={c}>
+              {c}
+            </option>
+          ))}
         </select>
 
-        {/* Add button (hidden en demo) */}
         {!demo && (
           <button
             onClick={() => setModal('new')}
@@ -123,13 +151,14 @@ export default function GastosTable({ gastos, setGastos, allGastos, selectedYear
         )}
       </div>
 
-      {/* Stats row */}
       <div className="flex items-center justify-between mb-3 text-sm text-gray-400">
-        <span>{filtered.length} gastos{(search || filterForma || filterConcepto) ? ' (filtrado)' : ''}</span>
+        <span>
+          {filtered.length} gastos
+          {search || filterForma || filterConcepto ? ' (filtrado)' : ''}
+        </span>
         <span className="font-semibold text-white">{fmt(totalFiltered)}</span>
       </div>
 
-      {/* Table */}
       <div className="flex-1 overflow-auto scrollbar-thin rounded-xl border border-gray-800">
         <table className="w-full text-sm">
           <thead className="sticky top-0 z-10">
@@ -170,18 +199,26 @@ export default function GastosTable({ gastos, setGastos, allGastos, selectedYear
                   className={`transition-colors hover:bg-gray-800/50 ${i % 2 === 0 ? 'bg-gray-900' : 'bg-gray-900/60'}`}
                 >
                   <td className="px-4 py-3 text-gray-300 whitespace-nowrap">
-                    {new Date(g.fecha + 'T12:00:00').toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: '2-digit' })}
+                    {new Date(g.fecha + 'T12:00:00').toLocaleDateString('es-AR', {
+                      day: '2-digit',
+                      month: '2-digit',
+                      year: '2-digit',
+                    })}
                   </td>
                   <td className="px-4 py-3 text-right font-semibold text-white whitespace-nowrap">
                     {fmt(g.cantidad)}
                   </td>
                   <td className="px-4 py-3">
-                    <span className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-semibold ${FORMA_BG[g.forma] || 'bg-gray-600 text-white'}`}>
+                    <span
+                      className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-semibold ${FORMA_BG[g.forma] || 'bg-gray-600 text-white'}`}
+                    >
                       {g.forma}
                     </span>
                   </td>
                   <td className="px-4 py-3">
-                    <span className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-semibold ${CONCEPTO_BG[g.concepto] || 'bg-gray-600 text-white'}`}>
+                    <span
+                      className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-semibold ${CONCEPTO_BG[g.concepto] || 'bg-gray-600 text-white'}`}
+                    >
                       {g.concepto}
                     </span>
                   </td>
@@ -215,7 +252,6 @@ export default function GastosTable({ gastos, setGastos, allGastos, selectedYear
         </table>
       </div>
 
-      {/* Modal (solo si no es demo) */}
       {modal && !demo && (
         <GastoModal
           gasto={modal === 'new' ? null : modal}
@@ -225,14 +261,17 @@ export default function GastosTable({ gastos, setGastos, allGastos, selectedYear
         />
       )}
 
-      {/* Delete confirm (solo si no es demo) */}
       {deleteConfirm && !demo && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-gray-900 border border-gray-700 rounded-2xl p-6 max-w-sm w-full shadow-2xl">
             <h3 className="text-lg font-semibold text-white mb-2">Eliminar gasto</h3>
             <p className="text-gray-400 text-sm mb-1">¿Seguro que querés eliminar este gasto?</p>
-            <p className="text-white font-semibold text-sm mb-1">{fmt(deleteConfirm.cantidad)} — {deleteConfirm.concepto}</p>
-            {deleteConfirm.nota && <p className="text-gray-500 text-xs mb-4 italic">"{deleteConfirm.nota}"</p>}
+            <p className="text-white font-semibold text-sm mb-1">
+              {fmt(deleteConfirm.cantidad)} — {deleteConfirm.concepto}
+            </p>
+            {deleteConfirm.nota && (
+              <p className="text-gray-500 text-xs mb-4 italic">&quot;{deleteConfirm.nota}&quot;</p>
+            )}
             <div className="flex gap-3 mt-4">
               <button
                 onClick={() => setDeleteConfirm(null)}

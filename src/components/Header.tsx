@@ -1,15 +1,29 @@
 import { useState, useEffect } from 'react'
 import { DollarSign, TrendingUp, Edit2, Check, X, Calendar, LogOut } from 'lucide-react'
-import { updateMonthRate } from '../api'
+import { updateMonthRate } from '@/api'
+import type { HeaderProps } from '@/types'
 
-const fmt = (n) => new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 2 }).format(n)
-const fmtUSD = (n) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 2 }).format(n)
+const fmt = (n: number) =>
+  new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 2 }).format(n)
+const fmtUSD = (n: number) =>
+  new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 2 }).format(n)
 
-export default function Header({ total, usdRate, usdRates, setUsdRates, monthKey, monthLabel, isPromedios, user, onSignOut, demo, onSignIn }) {
+export default function Header({
+  total,
+  usdRate,
+  usdRates,
+  setUsdRates,
+  monthKey,
+  monthLabel,
+  isPromedios,
+  user,
+  onSignOut,
+  demo,
+  onSignIn,
+}: HeaderProps) {
   const [editing, setEditing] = useState(false)
   const [tempRate, setTempRate] = useState(usdRate)
 
-  // Sync tempRate when monthKey or usdRate changes
   useEffect(() => {
     setTempRate(usdRate)
   }, [usdRate, monthKey])
@@ -37,7 +51,6 @@ export default function Header({ total, usdRate, usdRates, setUsdRates, monthKey
     <header className="bg-gray-900 border-b border-gray-800 px-6 py-3">
       <div className="max-w-screen-2xl mx-auto">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-          {/* Title */}
           <div className="flex items-center gap-3">
             <div className="bg-green-500 rounded-xl p-2">
               <DollarSign className="w-5 h-5 text-white" />
@@ -58,10 +71,7 @@ export default function Header({ total, usdRate, usdRates, setUsdRates, monthKey
             </div>
           </div>
 
-          {/* Stats */}
           <div className="flex flex-wrap items-center gap-3">
-
-            {/* Total ARS */}
             <div className="bg-gray-800 rounded-xl px-4 py-2.5 min-w-[160px]">
               <p className="text-xs text-gray-400 uppercase tracking-wider mb-0.5">
                 {isPromedios ? 'Total año' : 'Total mes'} ARS
@@ -69,7 +79,6 @@ export default function Header({ total, usdRate, usdRates, setUsdRates, monthKey
               <p className="text-lg font-bold text-white">{fmt(total)}</p>
             </div>
 
-            {/* Total USD */}
             <div className="bg-gray-800 rounded-xl px-4 py-2.5 min-w-[160px]">
               <p className="text-xs text-gray-400 uppercase tracking-wider mb-0.5">
                 {isPromedios ? 'Total año' : 'Total mes'} USD
@@ -77,7 +86,6 @@ export default function Header({ total, usdRate, usdRates, setUsdRates, monthKey
               <p className="text-lg font-bold text-green-400">{fmtUSD(totalUSD)}</p>
             </div>
 
-            {/* USD Rate — per month */}
             <div className="bg-gray-800 rounded-xl px-4 py-2.5 min-w-[160px]">
               <p className="text-xs text-gray-400 uppercase tracking-wider mb-0.5 flex items-center gap-1">
                 <TrendingUp className="w-3 h-3" />
@@ -92,10 +100,13 @@ export default function Header({ total, usdRate, usdRates, setUsdRates, monthKey
                   <input
                     type="number"
                     value={tempRate}
-                    onChange={e => setTempRate(e.target.value)}
+                    onChange={e => setTempRate(Number(e.target.value) || 0)}
                     className="bg-gray-700 text-white rounded px-2 py-0.5 w-24 text-sm focus:outline-none focus:ring-1 focus:ring-green-500"
                     autoFocus
-                    onKeyDown={e => { if (e.key === 'Enter') handleSave(); if (e.key === 'Escape') handleCancel() }}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') handleSave()
+                      if (e.key === 'Escape') handleCancel()
+                    }}
                   />
                   <button onClick={handleSave} className="text-green-400 hover:text-green-300">
                     <Check className="w-4 h-4" />
@@ -106,12 +117,17 @@ export default function Header({ total, usdRate, usdRates, setUsdRates, monthKey
                 </div>
               ) : (
                 <div className="flex items-center gap-2">
-                  <span className={`text-base font-bold ${hasCustomRate ? 'text-yellow-400' : 'text-yellow-700'}`}>
+                  <span
+                    className={`text-base font-bold ${hasCustomRate ? 'text-yellow-400' : 'text-yellow-700'}`}
+                  >
                     ${usdRate.toLocaleString('es-AR')}
                   </span>
                   {!isPromedios && !demo && (
                     <button
-                      onClick={() => { setTempRate(usdRate); setEditing(true) }}
+                      onClick={() => {
+                        setTempRate(usdRate)
+                        setEditing(true)
+                      }}
                       className="text-gray-400 hover:text-white transition-colors"
                       title={`Editar tipo de cambio de ${monthLabel}`}
                     >
@@ -121,10 +137,8 @@ export default function Header({ total, usdRate, usdRates, setUsdRates, monthKey
                 </div>
               )}
             </div>
-
           </div>
 
-          {/* Demo: CTA Iniciar sesión */}
           {demo && onSignIn && (
             <button
               onClick={onSignIn}
@@ -133,18 +147,17 @@ export default function Header({ total, usdRate, usdRates, setUsdRates, monthKey
               Iniciar sesión con Google
             </button>
           )}
-          {/* User avatar + logout */}
           {user && !demo && (
             <div className="flex items-center gap-2 ml-2">
               {user.user_metadata?.avatar_url ? (
                 <img
-                  src={user.user_metadata.avatar_url}
-                  alt={user.user_metadata?.full_name || 'Usuario'}
+                  src={user.user_metadata.avatar_url as string}
+                  alt={(user.user_metadata?.full_name as string) || 'Usuario'}
                   className="w-8 h-8 rounded-full ring-2 ring-gray-700"
                 />
               ) : (
                 <div className="w-8 h-8 rounded-full bg-green-600 flex items-center justify-center text-white text-sm font-bold ring-2 ring-gray-700">
-                  {(user.user_metadata?.full_name || user.email || 'U')[0].toUpperCase()}
+                  {((user.user_metadata?.full_name as string) || user.email || 'U')[0].toUpperCase()}
                 </div>
               )}
               <button
@@ -156,7 +169,6 @@ export default function Header({ total, usdRate, usdRates, setUsdRates, monthKey
               </button>
             </div>
           )}
-
         </div>
       </div>
     </header>

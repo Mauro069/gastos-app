@@ -1,20 +1,19 @@
 import { createContext, useContext, useEffect, useState } from 'react'
-import { supabase } from '../lib/supabase'
+import { supabase } from '@/lib'
+import type { AuthContextValue } from '@/types'
 
-const AuthContext = createContext(null)
+const AuthContext = createContext<AuthContextValue | null>(null)
 
-export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null)
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [user, setUser] = useState<AuthContextValue['user']>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null)
       setLoading(false)
     })
 
-    // Listen for auth changes (login, logout, token refresh)
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null)
     })
@@ -25,19 +24,17 @@ export function AuthProvider({ children }) {
   const signInWithGoogle = () =>
     supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: window.location.origin }
+      options: { redirectTo: window.location.origin },
     })
 
   const signOut = () => supabase.auth.signOut()
 
-  return (
-    <AuthContext.Provider value={{ user, loading, signInWithGoogle, signOut }}>
-      {children}
-    </AuthContext.Provider>
-  )
+  const value: AuthContextValue = { user, loading, signInWithGoogle, signOut }
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
 
-export function useAuth() {
+export function useAuth(): AuthContextValue {
   const ctx = useContext(AuthContext)
   if (!ctx) throw new Error('useAuth must be used within AuthProvider')
   return ctx
