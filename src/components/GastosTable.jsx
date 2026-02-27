@@ -13,7 +13,7 @@ function SortIcon({ field, sortField, sortDir }) {
     : <ChevronDown className="w-3.5 h-3.5 text-green-400" />
 }
 
-export default function GastosTable({ gastos, setGastos, allGastos, selectedYear, selectedMonth }) {
+export default function GastosTable({ gastos, setGastos, allGastos, selectedYear, selectedMonth, demo }) {
   const [modal, setModal] = useState(null) // null | 'new' | gasto object
   const [deleteConfirm, setDeleteConfirm] = useState(null)
   const [search, setSearch] = useState('')
@@ -111,14 +111,16 @@ export default function GastosTable({ gastos, setGastos, allGastos, selectedYear
           {CONCEPTOS.map(c => <option key={c} value={c}>{c}</option>)}
         </select>
 
-        {/* Add button */}
-        <button
-          onClick={() => setModal('new')}
-          className="bg-green-600 hover:bg-green-500 text-white rounded-xl px-4 py-2.5 text-sm font-medium flex items-center gap-2 transition-colors whitespace-nowrap"
-        >
-          <Plus className="w-4 h-4" />
-          Nuevo gasto
-        </button>
+        {/* Add button (hidden en demo) */}
+        {!demo && (
+          <button
+            onClick={() => setModal('new')}
+            className="bg-green-600 hover:bg-green-500 text-white rounded-xl px-4 py-2.5 text-sm font-medium flex items-center gap-2 transition-colors whitespace-nowrap"
+          >
+            <Plus className="w-4 h-4" />
+            Nuevo gasto
+          </button>
+        )}
       </div>
 
       {/* Stats row */}
@@ -151,13 +153,13 @@ export default function GastosTable({ gastos, setGastos, allGastos, selectedYear
               <th className="px-4 py-3 text-left">Forma</th>
               <th className="px-4 py-3 text-left">Concepto</th>
               <th className="px-4 py-3 text-left">Nota</th>
-              <th className="px-4 py-3 text-center">Acciones</th>
+              {!demo && <th className="px-4 py-3 text-center">Acciones</th>}
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-800/60">
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={6} className="text-center py-12 text-gray-500">
+                <td colSpan={demo ? 5 : 6} className="text-center py-12 text-gray-500">
                   No hay gastos que coincidan con los filtros
                 </td>
               </tr>
@@ -186,24 +188,26 @@ export default function GastosTable({ gastos, setGastos, allGastos, selectedYear
                   <td className="px-4 py-3 text-gray-400 max-w-[260px] truncate" title={g.nota}>
                     {g.nota || <span className="text-gray-600 italic">Sin nota</span>}
                   </td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center justify-center gap-2">
-                      <button
-                        onClick={() => setModal(g)}
-                        className="text-gray-400 hover:text-blue-400 transition-colors p-1 rounded hover:bg-blue-400/10"
-                        title="Editar"
-                      >
-                        <Pencil className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => setDeleteConfirm(g)}
-                        className="text-gray-400 hover:text-red-400 transition-colors p-1 rounded hover:bg-red-400/10"
-                        title="Eliminar"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </td>
+                  {!demo && (
+                    <td className="px-4 py-3">
+                      <div className="flex items-center justify-center gap-2">
+                        <button
+                          onClick={() => setModal(g)}
+                          className="text-gray-400 hover:text-blue-400 transition-colors p-1 rounded hover:bg-blue-400/10"
+                          title="Editar"
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => setDeleteConfirm(g)}
+                          className="text-gray-400 hover:text-red-400 transition-colors p-1 rounded hover:bg-red-400/10"
+                          title="Eliminar"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </td>
+                  )}
                 </tr>
               ))
             )}
@@ -211,8 +215,8 @@ export default function GastosTable({ gastos, setGastos, allGastos, selectedYear
         </table>
       </div>
 
-      {/* Modal */}
-      {modal && (
+      {/* Modal (solo si no es demo) */}
+      {modal && !demo && (
         <GastoModal
           gasto={modal === 'new' ? null : modal}
           defaultDate={modal === 'new' ? defaultDate : undefined}
@@ -221,8 +225,8 @@ export default function GastosTable({ gastos, setGastos, allGastos, selectedYear
         />
       )}
 
-      {/* Delete confirm */}
-      {deleteConfirm && (
+      {/* Delete confirm (solo si no es demo) */}
+      {deleteConfirm && !demo && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-gray-900 border border-gray-700 rounded-2xl p-6 max-w-sm w-full shadow-2xl">
             <h3 className="text-lg font-semibold text-white mb-2">Eliminar gasto</h3>
