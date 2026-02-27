@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
 import { X, Save, Plus } from 'lucide-react'
-import { FORMAS, CONCEPTOS, FORMA_BG, CONCEPTO_BG } from '@/constants'
-import type { GastoModalProps, GastoFormState } from '@/types'
+import { FORMA_BG, CONCEPTO_BG } from '@/constants'
+import type { GastoModalProps, GastoFormState, Forma, Concepto } from '@/types'
+import { useUserSettings } from '@/contexts'
 
 const today = (): string => new Date().toISOString().split('T')[0]
 
@@ -14,6 +15,7 @@ const emptyForm = (): GastoFormState => ({
 })
 
 export default function GastoModal({ gasto, defaultDate, onClose, onSave }: GastoModalProps) {
+  const { settings } = useUserSettings()
   const [form, setForm] = useState<GastoFormState>(emptyForm())
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -103,14 +105,14 @@ export default function GastoModal({ gasto, defaultDate, onClose, onSave }: Gast
               Forma de pago *
             </label>
             <div className="flex flex-wrap gap-2">
-              {FORMAS.map(f => (
+              {settings.formas.map(f => (
                 <button
                   key={f}
                   type="button"
-                  onClick={() => setForm(prev => ({ ...prev, forma: f }))}
+                  onClick={() => setForm(prev => ({ ...prev, forma: f as Forma }))}
                   className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
                     form.forma === f
-                      ? FORMA_BG[f] + ' ring-2 ring-white/30 scale-105'
+                      ? (FORMA_BG[f as Forma] ?? 'bg-gray-600 text-white') + ' ring-2 ring-white/30 scale-105'
                       : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
                   }`}
                 >
@@ -125,14 +127,14 @@ export default function GastoModal({ gasto, defaultDate, onClose, onSave }: Gast
               Concepto *
             </label>
             <div className="flex flex-wrap gap-2">
-              {CONCEPTOS.map(c => (
+              {settings.conceptos.map(c => (
                 <button
                   key={c}
                   type="button"
-                  onClick={() => setForm(prev => ({ ...prev, concepto: c }))}
+                  onClick={() => setForm(prev => ({ ...prev, concepto: c as Concepto }))}
                   className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
                     form.concepto === c
-                      ? CONCEPTO_BG[c] + ' ring-2 ring-white/30 scale-105'
+                      ? (CONCEPTO_BG[c as Concepto] ?? 'bg-gray-600 text-white') + ' ring-2 ring-white/30 scale-105'
                       : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
                   }`}
                 >

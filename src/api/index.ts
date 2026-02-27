@@ -3,8 +3,15 @@ import type {
   FetchAllResponse,
   CreateGastoData,
   UpdateMonthRateResponse,
+  UserSettings,
 } from "@/types";
 import type { Gasto } from "@/types";
+import { FORMAS, CONCEPTOS } from "@/constants";
+
+const DEFAULT_SETTINGS: UserSettings = {
+  formas: [...FORMAS],
+  conceptos: [...CONCEPTOS],
+};
 
 export async function fetchAll(): Promise<FetchAllResponse> {
   const { data: gastos, error: gError } = await supabase
@@ -69,6 +76,47 @@ export async function deleteGasto(id: string): Promise<{ ok: boolean }> {
   if (error) throw error;
   return { ok: true };
 }
+
+// ── User Settings ────────────────────────────────────────────────────────────
+
+export async function getUserSettings(): Promise<UserSettings> {
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return DEFAULT_SETTINGS
+
+  const { data, error } = await supabase
+    .from("user_settings")
+    .select("settings")
+    .eq("user_id", user.id)
+    .maybeSingle()
+
+  if (error) throw error
+  if (!data) return DEFAULT_SETTINGS
+
+  const s = data.settings as Partial<UserSettings>
+  return {
+    formas: Array.isArray(s.formas) && s.formas.length > 0 ? s.formas : DEFAULT_SETTINGS.formas,
+    conceptos: Array.isArray(s.conceptos) && s.conceptos.length > 0 ? s.conceptos : DEFAULT_SETTINGS.conceptos,
+  }
+}
+
+export async function saveUserSettings(settings: UserSettings): Promise<void> {
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error("Not authenticated")
+
+  const { error } = await supabase
+    .from("user_settings")
+    .upsert({ user_id: user.id, settings })
+
+  if (error) throw error
+}
+
+export async function deleteAccount(): Promise<void> {
+  const { error } = await supabase.rpc("delete_user_account")
+  if (error) throw error
+  await supabase.auth.signOut()
+}
+
+// ── USD Rates ─────────────────────────────────────────────────────────────────
 
 export async function updateMonthRate(
   monthKey: string,
