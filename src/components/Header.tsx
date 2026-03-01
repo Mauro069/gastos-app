@@ -11,6 +11,7 @@ const fmtUSD = (n: number) =>
 
 export default function Header({
   total,
+  inversionesTotal,
   usdRate,
   usdRates,
   setUsdRates,
@@ -79,6 +80,11 @@ export default function Header({
                 {isPromedios ? 'Total año' : 'Total mes'} ARS
               </p>
               <p className="text-lg font-bold text-white">{fmt(total)}</p>
+              {!!inversionesTotal && inversionesTotal > 0 && (
+                <p className="text-xs text-gray-500 mt-0.5" title={`Se excluyen ${fmt(inversionesTotal)} en inversiones`}>
+                  + {fmt(inversionesTotal)} inv.
+                </p>
+              )}
             </div>
 
             <div className="bg-gray-800 rounded-xl px-4 py-2.5 min-w-[160px]">

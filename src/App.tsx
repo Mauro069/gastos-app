@@ -153,6 +153,10 @@ export default function App() {
     .filter((g) => g.concepto !== "Inversiones")
     .reduce((acc, g) => acc + Number(g.cantidad), 0);
 
+  const inversionesMes = gastosDelMes
+    .filter((g) => g.concepto === "Inversiones")
+    .reduce((acc, g) => acc + Number(g.cantidad), 0);
+
   const totalAno = useMemo(
     () =>
       gastos
@@ -226,6 +230,7 @@ export default function App() {
     <div className="min-h-screen bg-gray-950 flex flex-col">
       <Header
         total={isPromedios ? totalAno : totalMes}
+        inversionesTotal={isPromedios ? undefined : inversionesMes}
         usdRate={currentRate}
         usdRates={usdRates}
         setUsdRates={handleRatesUpdated}

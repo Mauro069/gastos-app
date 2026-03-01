@@ -3,6 +3,7 @@ import type { User } from "@supabase/supabase-js";
 
 export interface HeaderProps {
   total: number;
+  inversionesTotal?: number;
   usdRate: number;
   usdRates: UsdRates;
   setUsdRates: (newRates: UsdRates) => void;
