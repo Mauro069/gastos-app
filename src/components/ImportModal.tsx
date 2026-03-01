@@ -1,9 +1,10 @@
 import { useState, useRef } from 'react'
-import { X, Download, Upload, CheckCircle, AlertCircle, FileSpreadsheet, Loader2 } from 'lucide-react'
+import { X, Download, Upload, CheckCircle, AlertCircle, FileSpreadsheet, Loader2, Plus, Check } from 'lucide-react'
 import * as XLSX from 'xlsx'
 import { FORMAS, CONCEPTOS } from '@/constants'
 import { createGasto } from '@/api'
 import type { Forma, Concepto, CreateGastoData } from '@/types'
+import { useUserSettings } from '@/contexts'
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -32,58 +33,149 @@ interface Props {
 
 function parseDate(val: unknown): string | null {
   if (val === null || val === undefined || val === '') return null
-
-  // Excel serial number
   if (typeof val === 'number') {
     const date = XLSX.SSF.parse_date_code(val)
-    if (date) {
-      return `${date.y}-${String(date.m).padStart(2, '0')}-${String(date.d).padStart(2, '0')}`
-    }
+    if (date) return `${date.y}-${String(date.m).padStart(2, '0')}-${String(date.d).padStart(2, '0')}`
   }
-
   const str = String(val).trim()
-
-  // DD/MM/YYYY
   const dmy = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/)
   if (dmy) return `${dmy[3]}-${dmy[2].padStart(2, '0')}-${dmy[1].padStart(2, '0')}`
-
-  // YYYY-MM-DD
   if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str
-
-  // DD-MM-YYYY
   const dmyDash = str.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/)
   if (dmyDash) return `${dmyDash[3]}-${dmyDash[2].padStart(2, '0')}-${dmyDash[1].padStart(2, '0')}`
-
   return null
 }
 
 type RawRow = Record<string, unknown>
 
-function validateRow(row: RawRow, idx: number): ParsedRow {
+function validateRow(row: RawRow, idx: number, formas: string[], conceptos: string[]): ParsedRow {
   const errors: string[] = []
 
   const fecha = parseDate(row['Fecha'] ?? row['fecha'])
-  if (!fecha) errors.push('Fecha inválida (usar DD/MM/YYYY)')
+  if (!fecha) errors.push('Fecha inválida')
 
   const cantidad = Number(row['Cantidad'] ?? row['cantidad'])
   if (isNaN(cantidad) || cantidad <= 0) errors.push('Cantidad inválida')
 
   const forma = String(row['Forma'] ?? row['forma'] ?? '').trim()
-  if (!(FORMAS as readonly string[]).includes(forma))
-    errors.push(`Forma inválida. Opciones: ${FORMAS.join(', ')}`)
+  if (!formas.includes(forma)) errors.push('Forma inválida')
 
   const concepto = String(row['Concepto'] ?? row['concepto'] ?? '').trim()
-  if (!(CONCEPTOS as readonly string[]).includes(concepto))
-    errors.push(`Concepto inválido`)
+  if (!conceptos.includes(concepto)) errors.push('Concepto inválido')
 
   const nota = String(row['Nota'] ?? row['nota'] ?? '').trim()
 
   return { row: idx + 1, fecha, cantidad, forma, concepto, nota, errors, valid: errors.length === 0 }
 }
 
+function revalidateRow(r: ParsedRow, formas: string[], conceptos: string[]): ParsedRow {
+  const errors: string[] = []
+  if (!r.fecha) errors.push('Fecha inválida')
+  if (isNaN(r.cantidad) || r.cantidad <= 0) errors.push('Cantidad inválida')
+  if (!formas.includes(r.forma)) errors.push('Forma inválida')
+  if (!conceptos.includes(r.concepto)) errors.push('Concepto inválido')
+  return { ...r, errors, valid: errors.length === 0 }
+}
+
+// ── FixableCell ────────────────────────────────────────────────────────────
+// Muestra el valor normal si es válido, o un select + opción de crear si es inválido.
+
+function FixableCell({
+  value,
+  field,
+  options,
+  isInvalid,
+  onFix,
+  onCreateAndFix,
+}: {
+  value: string
+  field: 'forma' | 'concepto'
+  options: string[]
+  isInvalid: boolean
+  onFix: (val: string) => void
+  onCreateAndFix: (val: string) => Promise<void>
+}) {
+  const [creating, setCreating] = useState(false)
+  const [newVal, setNewVal] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  if (!isInvalid) {
+    return <span className="text-gray-300">{value || '—'}</span>
+  }
+
+  if (creating) {
+    const handleConfirm = async () => {
+      const trimmed = newVal.trim()
+      if (!trimmed) return
+      setSaving(true)
+      try {
+        await onCreateAndFix(trimmed)
+        setCreating(false)
+        setNewVal('')
+      } finally {
+        setSaving(false)
+      }
+    }
+
+    return (
+      <div className="flex items-center gap-1">
+        <input
+          type="text"
+          value={newVal}
+          autoFocus
+          onChange={e => setNewVal(e.target.value)}
+          onKeyDown={e => {
+            if (e.key === 'Enter') handleConfirm()
+            if (e.key === 'Escape') { setCreating(false); setNewVal('') }
+          }}
+          placeholder={field === 'forma' ? 'Nueva forma...' : 'Nuevo concepto...'}
+          maxLength={30}
+          className="bg-gray-700 text-white text-xs rounded px-2 py-1 w-28 outline-none focus:ring-1 focus:ring-green-500"
+        />
+        <button
+          onClick={handleConfirm}
+          disabled={!newVal.trim() || saving}
+          className="text-green-400 hover:text-green-300 disabled:text-gray-600"
+        >
+          {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+        </button>
+        <button
+          onClick={() => { setCreating(false); setNewVal('') }}
+          className="text-gray-500 hover:text-gray-300"
+        >
+          <X className="w-3.5 h-3.5" />
+        </button>
+      </div>
+    )
+  }
+
+  return (
+    <select
+      defaultValue=""
+      onChange={e => {
+        if (e.target.value === '__new__') {
+          setCreating(true)
+        } else if (e.target.value) {
+          onFix(e.target.value)
+        }
+      }}
+      className="bg-gray-800 border border-red-500/60 text-red-300 text-xs rounded px-2 py-1 outline-none focus:ring-1 focus:ring-green-500 cursor-pointer max-w-[140px]"
+    >
+      <option value="" disabled>{value || 'Seleccionar...'}</option>
+      {options.map(o => (
+        <option key={o} value={o}>{o}</option>
+      ))}
+      <option disabled>──────────</option>
+      <option value="__new__">+ Crear nuevo...</option>
+    </select>
+  )
+}
+
 // ── Component ──────────────────────────────────────────────────────────────
 
 export default function ImportModal({ onClose, onImported }: Props) {
+  const { settings, updateFormas, updateConceptos } = useUserSettings()
+
   const [parsedRows, setParsedRows] = useState<ParsedRow[] | null>(null)
   const [importing, setImporting] = useState(false)
   const [done, setDone] = useState(false)
@@ -94,21 +186,21 @@ export default function ImportModal({ onClose, onImported }: Props) {
 
   function downloadTemplate() {
     const wb = XLSX.utils.book_new()
-
     const data = [
       ['Fecha', 'Cantidad', 'Forma', 'Concepto', 'Nota'],
       ['15/01/2026', 5000, 'Efectivo', 'Comida', 'Supermercado'],
       ['20/01/2026', 12000, 'Credito', 'Fijos', 'Internet'],
-      ['25/01/2026', 3500, 'Mercado Pago', 'Transporte', 'Uber'],
     ]
     const ws = XLSX.utils.aoa_to_sheet(data)
     ws['!cols'] = [{ wch: 14 }, { wch: 12 }, { wch: 14 }, { wch: 16 }, { wch: 24 }]
     XLSX.utils.book_append_sheet(wb, ws, 'Gastos')
 
-    const maxLen = Math.max(FORMAS.length, CONCEPTOS.length)
+    const formas = settings.formas.length ? settings.formas : FORMAS
+    const conceptos = settings.conceptos.length ? settings.conceptos : CONCEPTOS
+    const maxLen = Math.max(formas.length, conceptos.length)
     const ref = XLSX.utils.aoa_to_sheet([
       ['Formas válidas', 'Conceptos válidos'],
-      ...Array.from({ length: maxLen }, (_, i) => [FORMAS[i] ?? '', CONCEPTOS[i] ?? '']),
+      ...Array.from({ length: maxLen }, (_, i) => [formas[i] ?? '', conceptos[i] ?? '']),
     ])
     ref['!cols'] = [{ wch: 18 }, { wch: 18 }]
     XLSX.utils.book_append_sheet(wb, ref, 'Referencia')
@@ -121,20 +213,54 @@ export default function ImportModal({ onClose, onImported }: Props) {
   function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
-
     const reader = new FileReader()
     reader.onload = ev => {
       const data = new Uint8Array(ev.target?.result as ArrayBuffer)
       const wb = XLSX.read(data, { type: 'array', cellDates: false })
       const ws = wb.Sheets[wb.SheetNames[0]]
       const rows = XLSX.utils.sheet_to_json<RawRow>(ws, { defval: '' })
-      setParsedRows(rows.map((row, i) => validateRow(row, i)))
+      setParsedRows(rows.map((row, i) => validateRow(row, i, settings.formas, settings.conceptos)))
       setDone(false)
       setImportResult(null)
     }
     reader.readAsArrayBuffer(file)
-    // reset so same file can be re-selected
     e.target.value = ''
+  }
+
+  // ── Fix a field inline ─────────────────────────────────────────────────
+
+  function fixField(rowIndex: number, field: 'forma' | 'concepto', value: string) {
+    setParsedRows(prev => {
+      if (!prev) return prev
+      const updated = [...prev]
+      const patched = { ...updated[rowIndex], [field]: value }
+      updated[rowIndex] = revalidateRow(patched, settings.formas, settings.conceptos)
+      return updated
+    })
+  }
+
+  async function createAndFixForma(rowIndex: number, newForma: string) {
+    const newFormas = [...settings.formas, newForma]
+    await updateFormas(newFormas)
+    setParsedRows(prev => {
+      if (!prev) return prev
+      const updated = [...prev]
+      const patched = { ...updated[rowIndex], forma: newForma }
+      updated[rowIndex] = revalidateRow(patched, newFormas, settings.conceptos)
+      return updated
+    })
+  }
+
+  async function createAndFixConcepto(rowIndex: number, newConcepto: string) {
+    const newConceptos = [...settings.conceptos, newConcepto]
+    await updateConceptos(newConceptos)
+    setParsedRows(prev => {
+      if (!prev) return prev
+      const updated = [...prev]
+      const patched = { ...updated[rowIndex], concepto: newConcepto }
+      updated[rowIndex] = revalidateRow(patched, settings.formas, newConceptos)
+      return updated
+    })
   }
 
   // ── Import valid rows ──────────────────────────────────────────────────
@@ -143,11 +269,8 @@ export default function ImportModal({ onClose, onImported }: Props) {
     if (!parsedRows) return
     const valid = parsedRows.filter(r => r.valid)
     if (!valid.length) return
-
     setImporting(true)
-    let ok = 0
-    let fail = 0
-
+    let ok = 0, fail = 0
     for (const r of valid) {
       try {
         const payload: CreateGastoData = {
@@ -159,11 +282,8 @@ export default function ImportModal({ onClose, onImported }: Props) {
         }
         await createGasto(payload)
         ok++
-      } catch {
-        fail++
-      }
+      } catch { fail++ }
     }
-
     setImporting(false)
     setDone(true)
     setImportResult({ ok, fail })
@@ -188,10 +308,7 @@ export default function ImportModal({ onClose, onImported }: Props) {
               <p className="text-gray-500 text-xs">Cargá un Excel con tus gastos en formato plantilla</p>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="text-gray-500 hover:text-white p-1 rounded-lg hover:bg-gray-800 transition-colors"
-          >
+          <button onClick={onClose} className="text-gray-500 hover:text-white p-1 rounded-lg hover:bg-gray-800 transition-colors">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -225,19 +342,14 @@ export default function ImportModal({ onClose, onImported }: Props) {
                 <p className="text-white text-sm font-semibold">Seleccionar archivo</p>
                 <p className="text-gray-500 text-xs mt-0.5">.xlsx, .xls o .csv</p>
               </div>
-              <input
-                ref={fileRef}
-                type="file"
-                accept=".xlsx,.xls,.csv"
-                className="hidden"
-                onChange={handleFile}
-              />
+              <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleFile} />
             </button>
           </div>
 
           {/* Preview */}
           {parsedRows && !done && (
             <div className="space-y-3">
+              {/* Counts */}
               <div className="flex items-center gap-3">
                 <div className="flex items-center gap-1.5 bg-green-900/30 border border-green-800 rounded-lg px-3 py-1.5">
                   <CheckCircle className="w-4 h-4 text-green-400" />
@@ -252,51 +364,88 @@ export default function ImportModal({ onClose, onImported }: Props) {
                 <span className="text-gray-500 text-xs ml-auto">{parsedRows.length} filas leídas</span>
               </div>
 
+              {/* Table */}
               <div className="rounded-xl border border-gray-800 overflow-hidden">
-                <div className="overflow-x-auto max-h-64">
+                <div className="overflow-x-auto max-h-72">
                   <table className="w-full text-xs">
                     <thead className="bg-gray-800 sticky top-0">
                       <tr>
                         {['#', 'Fecha', 'Cantidad', 'Forma', 'Concepto', 'Nota', 'Estado'].map(h => (
-                          <th key={h} className="px-3 py-2 text-left text-gray-400 font-semibold">{h}</th>
+                          <th key={h} className="px-3 py-2 text-left text-gray-400 font-semibold whitespace-nowrap">{h}</th>
                         ))}
                       </tr>
                     </thead>
                     <tbody>
-                      {parsedRows.map((r, i) => (
-                        <tr key={i} className={`border-t border-gray-800 ${r.valid ? '' : 'bg-red-950/20'}`}>
-                          <td className="px-3 py-2 text-gray-500">{r.row}</td>
-                          <td className="px-3 py-2 text-gray-300">{r.fecha ?? '—'}</td>
-                          <td className="px-3 py-2 text-gray-300">
-                            {r.cantidad > 0 ? r.cantidad.toLocaleString('es-AR') : '—'}
-                          </td>
-                          <td className="px-3 py-2 text-gray-300">{r.forma || '—'}</td>
-                          <td className="px-3 py-2 text-gray-300">{r.concepto || '—'}</td>
-                          <td className="px-3 py-2 text-gray-400 max-w-32 truncate">{r.nota}</td>
-                          <td className="px-3 py-2 text-center">
-                            {r.valid ? (
-                              <CheckCircle className="w-4 h-4 text-green-500 mx-auto" />
-                            ) : (
-                              <span title={r.errors.join('\n')}>
-                                <AlertCircle className="w-4 h-4 text-red-500 mx-auto cursor-help" />
-                              </span>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
+                      {parsedRows.map((r, i) => {
+                        const formaInvalid = r.errors.some(e => e.includes('Forma'))
+                        const conceptoInvalid = r.errors.some(e => e.includes('Concepto'))
+                        return (
+                          <tr key={i} className={`border-t border-gray-800 ${r.valid ? '' : 'bg-red-950/20'}`}>
+                            <td className="px-3 py-2 text-gray-500">{r.row}</td>
+                            <td className="px-3 py-2 text-gray-300 whitespace-nowrap">{r.fecha ?? <span className="text-red-400">—</span>}</td>
+                            <td className="px-3 py-2 text-gray-300 whitespace-nowrap">
+                              {r.cantidad > 0 ? r.cantidad.toLocaleString('es-AR') : <span className="text-red-400">—</span>}
+                            </td>
+                            <td className="px-3 py-2">
+                              <FixableCell
+                                value={r.forma}
+                                field="forma"
+                                options={settings.formas}
+                                isInvalid={formaInvalid}
+                                onFix={val => fixField(i, 'forma', val)}
+                                onCreateAndFix={val => createAndFixForma(i, val)}
+                              />
+                            </td>
+                            <td className="px-3 py-2">
+                              <FixableCell
+                                value={r.concepto}
+                                field="concepto"
+                                options={settings.conceptos}
+                                isInvalid={conceptoInvalid}
+                                onFix={val => fixField(i, 'concepto', val)}
+                                onCreateAndFix={val => createAndFixConcepto(i, val)}
+                              />
+                            </td>
+                            <td className="px-3 py-2 text-gray-400 max-w-[140px] truncate">{r.nota}</td>
+                            <td className="px-3 py-2 text-center">
+                              {r.valid
+                                ? <CheckCircle className="w-4 h-4 text-green-500 mx-auto" />
+                                : (
+                                  <span title={r.errors.join('\n')}>
+                                    <AlertCircle className="w-4 h-4 text-red-500 mx-auto cursor-help" />
+                                  </span>
+                                )}
+                            </td>
+                          </tr>
+                        )
+                      })}
                     </tbody>
                   </table>
                 </div>
               </div>
 
-              {invalidCount > 0 && (
+              {/* Remaining errors (non-fixable: fecha, cantidad) */}
+              {parsedRows.some(r => r.errors.some(e => !e.includes('Forma') && !e.includes('Concepto'))) && (
                 <div className="bg-red-950/30 border border-red-900 rounded-xl p-3 space-y-1">
-                  <p className="text-red-400 text-xs font-semibold mb-2">Errores encontrados:</p>
-                  {parsedRows.filter(r => !r.valid).map((r, i) => (
-                    <p key={i} className="text-red-300 text-xs">
-                      <span className="font-semibold">Fila {r.row}:</span> {r.errors.join(' · ')}
-                    </p>
-                  ))}
+                  <p className="text-red-400 text-xs font-semibold mb-2">Errores no corregibles:</p>
+                  {parsedRows
+                    .filter(r => r.errors.some(e => !e.includes('Forma') && !e.includes('Concepto')))
+                    .map((r, i) => (
+                      <p key={i} className="text-red-300 text-xs">
+                        <span className="font-semibold">Fila {r.row}:</span>{' '}
+                        {r.errors.filter(e => !e.includes('Forma') && !e.includes('Concepto')).join(' · ')}
+                      </p>
+                    ))}
+                </div>
+              )}
+
+              {/* Fixable errors hint */}
+              {parsedRows.some(r => r.errors.some(e => e.includes('Forma') || e.includes('Concepto'))) && (
+                <div className="flex items-start gap-2 bg-amber-950/30 border border-amber-800/50 rounded-xl px-3 py-2.5">
+                  <Plus className="w-3.5 h-3.5 text-amber-400 mt-0.5 shrink-0" />
+                  <p className="text-amber-300 text-xs">
+                    Las filas con <span className="font-semibold">Forma</span> o <span className="font-semibold">Concepto</span> inválidos se pueden corregir directo en la tabla — elegí uno existente o creá uno nuevo.
+                  </p>
                 </div>
               )}
             </div>
@@ -307,9 +456,7 @@ export default function ImportModal({ onClose, onImported }: Props) {
             <div className="rounded-xl border border-green-800 bg-green-900/20 p-6 text-center space-y-2">
               <CheckCircle className="w-10 h-10 text-green-400 mx-auto" />
               <p className="text-white font-bold text-lg">{importResult.ok} gastos importados</p>
-              {importResult.fail > 0 && (
-                <p className="text-red-400 text-sm">{importResult.fail} no pudieron importarse</p>
-              )}
+              {importResult.fail > 0 && <p className="text-red-400 text-sm">{importResult.fail} no pudieron importarse</p>}
               <p className="text-gray-500 text-xs">La tabla se actualizó automáticamente</p>
             </div>
           )}
@@ -317,13 +464,9 @@ export default function ImportModal({ onClose, onImported }: Props) {
 
         {/* Footer */}
         <div className="flex items-center justify-between p-6 border-t border-gray-800">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 text-sm text-gray-400 hover:text-white transition-colors"
-          >
+          <button onClick={onClose} className="px-4 py-2 text-sm text-gray-400 hover:text-white transition-colors">
             {done ? 'Cerrar' : 'Cancelar'}
           </button>
-
           {parsedRows && !done && (
             <button
               onClick={handleImport}
@@ -331,15 +474,9 @@ export default function ImportModal({ onClose, onImported }: Props) {
               className="flex items-center gap-2 px-5 py-2.5 bg-green-600 hover:bg-green-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-semibold rounded-xl transition-colors"
             >
               {importing ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Importando...
-                </>
+                <><Loader2 className="w-4 h-4 animate-spin" />Importando...</>
               ) : (
-                <>
-                  <Upload className="w-4 h-4" />
-                  Importar {validCount} gasto{validCount !== 1 ? 's' : ''}
-                </>
+                <><Upload className="w-4 h-4" />Importar {validCount} gasto{validCount !== 1 ? 's' : ''}</>
               )}
             </button>
           )}
