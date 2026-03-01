@@ -76,6 +76,13 @@ export async function deleteGasto(id: string): Promise<{ ok: boolean }> {
   return { ok: true };
 }
 
+export async function deleteManyGastos(ids: string[]): Promise<{ ok: boolean }> {
+  if (ids.length === 0) return { ok: true };
+  const { error } = await supabase.from("gastos").delete().in("id", ids);
+  if (error) throw error;
+  return { ok: true };
+}
+
 // ── User Settings ────────────────────────────────────────────────────────────
 
 export async function getUserSettings(): Promise<UserSettings> {
