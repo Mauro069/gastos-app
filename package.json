@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@tanstack/react-query": "^5.40.0",
     "@supabase/supabase-js": "^2.43.5",
     "date-fns": "^3.6.0",
     "lucide-react": "^0.372.0",

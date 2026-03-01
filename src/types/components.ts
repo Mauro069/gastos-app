@@ -1,4 +1,3 @@
-import type { Dispatch, SetStateAction } from "react";
 import type { Gasto, UsdRates } from "./gasto";
 import type { User } from "@supabase/supabase-js";
 
@@ -6,7 +5,7 @@ export interface HeaderProps {
   total: number;
   usdRate: number;
   usdRates: UsdRates;
-  setUsdRates: Dispatch<SetStateAction<UsdRates>>;
+  setUsdRates: (newRates: UsdRates) => void;
   monthKey: string;
   monthLabel: string;
   isPromedios: boolean;
@@ -18,8 +17,6 @@ export interface HeaderProps {
 
 export interface GastosTableProps {
   gastos: Gasto[];
-  setGastos: Dispatch<SetStateAction<Gasto[]>>;
-  allGastos: Gasto[];
   selectedYear: number;
   selectedMonth: number;
   demo?: boolean;

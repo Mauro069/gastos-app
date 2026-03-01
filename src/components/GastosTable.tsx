@@ -1,9 +1,12 @@
 import { useState, useMemo } from 'react'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Plus, Pencil, Trash2, Search, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react'
-import { FORMAS, CONCEPTOS, FORMA_BG, CONCEPTO_BG } from '@/constants'
+import { FORMA_BG, CONCEPTO_BG } from '@/constants'
 import GastoModal from './GastoModal'
 import { createGasto, updateGasto, deleteGasto } from '@/api'
 import type { GastosTableProps, Gasto } from '@/types'
+import { useAuth } from '@/contexts'
+import { useUserSettings } from '@/contexts'
 
 const fmt = (n: number) =>
   new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 2 }).format(n)
@@ -27,12 +30,14 @@ function SortIcon({
 
 export default function GastosTable({
   gastos,
-  setGastos,
-  allGastos,
   selectedYear,
   selectedMonth,
   demo,
 }: GastosTableProps) {
+  const { user } = useAuth()
+  const { settings } = useUserSettings()
+  const queryClient = useQueryClient()
+
   const [modal, setModal] = useState<null | 'new' | Gasto>(null)
   const [deleteConfirm, setDeleteConfirm] = useState<Gasto | null>(null)
   const [search, setSearch] = useState('')
@@ -40,6 +45,27 @@ export default function GastosTable({
   const [filterConcepto, setFilterConcepto] = useState('')
   const [sortField, setSortField] = useState('fecha')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
+
+  const queryKey = ['gastos', user?.id, selectedYear]
+
+  // ── Mutations ──────────────────────────────────────────────────────────────
+
+  const createMutation = useMutation({
+    mutationFn: createGasto,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey }),
+  })
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: Gasto }) => updateGasto(id, data),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey }),
+  })
+
+  const deleteMutation = useMutation({
+    mutationFn: deleteGasto,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey }),
+  })
+
+  // ── Handlers ───────────────────────────────────────────────────────────────
 
   const handleSort = (field: string) => {
     if (sortField === field) {
@@ -49,6 +75,26 @@ export default function GastosTable({
       setSortDir('desc')
     }
   }
+
+  const handleSave = async (
+    data: Partial<Gasto> & { fecha: string; cantidad: number; forma: string; concepto: string; nota?: string }
+  ) => {
+    if (modal && modal !== 'new') {
+      await updateMutation.mutateAsync({ id: modal.id, data: { ...modal, ...data } as Gasto })
+    } else {
+      await createMutation.mutateAsync(data)
+    }
+    setModal(null)
+  }
+
+  const handleDelete = async (id: string) => {
+    await deleteMutation.mutateAsync(id)
+    setDeleteConfirm(null)
+  }
+
+  const defaultDate = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}-01`
+
+  // ── Derived data ───────────────────────────────────────────────────────────
 
   const filtered = useMemo(() => {
     let result = [...gastos]
@@ -65,8 +111,8 @@ export default function GastosTable({
     if (filterConcepto) result = result.filter(g => g.concepto === filterConcepto)
 
     result.sort((a, b) => {
-      let va: string | number = a[sortField as keyof Gasto]
-      let vb: string | number = b[sortField as keyof Gasto]
+      let va: string | number = a[sortField as keyof Gasto] as string | number
+      let vb: string | number = b[sortField as keyof Gasto] as string | number
       if (sortField === 'cantidad') {
         va = Number(va)
         vb = Number(vb)
@@ -78,27 +124,9 @@ export default function GastosTable({
     return result
   }, [gastos, search, filterForma, filterConcepto, sortField, sortDir])
 
-  const handleSave = async (
-    data: Partial<Gasto> & { fecha: string; cantidad: number; forma: string; concepto: string; nota?: string }
-  ) => {
-    if (modal && modal !== 'new') {
-      const updated = await updateGasto(modal.id, { ...modal, ...data } as Gasto)
-      setGastos(prev => prev.map(g => (g.id === modal.id ? updated : g)))
-    } else {
-      const created = await createGasto(data)
-      setGastos(prev => [created, ...prev])
-    }
-  }
-
-  const defaultDate = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}-01`
-
-  const handleDelete = async (id: string) => {
-    await deleteGasto(id)
-    setGastos(prev => prev.filter(g => g.id !== id))
-    setDeleteConfirm(null)
-  }
-
   const totalFiltered = filtered.reduce((acc, g) => acc + Number(g.cantidad), 0)
+
+  // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
     <div className="flex flex-col h-full">
@@ -120,7 +148,7 @@ export default function GastosTable({
           className="bg-gray-800 border border-gray-700 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-green-500"
         >
           <option value="">Todas las formas</option>
-          {FORMAS.map(f => (
+          {settings.formas.map(f => (
             <option key={f} value={f}>
               {f}
             </option>
@@ -133,7 +161,7 @@ export default function GastosTable({
           className="bg-gray-800 border border-gray-700 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-green-500"
         >
           <option value="">Todos los conceptos</option>
-          {CONCEPTOS.map(c => (
+          {settings.conceptos.map(c => (
             <option key={c} value={c}>
               {c}
             </option>
@@ -275,15 +303,17 @@ export default function GastosTable({
             <div className="flex gap-3 mt-4">
               <button
                 onClick={() => setDeleteConfirm(null)}
-                className="flex-1 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-xl py-2.5 font-medium text-sm transition-colors"
+                disabled={deleteMutation.isPending}
+                className="flex-1 bg-gray-800 hover:bg-gray-700 disabled:opacity-50 text-gray-300 rounded-xl py-2.5 font-medium text-sm transition-colors"
               >
                 Cancelar
               </button>
               <button
                 onClick={() => handleDelete(deleteConfirm.id)}
-                className="flex-1 bg-red-600 hover:bg-red-500 text-white rounded-xl py-2.5 font-medium text-sm transition-colors"
+                disabled={deleteMutation.isPending}
+                className="flex-1 bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white rounded-xl py-2.5 font-medium text-sm transition-colors"
               >
-                Eliminar
+                {deleteMutation.isPending ? 'Eliminando...' : 'Eliminar'}
               </button>
             </div>
           </div>

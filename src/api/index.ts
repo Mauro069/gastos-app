@@ -13,28 +13,27 @@ const DEFAULT_SETTINGS: UserSettings = {
   conceptos: [...CONCEPTOS],
 };
 
-export async function fetchAll(): Promise<FetchAllResponse> {
-  const { data: gastos, error: gError } = await supabase
+export async function fetchGastosByYear(year: number): Promise<Gasto[]> {
+  const { data, error } = await supabase
     .from("gastos")
     .select("*")
+    .gte("fecha", `${year}-01-01`)
+    .lte("fecha", `${year}-12-31`)
     .order("fecha", { ascending: false });
 
-  if (gError) throw gError;
+  if (error) throw error;
+  return (data || []) as Gasto[];
+}
 
-  const { data: rates, error: rError } = await supabase
+export async function fetchUsdRates(): Promise<FetchAllResponse["usdRates"]> {
+  const { data, error } = await supabase
     .from("usd_rates")
     .select("month_key, rate");
 
-  if (rError) throw rError;
-
-  const usdRates = Object.fromEntries(
-    (rates || []).map((r: { month_key: string; rate: number }) => [
-      r.month_key,
-      r.rate,
-    ]),
-  ) as FetchAllResponse["usdRates"];
-
-  return { gastos: gastos || [], usdRates };
+  if (error) throw error;
+  return Object.fromEntries(
+    (data || []).map((r: { month_key: string; rate: number }) => [r.month_key, r.rate])
+  );
 }
 
 export async function createGasto(data: CreateGastoData): Promise<Gasto> {
