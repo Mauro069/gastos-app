@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { X, Save, Plus } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { X, Save, Plus, Check } from "lucide-react";
 import { FORMA_BG, CONCEPTO_BG } from "@/constants";
 import type { GastoModalProps, GastoFormState, Forma, Concepto } from "@/types";
 import { useUserSettings } from "@/contexts";
@@ -15,16 +15,90 @@ const emptyForm = (): GastoFormState => ({
   nota: "",
 });
 
+// ── Inline "add chip" sub-component ───────────────────────────────────────
+
+function AddChipInput({
+  onAdd,
+  onCancel,
+  existing,
+}: {
+  onAdd: (value: string) => void;
+  onCancel: () => void;
+  existing: string[];
+}) {
+  const [value, setValue] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, []);
+
+  const trimmed = value.trim();
+  const isDuplicate = existing.some(
+    (e) => e.toLowerCase() === trimmed.toLowerCase()
+  );
+
+  const handleConfirm = () => {
+    if (!trimmed || isDuplicate) return;
+    onAdd(trimmed);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      handleConfirm();
+    }
+    if (e.key === "Escape") onCancel();
+  };
+
+  return (
+    <div className="flex items-center gap-1 bg-gray-700 rounded-full px-2 py-1">
+      <input
+        ref={inputRef}
+        type="text"
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        onKeyDown={handleKeyDown}
+        placeholder="Nuevo..."
+        maxLength={30}
+        className="bg-transparent text-white text-xs w-24 outline-none placeholder-gray-400"
+      />
+      <button
+        type="button"
+        onClick={handleConfirm}
+        disabled={!trimmed || isDuplicate}
+        title={isDuplicate ? "Ya existe" : "Confirmar"}
+        className="text-green-400 hover:text-green-300 disabled:text-gray-600 transition-colors"
+      >
+        <Check className="w-3.5 h-3.5" />
+      </button>
+      <button
+        type="button"
+        onClick={onCancel}
+        className="text-gray-400 hover:text-gray-200 transition-colors"
+      >
+        <X className="w-3.5 h-3.5" />
+      </button>
+    </div>
+  );
+}
+
+// ── Main component ─────────────────────────────────────────────────────────
+
 export default function GastoModal({
   gasto,
   defaultDate,
   onClose,
   onSave,
 }: GastoModalProps) {
-  const { settings } = useUserSettings();
+  const { settings, updateFormas, updateConceptos } = useUserSettings();
   const [form, setForm] = useState<GastoFormState>(emptyForm());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  // Inline add state
+  const [addingForma, setAddingForma] = useState(false);
+  const [addingConcepto, setAddingConcepto] = useState(false);
 
   const {
     inputRef,
@@ -66,6 +140,18 @@ export default function GastoModal({
     }
   };
 
+  const handleAddForma = async (newForma: string) => {
+    await updateFormas([...settings.formas, newForma]);
+    setForm((prev) => ({ ...prev, forma: newForma as Forma }));
+    setAddingForma(false);
+  };
+
+  const handleAddConcepto = async (newConcepto: string) => {
+    await updateConceptos([...settings.conceptos, newConcepto]);
+    setForm((prev) => ({ ...prev, concepto: newConcepto as Concepto }));
+    setAddingConcepto(false);
+  };
+
   return (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <div className="bg-gray-900 border border-gray-700 rounded-2xl w-full max-w-md shadow-2xl">
@@ -85,6 +171,7 @@ export default function GastoModal({
         </div>
 
         <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4">
+          {/* Fecha + Cantidad */}
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="text-xs text-gray-400 uppercase tracking-wider block mb-1.5">
@@ -117,6 +204,7 @@ export default function GastoModal({
             </div>
           </div>
 
+          {/* Forma de pago */}
           <div>
             <label className="text-xs text-gray-400 uppercase tracking-wider block mb-2">
               Forma de pago *
@@ -139,9 +227,27 @@ export default function GastoModal({
                   {f}
                 </button>
               ))}
+
+              {addingForma ? (
+                <AddChipInput
+                  existing={settings.formas}
+                  onAdd={handleAddForma}
+                  onCancel={() => setAddingForma(false)}
+                />
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setAddingForma(true)}
+                  title="Agregar forma de pago"
+                  className="px-2.5 py-1.5 rounded-full text-xs font-semibold bg-gray-800 text-gray-500 hover:text-green-400 hover:bg-gray-700 border border-dashed border-gray-600 hover:border-green-500 transition-all"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                </button>
+              )}
             </div>
           </div>
 
+          {/* Concepto */}
           <div>
             <label className="text-xs text-gray-400 uppercase tracking-wider block mb-2">
               Concepto *
@@ -165,9 +271,27 @@ export default function GastoModal({
                   {c}
                 </button>
               ))}
+
+              {addingConcepto ? (
+                <AddChipInput
+                  existing={settings.conceptos}
+                  onAdd={handleAddConcepto}
+                  onCancel={() => setAddingConcepto(false)}
+                />
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setAddingConcepto(true)}
+                  title="Agregar concepto"
+                  className="px-2.5 py-1.5 rounded-full text-xs font-semibold bg-gray-800 text-gray-500 hover:text-green-400 hover:bg-gray-700 border border-dashed border-gray-600 hover:border-green-500 transition-all"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                </button>
+              )}
             </div>
           </div>
 
+          {/* Nota */}
           <div>
             <label className="text-xs text-gray-400 uppercase tracking-wider block mb-1.5">
               Nota
