@@ -78,13 +78,15 @@ export default function App() {
   const [selectedYear, setSelectedYear] = useState(() => initFromUrl().year);
   const [selectedMonth, setSelectedMonth] = useState(() => initFromUrl().month);
 
-  // Sync URL
+  // Sync URL — solo cuando el usuario está autenticado para no pisar el
+  // hash #access_token=... que Supabase usa en el callback de OAuth
   useEffect(() => {
+    if (!user) return;
     const params = new URLSearchParams(window.location.search);
     params.set("year", String(selectedYear));
     params.set("month", String(selectedMonth + 1));
     history.replaceState(null, "", `?${params.toString()}`);
-  }, [selectedYear, selectedMonth]);
+  }, [selectedYear, selectedMonth, user]);
 
   // ── Queries ────────────────────────────────────────────────────────────────
 
