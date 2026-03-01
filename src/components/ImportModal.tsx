@@ -178,6 +178,7 @@ export default function ImportModal({ onClose, onImported }: Props) {
 
   const [parsedRows, setParsedRows] = useState<ParsedRow[] | null>(null)
   const [importing, setImporting] = useState(false)
+  const [progress, setProgress] = useState({ current: 0, total: 0 })
   const [done, setDone] = useState(false)
   const [importResult, setImportResult] = useState<ImportResult | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
@@ -270,6 +271,7 @@ export default function ImportModal({ onClose, onImported }: Props) {
     const valid = parsedRows.filter(r => r.valid)
     if (!valid.length) return
     setImporting(true)
+    setProgress({ current: 0, total: valid.length })
     let ok = 0, fail = 0
     for (const r of valid) {
       try {
@@ -283,6 +285,7 @@ export default function ImportModal({ onClose, onImported }: Props) {
         await createGasto(payload)
         ok++
       } catch { fail++ }
+      setProgress(p => ({ ...p, current: p.current + 1 }))
     }
     setImporting(false)
     setDone(true)
@@ -463,23 +466,50 @@ export default function ImportModal({ onClose, onImported }: Props) {
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between p-6 border-t border-gray-800">
-          <button onClick={onClose} className="px-4 py-2 text-sm text-gray-400 hover:text-white transition-colors">
-            {done ? 'Cerrar' : 'Cancelar'}
-          </button>
-          {parsedRows && !done && (
-            <button
-              onClick={handleImport}
-              disabled={validCount === 0 || importing}
-              className="flex items-center gap-2 px-5 py-2.5 bg-green-600 hover:bg-green-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-semibold rounded-xl transition-colors"
-            >
-              {importing ? (
-                <><Loader2 className="w-4 h-4 animate-spin" />Importando...</>
-              ) : (
-                <><Upload className="w-4 h-4" />Importar {validCount} gasto{validCount !== 1 ? 's' : ''}</>
-              )}
-            </button>
+        <div className="p-6 border-t border-gray-800 space-y-3">
+          {/* Progress bar — solo visible mientras importa */}
+          {importing && progress.total > 0 && (
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between text-xs text-gray-400">
+                <span className="flex items-center gap-1.5">
+                  <Loader2 className="w-3.5 h-3.5 animate-spin text-green-400" />
+                  Importando gastos...
+                </span>
+                <span className="font-semibold text-white tabular-nums">
+                  {progress.current} / {progress.total}
+                </span>
+              </div>
+              <div className="w-full bg-gray-800 rounded-full h-2 overflow-hidden">
+                <div
+                  className="h-2 bg-green-500 rounded-full transition-all duration-300 ease-out"
+                  style={{ width: `${Math.round((progress.current / progress.total) * 100)}%` }}
+                />
+              </div>
+              <p className="text-xs text-gray-600 text-right tabular-nums">
+                {Math.round((progress.current / progress.total) * 100)}%
+              </p>
+            </div>
           )}
+
+          <div className="flex items-center justify-between">
+            <button
+              onClick={onClose}
+              disabled={importing}
+              className="px-4 py-2 text-sm text-gray-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+            >
+              {done ? 'Cerrar' : 'Cancelar'}
+            </button>
+            {parsedRows && !done && !importing && (
+              <button
+                onClick={handleImport}
+                disabled={validCount === 0}
+                className="flex items-center gap-2 px-5 py-2.5 bg-green-600 hover:bg-green-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-semibold rounded-xl transition-colors"
+              >
+                <Upload className="w-4 h-4" />
+                Importar {validCount} gasto{validCount !== 1 ? 's' : ''}
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </div>
