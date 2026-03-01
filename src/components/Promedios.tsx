@@ -13,8 +13,9 @@ import {
   AreaChart,
 } from 'recharts'
 import { RefreshCw } from 'lucide-react'
-import { CONCEPTOS, CONCEPTO_COLORS } from '@/constants'
+import { CONCEPTO_COLORS } from '@/constants'
 import type { PromediosProps, Gasto, UsdRates } from '@/types'
+import { useUserSettings } from '@/contexts'
 
 const MONTH_FULL = [
   'Enero',
@@ -290,6 +291,7 @@ function GastosRecurrentes({
 }
 
 export default function Promedios({ gastos, selectedYear, usdRates }: PromediosProps) {
+  const { settings } = useUserSettings()
   const gastosAno = useMemo(
     () =>
       gastos.filter(g => new Date(g.fecha + 'T12:00:00').getFullYear() === selectedYear),
@@ -308,14 +310,14 @@ export default function Promedios({ gastos, selectedYear, usdRates }: PromediosP
   }, [gastosAno, usdRates, selectedYear])
 
   const catData = useMemo(() => {
-    return CONCEPTOS.map(c => {
+    return settings.conceptos.map(c => {
       const items = gastosAno.filter(g => g.concepto === c)
       const total = items.reduce((a, g) => a + Number(g.cantidad), 0)
       return { name: c, total, count: items.length }
     })
       .filter(d => d.total > 0)
       .sort((a, b) => b.total - a.total)
-  }, [gastosAno])
+  }, [gastosAno, settings.conceptos])
 
   const totalAno = gastosAno.reduce((a, g) => a + Number(g.cantidad), 0)
   const totalAnoUSD = monthlyData.reduce((a, m) => a + (m.rate > 0 ? m.total / m.rate : 0), 0)

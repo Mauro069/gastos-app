@@ -12,8 +12,9 @@ import {
   CartesianGrid,
 } from 'recharts'
 import { TrendingUp, TrendingDown, Minus, Trophy } from 'lucide-react'
-import { CONCEPTO_COLORS, FORMA_COLORS, CONCEPTOS, FORMAS } from '@/constants'
+import { CONCEPTO_COLORS, FORMA_COLORS } from '@/constants'
 import type { ChartsProps, Gasto } from '@/types'
+import { useUserSettings } from '@/contexts'
 
 const fmt = (n: number) =>
   new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(n)
@@ -99,14 +100,16 @@ function ComparacionMes({
   prevGastos,
   monthLabel,
   prevMonthLabel,
+  conceptos,
 }: {
   gastos: Gasto[]
   prevGastos: Gasto[]
   monthLabel: string
   prevMonthLabel: string
+  conceptos: string[]
 }) {
   const data = useMemo(() => {
-    return CONCEPTOS.map(c => {
+    return conceptos.map(c => {
       const curr = gastos.filter(g => g.concepto === c).reduce((a, g) => a + Number(g.cantidad), 0)
       const prev = prevGastos.filter(g => g.concepto === c).reduce((a, g) => a + Number(g.cantidad), 0)
       const delta = curr - prev
@@ -304,9 +307,11 @@ export default function Charts({
   monthLabel = '',
   prevMonthLabel = '',
 }: ChartsProps) {
+  const { settings } = useUserSettings()
+
   const byForma = useMemo(() => {
     const total = gastos.reduce((a, g) => a + Number(g.cantidad), 0)
-    return FORMAS.map(f => {
+    return settings.formas.map(f => {
       const items = gastos.filter(g => g.forma === f)
       const sum = items.reduce((a, g) => a + Number(g.cantidad), 0)
       return {
@@ -316,11 +321,11 @@ export default function Charts({
         pct: total > 0 ? ((sum / total) * 100).toFixed(1) : '0.0',
       }
     }).filter(d => d.total > 0)
-  }, [gastos])
+  }, [gastos, settings.formas])
 
   const byConcepto = useMemo(() => {
     const total = gastos.reduce((a, g) => a + Number(g.cantidad), 0)
-    return CONCEPTOS.map(c => {
+    return settings.conceptos.map(c => {
       const items = gastos.filter(g => g.concepto === c)
       const sum = items.reduce((a, g) => a + Number(g.cantidad), 0)
       return {
@@ -330,7 +335,7 @@ export default function Charts({
         pct: total > 0 ? ((sum / total) * 100).toFixed(1) : '0.0',
       }
     }).filter(d => d.total > 0)
-  }, [gastos])
+  }, [gastos, settings.conceptos])
 
   if (gastos.length === 0) {
     return (
@@ -438,6 +443,7 @@ export default function Charts({
           prevGastos={prevGastos}
           monthLabel={monthLabel}
           prevMonthLabel={prevMonthLabel}
+          conceptos={settings.conceptos}
         />
         <TopGastos gastos={gastos} monthLabel={monthLabel} />
       </div>
