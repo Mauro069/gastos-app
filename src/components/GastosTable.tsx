@@ -1,17 +1,105 @@
 import { useState, useMemo, useRef, useEffect } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, Pencil, Trash2, Search, ChevronUp, ChevronDown, ChevronsUpDown, X } from 'lucide-react'
+import { Plus, Pencil, Trash2, Search, ChevronUp, ChevronDown, ChevronsUpDown, X, ChevronDown as ChevronDownIcon } from 'lucide-react'
 import { FORMA_BG, CONCEPTO_BG } from '@/constants'
 import GastoModal from './GastoModal'
 import { createGasto, updateGasto, deleteGasto, deleteManyGastos } from '@/api'
 import type { GastosTableProps, Gasto } from '@/types'
 import { useAuth } from '@/contexts'
 import { useUserSettings } from '@/contexts'
+import { useSetQueryParam } from '@/hooks'
 
 const fmt = (n: number) =>
   new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 2 }).format(n)
 
-// ── Sub-components ─────────────────────────────────────────────────────────
+// ── MultiSelectFilter ──────────────────────────────────────────────────────
+
+function MultiSelectFilter({
+  placeholder,
+  options,
+  selected,
+  onChange,
+}: {
+  placeholder: string
+  options: string[]
+  selected: Set<string>
+  onChange: (next: Set<string>) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  // Cerrar al hacer click fuera
+  useEffect(() => {
+    if (!open) return
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [open])
+
+  const toggle = (opt: string) => {
+    const next = new Set(selected)
+    next.has(opt) ? next.delete(opt) : next.add(opt)
+    onChange(next)
+  }
+
+  const label =
+    selected.size === 0
+      ? placeholder
+      : selected.size === 1
+        ? [...selected][0]
+        : `${selected.size} seleccionados`
+
+  const isActive = selected.size > 0
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        className={`flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm transition-colors whitespace-nowrap ${
+          isActive
+            ? 'bg-green-900/40 border border-green-600 text-green-300'
+            : 'bg-gray-800 border border-gray-700 text-white hover:border-gray-600'
+        }`}
+      >
+        <span>{label}</span>
+        {isActive && (
+          <button
+            type="button"
+            onClick={e => { e.stopPropagation(); onChange(new Set()) }}
+            className="text-green-400 hover:text-white transition-colors"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        )}
+        <ChevronDownIcon className={`w-3.5 h-3.5 text-gray-400 transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+
+      {open && (
+        <div className="absolute top-full mt-1 left-0 bg-gray-800 border border-gray-700 rounded-xl shadow-2xl z-20 min-w-[180px] py-1 max-h-64 overflow-y-auto">
+          {options.map(opt => (
+            <label
+              key={opt}
+              className="flex items-center gap-2.5 px-3 py-2 hover:bg-gray-700 cursor-pointer select-none"
+            >
+              <input
+                type="checkbox"
+                checked={selected.has(opt)}
+                onChange={() => toggle(opt)}
+                className="w-3.5 h-3.5 rounded accent-green-500 cursor-pointer"
+              />
+              <span className="text-sm text-gray-200">{opt}</span>
+            </label>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── SortIcon ───────────────────────────────────────────────────────────────
 
 function SortIcon({ field, sortField, sortDir }: { field: string; sortField: string; sortDir: 'asc' | 'desc' }) {
   if (sortField !== field) return <ChevronsUpDown className="w-3.5 h-3.5 text-gray-600" />
@@ -20,28 +108,19 @@ function SortIcon({ field, sortField, sortDir }: { field: string; sortField: str
     : <ChevronDown className="w-3.5 h-3.5 text-green-400" />
 }
 
-/** Checkbox que soporta estado indeterminado (via ref al DOM) */
+// ── IndeterminateCheckbox ──────────────────────────────────────────────────
+
 function IndeterminateCheckbox({
-  checked,
-  indeterminate,
-  onChange,
-  className = '',
+  checked, indeterminate, onChange, className = '',
 }: {
-  checked: boolean
-  indeterminate?: boolean
-  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void
-  className?: string
+  checked: boolean; indeterminate?: boolean
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void; className?: string
 }) {
   const ref = useRef<HTMLInputElement>(null)
-  useEffect(() => {
-    if (ref.current) ref.current.indeterminate = !!indeterminate
-  }, [indeterminate])
+  useEffect(() => { if (ref.current) ref.current.indeterminate = !!indeterminate }, [indeterminate])
   return (
     <input
-      ref={ref}
-      type="checkbox"
-      checked={checked}
-      onChange={onChange}
+      ref={ref} type="checkbox" checked={checked} onChange={onChange}
       className={`w-4 h-4 rounded border-gray-600 bg-gray-700 text-green-500 focus:ring-green-500 focus:ring-offset-gray-900 cursor-pointer accent-green-500 ${className}`}
     />
   )
@@ -59,8 +138,8 @@ export default function GastosTable({ gastos, selectedYear, selectedMonth, demo 
   const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [search, setSearch] = useState('')
-  const [filterForma, setFilterForma] = useState('')
-  const [filterConcepto, setFilterConcepto] = useState('')
+  const [filterFormas, setFilterFormas] = useSetQueryParam('formas')
+  const [filterConceptos, setFilterConceptos] = useSetQueryParam('conceptos')
   const [sortField, setSortField] = useState('fecha')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
 
@@ -72,17 +151,14 @@ export default function GastosTable({ gastos, selectedYear, selectedMonth, demo 
     mutationFn: createGasto,
     onSuccess: () => queryClient.invalidateQueries({ queryKey }),
   })
-
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: Gasto }) => updateGasto(id, data),
     onSuccess: () => queryClient.invalidateQueries({ queryKey }),
   })
-
   const deleteMutation = useMutation({
     mutationFn: deleteGasto,
     onSuccess: () => queryClient.invalidateQueries({ queryKey }),
   })
-
   const bulkDeleteMutation = useMutation({
     mutationFn: deleteManyGastos,
     onSuccess: () => {
@@ -123,21 +199,11 @@ export default function GastosTable({ gastos, selectedYear, selectedMonth, demo 
 
   // ── Selection helpers ──────────────────────────────────────────────────────
 
-  const toggleRow = (id: string) => {
-    setSelectedIds(prev => {
-      const next = new Set(prev)
-      next.has(id) ? next.delete(id) : next.add(id)
-      return next
-    })
-  }
+  const toggleRow = (id: string) =>
+    setSelectedIds(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n })
 
-  const toggleAll = () => {
-    if (allSelected) {
-      setSelectedIds(new Set())
-    } else {
-      setSelectedIds(new Set(filtered.map(g => g.id)))
-    }
-  }
+  const toggleAll = () =>
+    setSelectedIds(allSelected ? new Set() : new Set(filtered.map(g => g.id)))
 
   const clearSelection = () => setSelectedIds(new Set())
 
@@ -151,8 +217,8 @@ export default function GastosTable({ gastos, selectedYear, selectedMonth, demo 
         g => g.nota?.toLowerCase().includes(s) || g.concepto?.toLowerCase().includes(s) || g.forma?.toLowerCase().includes(s)
       )
     }
-    if (filterForma) result = result.filter(g => g.forma === filterForma)
-    if (filterConcepto) result = result.filter(g => g.concepto === filterConcepto)
+    if (filterFormas.size > 0) result = result.filter(g => filterFormas.has(g.forma))
+    if (filterConceptos.size > 0) result = result.filter(g => filterConceptos.has(g.concepto))
     result.sort((a, b) => {
       let va: string | number = a[sortField as keyof Gasto] as string | number
       let vb: string | number = b[sortField as keyof Gasto] as string | number
@@ -162,17 +228,13 @@ export default function GastosTable({ gastos, selectedYear, selectedMonth, demo 
       return 0
     })
     return result
-  }, [gastos, search, filterForma, filterConcepto, sortField, sortDir])
+  }, [gastos, search, filterFormas, filterConceptos, sortField, sortDir])
 
   const totalFiltered = filtered.reduce((acc, g) => acc + Number(g.cantidad), 0)
   const allSelected = filtered.length > 0 && filtered.every(g => selectedIds.has(g.id))
   const someSelected = filtered.some(g => selectedIds.has(g.id)) && !allSelected
-  const selectedTotal = filtered
-    .filter(g => selectedIds.has(g.id))
-    .reduce((acc, g) => acc + Number(g.cantidad), 0)
-
-  // Columnas: checkbox + fecha + cantidad + forma + concepto + nota + acciones = 7
-  // Demo:                  fecha + cantidad + forma + concepto + nota         = 5
+  const selectedTotal = filtered.filter(g => selectedIds.has(g.id)).reduce((acc, g) => acc + Number(g.cantidad), 0)
+  const hasFilters = search || filterFormas.size > 0 || filterConceptos.size > 0
   const colSpan = demo ? 5 : 7
 
   // ── Render ─────────────────────────────────────────────────────────────────
@@ -192,23 +254,19 @@ export default function GastosTable({ gastos, selectedYear, selectedMonth, demo 
           />
         </div>
 
-        <select
-          value={filterForma}
-          onChange={e => setFilterForma(e.target.value)}
-          className="bg-gray-800 border border-gray-700 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-green-500"
-        >
-          <option value="">Todas las formas</option>
-          {settings.formas.map(f => <option key={f} value={f}>{f}</option>)}
-        </select>
+        <MultiSelectFilter
+          placeholder="Formas"
+          options={settings.formas}
+          selected={filterFormas}
+          onChange={setFilterFormas}
+        />
 
-        <select
-          value={filterConcepto}
-          onChange={e => setFilterConcepto(e.target.value)}
-          className="bg-gray-800 border border-gray-700 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-green-500"
-        >
-          <option value="">Todos los conceptos</option>
-          {settings.conceptos.map(c => <option key={c} value={c}>{c}</option>)}
-        </select>
+        <MultiSelectFilter
+          placeholder="Conceptos"
+          options={settings.conceptos}
+          selected={filterConceptos}
+          onChange={setFilterConceptos}
+        />
 
         {!demo && (
           <button
@@ -225,11 +283,7 @@ export default function GastosTable({ gastos, selectedYear, selectedMonth, demo 
       {!demo && selectedIds.size > 0 ? (
         <div className="flex items-center justify-between mb-3 px-3 py-2 bg-green-900/30 border border-green-700/50 rounded-xl text-sm">
           <div className="flex items-center gap-3">
-            <button
-              onClick={clearSelection}
-              className="text-gray-400 hover:text-white transition-colors"
-              title="Limpiar selección"
-            >
+            <button onClick={clearSelection} className="text-gray-400 hover:text-white transition-colors" title="Limpiar selección">
               <X className="w-4 h-4" />
             </button>
             <span className="text-green-400 font-medium">
@@ -250,7 +304,7 @@ export default function GastosTable({ gastos, selectedYear, selectedMonth, demo 
         <div className="flex items-center justify-between mb-3 text-sm text-gray-400">
           <span>
             {filtered.length} gastos
-            {search || filterForma || filterConcepto ? ' (filtrado)' : ''}
+            {hasFilters ? ' (filtrado)' : ''}
           </span>
           <span className="font-semibold text-white">{fmt(totalFiltered)}</span>
         </div>
@@ -263,28 +317,14 @@ export default function GastosTable({ gastos, selectedYear, selectedMonth, demo 
             <tr className="bg-gray-800 text-gray-400 text-xs uppercase tracking-wider">
               {!demo && (
                 <th className="pl-4 pr-2 py-3 w-8">
-                  <IndeterminateCheckbox
-                    checked={allSelected}
-                    indeterminate={someSelected}
-                    onChange={toggleAll}
-                  />
+                  <IndeterminateCheckbox checked={allSelected} indeterminate={someSelected} onChange={toggleAll} />
                 </th>
               )}
-              <th
-                className="px-4 py-3 text-left cursor-pointer hover:text-white select-none"
-                onClick={() => handleSort('fecha')}
-              >
-                <div className="flex items-center gap-1">
-                  Fecha <SortIcon field="fecha" sortField={sortField} sortDir={sortDir} />
-                </div>
+              <th className="px-4 py-3 text-left cursor-pointer hover:text-white select-none" onClick={() => handleSort('fecha')}>
+                <div className="flex items-center gap-1">Fecha <SortIcon field="fecha" sortField={sortField} sortDir={sortDir} /></div>
               </th>
-              <th
-                className="px-4 py-3 text-right cursor-pointer hover:text-white select-none"
-                onClick={() => handleSort('cantidad')}
-              >
-                <div className="flex items-center justify-end gap-1">
-                  Cantidad <SortIcon field="cantidad" sortField={sortField} sortDir={sortDir} />
-                </div>
+              <th className="px-4 py-3 text-right cursor-pointer hover:text-white select-none" onClick={() => handleSort('cantidad')}>
+                <div className="flex items-center justify-end gap-1">Cantidad <SortIcon field="cantidad" sortField={sortField} sortDir={sortDir} /></div>
               </th>
               <th className="px-4 py-3 text-left">Forma</th>
               <th className="px-4 py-3 text-left">Concepto</th>
@@ -307,38 +347,25 @@ export default function GastosTable({ gastos, selectedYear, selectedMonth, demo 
                     key={g.id}
                     onClick={!demo ? () => toggleRow(g.id) : undefined}
                     className={`transition-colors ${!demo ? 'cursor-pointer' : ''} ${
-                      isSelected
-                        ? 'bg-green-900/20 hover:bg-green-900/30'
-                        : i % 2 === 0
-                          ? 'bg-gray-900 hover:bg-gray-800/50'
-                          : 'bg-gray-900/60 hover:bg-gray-800/50'
+                      isSelected ? 'bg-green-900/20 hover:bg-green-900/30'
+                        : i % 2 === 0 ? 'bg-gray-900 hover:bg-gray-800/50'
+                        : 'bg-gray-900/60 hover:bg-gray-800/50'
                     }`}
                   >
                     {!demo && (
                       <td className="pl-4 pr-2 py-3" onClick={e => e.stopPropagation()}>
-                        <IndeterminateCheckbox
-                          checked={isSelected}
-                          onChange={() => toggleRow(g.id)}
-                        />
+                        <IndeterminateCheckbox checked={isSelected} onChange={() => toggleRow(g.id)} />
                       </td>
                     )}
                     <td className="px-4 py-3 text-gray-300 whitespace-nowrap">
-                      {new Date(g.fecha + 'T12:00:00').toLocaleDateString('es-AR', {
-                        day: '2-digit', month: '2-digit', year: '2-digit',
-                      })}
+                      {new Date(g.fecha + 'T12:00:00').toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: '2-digit' })}
                     </td>
-                    <td className="px-4 py-3 text-right font-semibold text-white whitespace-nowrap">
-                      {fmt(g.cantidad)}
+                    <td className="px-4 py-3 text-right font-semibold text-white whitespace-nowrap">{fmt(g.cantidad)}</td>
+                    <td className="px-4 py-3">
+                      <span className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-semibold ${FORMA_BG[g.forma] || 'bg-gray-600 text-white'}`}>{g.forma}</span>
                     </td>
                     <td className="px-4 py-3">
-                      <span className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-semibold ${FORMA_BG[g.forma] || 'bg-gray-600 text-white'}`}>
-                        {g.forma}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-semibold ${CONCEPTO_BG[g.concepto] || 'bg-gray-600 text-white'}`}>
-                        {g.concepto}
-                      </span>
+                      <span className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-semibold ${CONCEPTO_BG[g.concepto] || 'bg-gray-600 text-white'}`}>{g.concepto}</span>
                     </td>
                     <td className="px-4 py-3 text-gray-400 max-w-[260px] truncate" title={g.nota}>
                       {g.nota || <span className="text-gray-600 italic">Sin nota</span>}
@@ -346,18 +373,10 @@ export default function GastosTable({ gastos, selectedYear, selectedMonth, demo 
                     {!demo && (
                       <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
                         <div className="flex items-center justify-center gap-2">
-                          <button
-                            onClick={() => setModal(g)}
-                            className="text-gray-400 hover:text-blue-400 transition-colors p-1 rounded hover:bg-blue-400/10"
-                            title="Editar"
-                          >
+                          <button onClick={() => setModal(g)} className="text-gray-400 hover:text-blue-400 transition-colors p-1 rounded hover:bg-blue-400/10" title="Editar">
                             <Pencil className="w-4 h-4" />
                           </button>
-                          <button
-                            onClick={() => setDeleteConfirm(g)}
-                            className="text-gray-400 hover:text-red-400 transition-colors p-1 rounded hover:bg-red-400/10"
-                            title="Eliminar"
-                          >
+                          <button onClick={() => setDeleteConfirm(g)} className="text-gray-400 hover:text-red-400 transition-colors p-1 rounded hover:bg-red-400/10" title="Eliminar">
                             <Trash2 className="w-4 h-4" />
                           </button>
                         </div>
@@ -387,25 +406,11 @@ export default function GastosTable({ gastos, selectedYear, selectedMonth, demo 
           <div className="bg-gray-900 border border-gray-700 rounded-2xl p-6 max-w-sm w-full shadow-2xl">
             <h3 className="text-lg font-semibold text-white mb-2">Eliminar gasto</h3>
             <p className="text-gray-400 text-sm mb-1">¿Seguro que querés eliminar este gasto?</p>
-            <p className="text-white font-semibold text-sm mb-1">
-              {fmt(deleteConfirm.cantidad)} — {deleteConfirm.concepto}
-            </p>
-            {deleteConfirm.nota && (
-              <p className="text-gray-500 text-xs mb-4 italic">&quot;{deleteConfirm.nota}&quot;</p>
-            )}
+            <p className="text-white font-semibold text-sm mb-1">{fmt(deleteConfirm.cantidad)} — {deleteConfirm.concepto}</p>
+            {deleteConfirm.nota && <p className="text-gray-500 text-xs mb-4 italic">&quot;{deleteConfirm.nota}&quot;</p>}
             <div className="flex gap-3 mt-4">
-              <button
-                onClick={() => setDeleteConfirm(null)}
-                disabled={deleteMutation.isPending}
-                className="flex-1 bg-gray-800 hover:bg-gray-700 disabled:opacity-50 text-gray-300 rounded-xl py-2.5 font-medium text-sm transition-colors"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={() => handleDelete(deleteConfirm.id)}
-                disabled={deleteMutation.isPending}
-                className="flex-1 bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white rounded-xl py-2.5 font-medium text-sm transition-colors"
-              >
+              <button onClick={() => setDeleteConfirm(null)} disabled={deleteMutation.isPending} className="flex-1 bg-gray-800 hover:bg-gray-700 disabled:opacity-50 text-gray-300 rounded-xl py-2.5 font-medium text-sm transition-colors">Cancelar</button>
+              <button onClick={() => handleDelete(deleteConfirm.id)} disabled={deleteMutation.isPending} className="flex-1 bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white rounded-xl py-2.5 font-medium text-sm transition-colors">
                 {deleteMutation.isPending ? 'Eliminando...' : 'Eliminar'}
               </button>
             </div>
@@ -418,28 +423,15 @@ export default function GastosTable({ gastos, selectedYear, selectedMonth, demo 
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-gray-900 border border-gray-700 rounded-2xl p-6 max-w-sm w-full shadow-2xl">
             <h3 className="text-lg font-semibold text-white mb-2">Eliminar gastos</h3>
-            <p className="text-gray-400 text-sm mb-3">
-              ¿Seguro que querés eliminar{' '}
-              <span className="text-white font-semibold">{selectedIds.size} gastos</span>?
-            </p>
+            <p className="text-gray-400 text-sm mb-3">¿Seguro que querés eliminar <span className="text-white font-semibold">{selectedIds.size} gastos</span>?</p>
             <div className="bg-gray-800 rounded-xl px-4 py-3 mb-4">
               <p className="text-xs text-gray-500 mb-0.5">Total a eliminar</p>
               <p className="text-white font-bold text-lg">{fmt(selectedTotal)}</p>
             </div>
             <p className="text-red-400/80 text-xs mb-4">Esta acción no se puede deshacer.</p>
             <div className="flex gap-3">
-              <button
-                onClick={() => setBulkDeleteConfirm(false)}
-                disabled={bulkDeleteMutation.isPending}
-                className="flex-1 bg-gray-800 hover:bg-gray-700 disabled:opacity-50 text-gray-300 rounded-xl py-2.5 font-medium text-sm transition-colors"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={handleBulkDelete}
-                disabled={bulkDeleteMutation.isPending}
-                className="flex-1 bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white rounded-xl py-2.5 font-medium text-sm transition-colors"
-              >
+              <button onClick={() => setBulkDeleteConfirm(false)} disabled={bulkDeleteMutation.isPending} className="flex-1 bg-gray-800 hover:bg-gray-700 disabled:opacity-50 text-gray-300 rounded-xl py-2.5 font-medium text-sm transition-colors">Cancelar</button>
+              <button onClick={handleBulkDelete} disabled={bulkDeleteMutation.isPending} className="flex-1 bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white rounded-xl py-2.5 font-medium text-sm transition-colors">
                 {bulkDeleteMutation.isPending ? 'Eliminando...' : `Eliminar ${selectedIds.size}`}
               </button>
             </div>
