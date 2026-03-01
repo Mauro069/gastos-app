@@ -1,6 +1,9 @@
 import { useState, useMemo, useRef, useEffect } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, Pencil, Trash2, Search, ChevronUp, ChevronDown, ChevronsUpDown, X, ChevronDown as ChevronDownIcon } from 'lucide-react'
+import {
+  Plus, Pencil, Trash2, Search, ChevronUp, ChevronDown,
+  ChevronsUpDown, X, ChevronDown as ChevronDownIcon,
+} from 'lucide-react'
 import { FORMA_BG, CONCEPTO_BG } from '@/constants'
 import GastoModal from './GastoModal'
 import { createGasto, updateGasto, deleteGasto, deleteManyGastos } from '@/api'
@@ -15,10 +18,7 @@ const fmt = (n: number) =>
 // ── MultiSelectFilter ──────────────────────────────────────────────────────
 
 function MultiSelectFilter({
-  placeholder,
-  options,
-  selected,
-  onChange,
+  placeholder, options, selected, onChange,
 }: {
   placeholder: string
   options: string[]
@@ -28,7 +28,6 @@ function MultiSelectFilter({
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
-  // Cerrar al hacer click fuera
   useEffect(() => {
     if (!open) return
     const handler = (e: MouseEvent) => {
@@ -49,7 +48,7 @@ function MultiSelectFilter({
       ? placeholder
       : selected.size === 1
         ? [...selected][0]
-        : `${selected.size} seleccionados`
+        : `${selected.size} selec.`
 
   const isActive = selected.size > 0
 
@@ -58,7 +57,7 @@ function MultiSelectFilter({
       <button
         type="button"
         onClick={() => setOpen(o => !o)}
-        className={`flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm transition-colors whitespace-nowrap ${
+        className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm transition-colors whitespace-nowrap ${
           isActive
             ? 'bg-green-900/40 border border-green-600 text-green-300'
             : 'bg-gray-800 border border-gray-700 text-white hover:border-gray-600'
@@ -80,10 +79,7 @@ function MultiSelectFilter({
       {open && (
         <div className="absolute top-full mt-1 left-0 bg-gray-800 border border-gray-700 rounded-xl shadow-2xl z-20 min-w-[180px] py-1 max-h-64 overflow-y-auto">
           {options.map(opt => (
-            <label
-              key={opt}
-              className="flex items-center gap-2.5 px-3 py-2 hover:bg-gray-700 cursor-pointer select-none"
-            >
+            <label key={opt} className="flex items-center gap-2.5 px-3 py-2 hover:bg-gray-700 cursor-pointer select-none">
               <input
                 type="checkbox"
                 checked={selected.has(opt)}
@@ -237,20 +233,91 @@ export default function GastosTable({ gastos, selectedYear, selectedMonth, demo 
   const hasFilters = search || filterFormas.size > 0 || filterConceptos.size > 0
   const colSpan = demo ? 5 : 7
 
+  // ── Row renderer ───────────────────────────────────────────────────────────
+
+  const renderRow = (g: Gasto, i: number) => {
+    const isSelected = selectedIds.has(g.id)
+
+    return (
+      <tr
+        key={g.id}
+        onClick={!demo ? () => toggleRow(g.id) : undefined}
+        className={`transition-colors group ${!demo ? 'cursor-pointer' : ''} ${
+          isSelected
+            ? 'bg-green-900/20 hover:bg-green-900/30'
+            : i % 2 === 0
+              ? 'bg-gray-900 hover:bg-gray-800/60'
+              : 'bg-gray-900/50 hover:bg-gray-800/60'
+        }`}
+      >
+        {!demo && (
+          <td className="pl-4 pr-2 py-2.5 w-8" onClick={e => e.stopPropagation()}>
+            <IndeterminateCheckbox checked={isSelected} onChange={() => toggleRow(g.id)} />
+          </td>
+        )}
+        {/* Fecha */}
+        <td className="pl-4 pr-3 py-2.5 whitespace-nowrap text-gray-400 text-xs tabular-nums w-16">
+          {(() => {
+            const d = new Date(g.fecha + 'T12:00:00')
+            return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`
+          })()}
+        </td>
+        {/* Cantidad */}
+        <td className="px-4 py-2.5 text-right whitespace-nowrap">
+          <span className="font-semibold text-white tabular-nums">{fmt(g.cantidad)}</span>
+        </td>
+        <td className="px-3 py-2.5">
+          <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-semibold ${FORMA_BG[g.forma] || 'bg-gray-600 text-white'}`}>
+            {g.forma}
+          </span>
+        </td>
+        <td className="px-3 py-2.5">
+          <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-semibold ${CONCEPTO_BG[g.concepto] || 'bg-gray-600 text-white'}`}>
+            {g.concepto}
+          </span>
+        </td>
+        <td className="px-3 py-2.5 text-gray-400 max-w-[220px] truncate" title={g.nota}>
+          {g.nota || <span className="text-gray-700 italic text-xs">—</span>}
+        </td>
+        {!demo && (
+          <td className="px-3 py-2.5" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+              <button
+                onClick={() => setModal(g)}
+                className="text-gray-500 hover:text-blue-400 transition-colors p-1.5 rounded-lg hover:bg-blue-400/10"
+                title="Editar"
+              >
+                <Pencil className="w-3.5 h-3.5" />
+              </button>
+              <button
+                onClick={() => setDeleteConfirm(g)}
+                className="text-gray-500 hover:text-red-400 transition-colors p-1.5 rounded-lg hover:bg-red-400/10"
+                title="Eliminar"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </td>
+        )}
+      </tr>
+    )
+  }
+
   // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
     <div className="flex flex-col h-full">
+
       {/* ── Toolbar ── */}
-      <div className="flex flex-wrap gap-3 mb-4">
-        <div className="relative flex-1 min-w-[200px]">
+      <div className="flex flex-wrap gap-2 mb-3">
+        <div className="relative flex-1 min-w-[160px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
           <input
             type="text"
             value={search}
             onChange={e => setSearch(e.target.value)}
-            placeholder="Buscar en notas, conceptos..."
-            className="w-full bg-gray-800 border border-gray-700 rounded-xl pl-9 pr-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+            placeholder="Buscar..."
+            className="w-full bg-gray-800 border border-gray-700 rounded-xl pl-9 pr-4 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
           />
         </div>
 
@@ -268,10 +335,11 @@ export default function GastosTable({ gastos, selectedYear, selectedMonth, demo 
           onChange={setFilterConceptos}
         />
 
+        {/* Botón Agregar — desktop; en mobile lo cubre el FAB */}
         {!demo && (
           <button
             onClick={() => setModal('new')}
-            className="bg-green-600 hover:bg-green-500 text-white rounded-xl px-4 py-2.5 text-sm font-medium flex items-center gap-2 transition-colors whitespace-nowrap"
+            className="hidden sm:flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium bg-green-600 hover:bg-green-500 text-white transition-colors flex-shrink-0"
           >
             <Plus className="w-4 h-4" />
             Nuevo gasto
@@ -287,108 +355,88 @@ export default function GastosTable({ gastos, selectedYear, selectedMonth, demo 
               <X className="w-4 h-4" />
             </button>
             <span className="text-green-400 font-medium">
-              {selectedIds.size} {selectedIds.size === 1 ? 'gasto seleccionado' : 'gastos seleccionados'}
+              {selectedIds.size} {selectedIds.size === 1 ? 'seleccionado' : 'seleccionados'}
             </span>
-            <span className="text-gray-500">·</span>
-            <span className="text-white font-semibold">{fmt(selectedTotal)}</span>
+            <span className="text-gray-500 hidden sm:inline">·</span>
+            <span className="text-white font-semibold hidden sm:inline">{fmt(selectedTotal)}</span>
           </div>
           <button
             onClick={() => setBulkDeleteConfirm(true)}
             className="flex items-center gap-1.5 bg-red-600/80 hover:bg-red-600 text-white rounded-lg px-3 py-1.5 text-xs font-medium transition-colors"
           >
             <Trash2 className="w-3.5 h-3.5" />
-            Eliminar seleccionados
+            Eliminar
           </button>
         </div>
       ) : (
-        <div className="flex items-center justify-between mb-3 text-sm text-gray-400">
+        <div className="flex items-center justify-between mb-3 text-sm text-gray-500">
           <span>
-            {filtered.length} gastos
-            {hasFilters ? ' (filtrado)' : ''}
+            {filtered.length} gastos{hasFilters ? ' (filtrado)' : ''}
           </span>
-          <span className="font-semibold text-white">{fmt(totalFiltered)}</span>
+          <span className="font-semibold text-white tabular-nums">{fmt(totalFiltered)}</span>
         </div>
       )}
 
       {/* ── Table ── */}
-      <div className="flex-1 overflow-auto scrollbar-thin rounded-xl border border-gray-800">
+      <div className="flex-1 overflow-auto scrollbar-thin rounded-xl border border-gray-800/80">
         <table className="w-full text-sm">
           <thead className="sticky top-0 z-10">
-            <tr className="bg-gray-800 text-gray-400 text-xs uppercase tracking-wider">
+            <tr className="bg-gray-800/90 backdrop-blur-sm text-gray-400 text-xs uppercase tracking-wider">
               {!demo && (
-                <th className="pl-4 pr-2 py-3 w-8">
+                <th className="pl-4 pr-2 py-2.5 w-8">
                   <IndeterminateCheckbox checked={allSelected} indeterminate={someSelected} onChange={toggleAll} />
                 </th>
               )}
-              <th className="px-4 py-3 text-left cursor-pointer hover:text-white select-none" onClick={() => handleSort('fecha')}>
-                <div className="flex items-center gap-1">Fecha <SortIcon field="fecha" sortField={sortField} sortDir={sortDir} /></div>
+              <th
+                className="pl-4 pr-3 py-2.5 text-left cursor-pointer hover:text-white select-none whitespace-nowrap w-16"
+                onClick={() => handleSort('fecha')}
+              >
+                <div className="flex items-center gap-1">
+                  Fecha <SortIcon field="fecha" sortField={sortField} sortDir={sortDir} />
+                </div>
               </th>
-              <th className="px-4 py-3 text-right cursor-pointer hover:text-white select-none" onClick={() => handleSort('cantidad')}>
-                <div className="flex items-center justify-end gap-1">Cantidad <SortIcon field="cantidad" sortField={sortField} sortDir={sortDir} /></div>
+              <th
+                className="px-4 py-2.5 text-right cursor-pointer hover:text-white select-none"
+                onClick={() => handleSort('cantidad')}
+              >
+                <div className="flex items-center justify-end gap-1">
+                  Cantidad <SortIcon field="cantidad" sortField={sortField} sortDir={sortDir} />
+                </div>
               </th>
-              <th className="px-4 py-3 text-left">Forma</th>
-              <th className="px-4 py-3 text-left">Concepto</th>
-              <th className="px-4 py-3 text-left">Nota</th>
-              {!demo && <th className="px-4 py-3 text-center">Acciones</th>}
+              <th className="px-3 py-2.5 text-left">Forma</th>
+              <th className="px-3 py-2.5 text-left">Concepto</th>
+              <th className="px-3 py-2.5 text-left">Nota</th>
+              {!demo && <th className="px-3 py-2.5 text-center w-16">Acciones</th>}
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-800/60">
+          <tbody className="divide-y divide-gray-800/40">
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={colSpan} className="text-center py-12 text-gray-500">
-                  No hay gastos que coincidan con los filtros
+                <td colSpan={colSpan} className="text-center py-16 text-gray-600">
+                  <p className="text-base mb-1">Sin gastos</p>
+                  <p className="text-xs">
+                    {hasFilters ? 'Ningún gasto coincide con los filtros.' : 'Este mes no tiene gastos registrados.'}
+                  </p>
                 </td>
               </tr>
             ) : (
-              filtered.map((g, i) => {
-                const isSelected = selectedIds.has(g.id)
-                return (
-                  <tr
-                    key={g.id}
-                    onClick={!demo ? () => toggleRow(g.id) : undefined}
-                    className={`transition-colors ${!demo ? 'cursor-pointer' : ''} ${
-                      isSelected ? 'bg-green-900/20 hover:bg-green-900/30'
-                        : i % 2 === 0 ? 'bg-gray-900 hover:bg-gray-800/50'
-                        : 'bg-gray-900/60 hover:bg-gray-800/50'
-                    }`}
-                  >
-                    {!demo && (
-                      <td className="pl-4 pr-2 py-3" onClick={e => e.stopPropagation()}>
-                        <IndeterminateCheckbox checked={isSelected} onChange={() => toggleRow(g.id)} />
-                      </td>
-                    )}
-                    <td className="px-4 py-3 text-gray-300 whitespace-nowrap">
-                      {new Date(g.fecha + 'T12:00:00').toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: '2-digit' })}
-                    </td>
-                    <td className="px-4 py-3 text-right font-semibold text-white whitespace-nowrap">{fmt(g.cantidad)}</td>
-                    <td className="px-4 py-3">
-                      <span className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-semibold ${FORMA_BG[g.forma] || 'bg-gray-600 text-white'}`}>{g.forma}</span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-semibold ${CONCEPTO_BG[g.concepto] || 'bg-gray-600 text-white'}`}>{g.concepto}</span>
-                    </td>
-                    <td className="px-4 py-3 text-gray-400 max-w-[260px] truncate" title={g.nota}>
-                      {g.nota || <span className="text-gray-600 italic">Sin nota</span>}
-                    </td>
-                    {!demo && (
-                      <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
-                        <div className="flex items-center justify-center gap-2">
-                          <button onClick={() => setModal(g)} className="text-gray-400 hover:text-blue-400 transition-colors p-1 rounded hover:bg-blue-400/10" title="Editar">
-                            <Pencil className="w-4 h-4" />
-                          </button>
-                          <button onClick={() => setDeleteConfirm(g)} className="text-gray-400 hover:text-red-400 transition-colors p-1 rounded hover:bg-red-400/10" title="Eliminar">
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </td>
-                    )}
-                  </tr>
-                )
-              })
+              filtered.map((g, i) => renderRow(g, i))
             )}
           </tbody>
         </table>
       </div>
+
+      {/* ── FAB — Nuevo gasto ── */}
+      {!demo && (
+        <button
+          onClick={() => setModal('new')}
+          className="fixed bottom-6 right-6 z-40 w-14 h-14 bg-green-500 hover:bg-green-400 active:scale-95 rounded-full shadow-xl shadow-green-900/40 flex items-center justify-center transition-all hover:scale-110 focus:outline-none focus:ring-2 focus:ring-green-400 focus:ring-offset-2 focus:ring-offset-gray-950"
+          title="Nuevo gasto (N)"
+          aria-label="Nuevo gasto"
+        >
+          <Plus className="w-6 h-6 text-white" />
+        </button>
+      )}
 
       {/* ── Edit / Create modal ── */}
       {modal && !demo && (
@@ -426,7 +474,7 @@ export default function GastosTable({ gastos, selectedYear, selectedMonth, demo 
             <p className="text-gray-400 text-sm mb-3">¿Seguro que querés eliminar <span className="text-white font-semibold">{selectedIds.size} gastos</span>?</p>
             <div className="bg-gray-800 rounded-xl px-4 py-3 mb-4">
               <p className="text-xs text-gray-500 mb-0.5">Total a eliminar</p>
-              <p className="text-white font-bold text-lg">{fmt(selectedTotal)}</p>
+              <p className="text-white font-bold text-lg tabular-nums">{fmt(selectedTotal)}</p>
             </div>
             <p className="text-red-400/80 text-xs mb-4">Esta acción no se puede deshacer.</p>
             <div className="flex gap-3">

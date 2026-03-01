@@ -71,25 +71,23 @@ function SummaryTable({
 }) {
   const total = data.reduce((a, d) => a + d.total, 0)
   return (
-    <div className="bg-gray-800/50 rounded-xl p-4">
-      <h3 className="text-sm font-semibold text-gray-300 mb-3 uppercase tracking-wider">{title}</h3>
-      <div className="space-y-1.5">
-        {data.filter(d => d.count > 0).map(d => (
-          <div key={d.name} className="flex items-center gap-2 text-xs">
-            <div
-              className="w-2.5 h-2.5 rounded-full flex-shrink-0"
-              style={{ backgroundColor: colorMap[d.name] || '#6B7280' }}
-            />
-            <span className="text-gray-300 flex-1 truncate">{d.name}</span>
-            <span className="text-gray-500 w-5 text-right">{d.count}</span>
-            <span className="text-white font-semibold w-28 text-right">{fmt(d.total)}</span>
-          </div>
-        ))}
-        <div className="border-t border-gray-700 pt-1.5 mt-2 flex items-center gap-2 text-xs">
-          <div className="w-2.5 h-2.5 flex-shrink-0" />
-          <span className="text-gray-400 flex-1 font-semibold">TOTAL</span>
-          <span className="text-green-400 font-bold w-28 text-right">{fmt(total)}</span>
+    <div className="space-y-1">
+      {title && <h3 className="text-xs font-semibold text-gray-400 mb-2 uppercase tracking-wider">{title}</h3>}
+      {data.filter(d => d.count > 0).map(d => (
+        <div key={d.name} className="flex items-center gap-2 text-xs">
+          <div
+            className="w-2 h-2 rounded-full flex-shrink-0"
+            style={{ backgroundColor: colorMap[d.name] || '#6B7280' }}
+          />
+          <span className="text-gray-300 flex-1 truncate">{d.name}</span>
+          <span className="text-gray-600 w-4 text-right">{d.count}</span>
+          <span className="text-white font-semibold w-20 text-right tabular-nums">{fmt(d.total)}</span>
         </div>
+      ))}
+      <div className="border-t border-gray-700/60 pt-1 mt-1 flex items-center gap-2 text-xs">
+        <div className="w-2 h-2 flex-shrink-0" />
+        <span className="text-gray-500 flex-1 font-semibold">Total</span>
+        <span className="text-green-400 font-bold w-20 text-right tabular-nums">{fmt(total)}</span>
       </div>
     </div>
   )
@@ -154,66 +152,53 @@ function ComparacionMes({
 
   if (prevGastos.length === 0) {
     return (
-      <div className="bg-gray-800/30 rounded-2xl p-5 border border-gray-800">
-        <h3 className="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-3">
-          Comparación con mes anterior
+      <div className="bg-gray-800/30 rounded-2xl p-4 border border-gray-800">
+        <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
+          vs. mes anterior
         </h3>
-        <p className="text-gray-500 text-sm">
-          No hay datos del mes anterior ({prevMonthLabel}) para comparar.
+        <p className="text-gray-600 text-xs">
+          Sin datos de {prevMonthLabel}.
         </p>
       </div>
     )
   }
 
   return (
-    <div className="bg-gray-800/30 rounded-2xl p-5 border border-gray-800">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-sm font-semibold text-gray-300 uppercase tracking-wider">
-          Comparación con mes anterior
+    <div className="bg-gray-800/30 rounded-2xl p-4 border border-gray-800">
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+          vs. mes anterior
         </h3>
-        <span className="text-xs text-gray-500">
+        <span className="text-xs text-gray-600">
           {prevMonthLabel} → {monthLabel}
         </span>
       </div>
 
-      <div className="flex items-center gap-3 bg-gray-800 rounded-xl px-4 py-3 mb-4">
-        <span className="text-gray-400 text-sm flex-1 font-semibold">Total del mes</span>
-        <span className="text-gray-400 text-xs w-28 text-right">{fmt(totalPrev)}</span>
-        <span className="text-white font-bold text-sm w-28 text-right">{fmt(totalCurr)}</span>
-        <span className="w-24 text-right">
+      {/* Total row */}
+      <div className="flex items-center gap-2 bg-gray-800 rounded-xl px-3 py-2.5 mb-3">
+        <span className="text-gray-300 text-xs flex-1 font-semibold">Total</span>
+        <span className="text-white font-bold text-sm tabular-nums">{fmt(totalCurr)}</span>
+        <span className="w-16 text-right">
           <DeltaCell delta={totalDelta} pct={totalPct} />
         </span>
       </div>
 
-      <div className="flex items-center gap-3 px-2 mb-1 text-xs text-gray-600 uppercase tracking-wider">
-        <span className="flex-1">Categoría</span>
-        <span className="w-28 text-right">{prevMonthLabel}</span>
-        <span className="w-28 text-right">{monthLabel}</span>
-        <span className="w-24 text-right">Δ</span>
-      </div>
-
+      {/* Category rows */}
       <div className="space-y-0.5">
         {data.map(d => (
           <div
             key={d.name}
-            className="flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-gray-800/50 text-sm"
+            className="flex items-center gap-2 px-1 py-1.5 rounded-lg hover:bg-gray-800/50"
           >
-            <div className="flex items-center gap-2 flex-1 min-w-0">
-              <div
-                className="w-2.5 h-2.5 rounded-full flex-shrink-0"
-                style={{ backgroundColor: CONCEPTO_COLORS[d.name] || '#6B7280' }}
-              />
-              <span className="text-gray-300 truncate">{d.name}</span>
-            </div>
-            <span className="text-gray-500 text-xs w-28 text-right">
-              {d.prev > 0 ? fmt(d.prev) : <span className="text-gray-700">—</span>}
-            </span>
-            <span
-              className={`font-semibold w-28 text-right ${d.curr > 0 ? 'text-white' : 'text-gray-700'}`}
-            >
+            <div
+              className="w-2 h-2 rounded-full flex-shrink-0"
+              style={{ backgroundColor: CONCEPTO_COLORS[d.name] || '#6B7280' }}
+            />
+            <span className="text-gray-300 text-xs flex-1 truncate">{d.name}</span>
+            <span className={`text-xs font-semibold tabular-nums ${d.curr > 0 ? 'text-gray-200' : 'text-gray-700'}`}>
               {d.curr > 0 ? fmt(d.curr) : '—'}
             </span>
-            <span className="w-24 text-right">
+            <span className="w-16 text-right">
               {d.curr > 0 && d.prev > 0 ? (
                 <DeltaCell delta={d.delta} pct={d.pct} small />
               ) : (
@@ -236,41 +221,41 @@ function TopGastos({ gastos, monthLabel }: { gastos: Gasto[]; monthLabel: string
   const medals = ['🥇', '🥈', '🥉']
 
   return (
-    <div className="bg-gray-800/30 rounded-2xl p-5 border border-gray-800">
-      <div className="flex items-center gap-2 mb-4">
-        <Trophy className="w-4 h-4 text-yellow-400" />
-        <h3 className="text-sm font-semibold text-gray-300 uppercase tracking-wider">
+    <div className="bg-gray-800/30 rounded-2xl p-4 border border-gray-800">
+      <div className="flex items-center gap-2 mb-3">
+        <Trophy className="w-3.5 h-3.5 text-yellow-400" />
+        <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
           Top gastos — {monthLabel}
         </h3>
       </div>
-      <div className="space-y-1.5">
+      <div className="space-y-1">
         {top.map((g, i) => {
           const pct = total > 0 ? (Number(g.cantidad) / total) * 100 : 0
           return (
             <div
               key={g.id}
-              className="flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-gray-800/50"
+              className="flex items-center gap-2 px-1 py-1.5 rounded-lg hover:bg-gray-800/50"
             >
-              <span className="w-6 text-center text-sm flex-shrink-0">
+              <span className="w-5 text-center flex-shrink-0">
                 {i < 3 ? (
-                  medals[i]
+                  <span className="text-sm">{medals[i]}</span>
                 ) : (
                   <span className="text-gray-600 text-xs font-mono">{i + 1}</span>
                 )}
               </span>
               <div className="flex-1 min-w-0">
-                <p className="text-gray-200 text-sm truncate">
+                <p className="text-gray-200 text-xs truncate">
                   {g.nota || <span className="text-gray-600 italic">Sin nota</span>}
                 </p>
-                <div className="flex items-center gap-2 mt-0.5">
+                <div className="flex items-center gap-1.5 mt-0.5">
                   <span
-                    className="text-xs"
+                    className="text-[10px]"
                     style={{ color: CONCEPTO_COLORS[g.concepto] || '#6B7280' }}
                   >
                     {g.concepto}
                   </span>
-                  <span className="text-gray-600 text-xs">·</span>
-                  <span className="text-gray-500 text-xs">
+                  <span className="text-gray-600 text-[10px]">·</span>
+                  <span className="text-gray-600 text-[10px]">
                     {new Date(g.fecha + 'T12:00:00').toLocaleDateString('es-AR', {
                       day: '2-digit',
                       month: '2-digit',
@@ -279,9 +264,9 @@ function TopGastos({ gastos, monthLabel }: { gastos: Gasto[]; monthLabel: string
                 </div>
               </div>
               <div className="text-right flex-shrink-0">
-                <p className="text-white font-semibold text-sm">{fmt(Number(g.cantidad))}</p>
-                <div className="flex items-center justify-end gap-2 mt-0.5">
-                  <div className="w-16 h-1 bg-gray-700 rounded-full overflow-hidden">
+                <p className="text-gray-100 font-semibold text-xs tabular-nums">{fmt(Number(g.cantidad))}</p>
+                <div className="flex items-center justify-end gap-1.5 mt-0.5">
+                  <div className="w-12 h-1 bg-gray-700 rounded-full overflow-hidden">
                     <div
                       className="h-full rounded-full"
                       style={{
@@ -290,7 +275,7 @@ function TopGastos({ gastos, monthLabel }: { gastos: Gasto[]; monthLabel: string
                       }}
                     />
                   </div>
-                  <span className="text-gray-500 text-xs w-8 text-right">{pct.toFixed(1)}%</span>
+                  <span className="text-gray-600 text-[10px] w-7 text-right">{pct.toFixed(0)}%</span>
                 </div>
               </div>
             </div>
@@ -346,14 +331,14 @@ export default function Charts({
   }
 
   return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-gray-800/30 rounded-2xl p-5 border border-gray-800">
-          <h3 className="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-4">
+    <div className="space-y-4">
+      <div className="space-y-4">
+        <div className="bg-gray-800/30 rounded-2xl p-4 border border-gray-800">
+          <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
             Por forma de pago
           </h3>
-          <div className="flex flex-col lg:flex-row gap-4 items-center">
-            <div className="w-full" style={{ height: 200 }}>
+          <div className="flex flex-col gap-3">
+            <div className="w-full" style={{ height: 170 }}>
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
@@ -362,8 +347,8 @@ export default function Charts({
                     nameKey="name"
                     cx="50%"
                     cy="50%"
-                    innerRadius={55}
-                    outerRadius={85}
+                    innerRadius={48}
+                    outerRadius={72}
                     paddingAngle={2}
                   >
                     {byForma.map(d => (
@@ -374,16 +359,16 @@ export default function Charts({
                 </PieChart>
               </ResponsiveContainer>
             </div>
-            <SummaryTable title="Cálculos de Forma" data={byForma} colorMap={FORMA_COLORS} />
+            <SummaryTable title="" data={byForma} colorMap={FORMA_COLORS} />
           </div>
         </div>
 
-        <div className="bg-gray-800/30 rounded-2xl p-5 border border-gray-800">
-          <h3 className="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-4">
+        <div className="bg-gray-800/30 rounded-2xl p-4 border border-gray-800">
+          <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
             Por concepto
           </h3>
-          <div className="flex flex-col lg:flex-row gap-4 items-center">
-            <div className="w-full" style={{ height: 200 }}>
+          <div className="flex flex-col gap-3">
+            <div className="w-full" style={{ height: 170 }}>
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
@@ -392,8 +377,8 @@ export default function Charts({
                     nameKey="name"
                     cx="50%"
                     cy="50%"
-                    innerRadius={55}
-                    outerRadius={85}
+                    innerRadius={48}
+                    outerRadius={72}
                     paddingAngle={2}
                   >
                     {byConcepto.map(d => (
@@ -404,28 +389,28 @@ export default function Charts({
                 </PieChart>
               </ResponsiveContainer>
             </div>
-            <SummaryTable title="Cálculos de Concepto" data={byConcepto} colorMap={CONCEPTO_COLORS} />
+            <SummaryTable title="" data={byConcepto} colorMap={CONCEPTO_COLORS} />
           </div>
         </div>
       </div>
 
-      <div className="bg-gray-800/30 rounded-2xl p-5 border border-gray-800">
-        <h3 className="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-4">
+      <div className="bg-gray-800/30 rounded-2xl p-4 border border-gray-800">
+        <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
           Cantidad por concepto
         </h3>
-        <div style={{ height: 260 }}>
+        <div style={{ height: 220 }}>
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={byConcepto} margin={{ top: 5, right: 10, left: 10, bottom: 40 }}>
+            <BarChart data={byConcepto} margin={{ top: 5, right: 8, left: 0, bottom: 36 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#374151" vertical={false} />
               <XAxis
                 dataKey="name"
-                tick={{ fill: '#9CA3AF', fontSize: 10 }}
+                tick={{ fill: '#9CA3AF', fontSize: 9 }}
                 angle={-35}
                 textAnchor="end"
                 interval={0}
-                height={60}
+                height={50}
               />
-              <YAxis tick={{ fill: '#9CA3AF', fontSize: 10 }} tickFormatter={fmtShort} width={70} />
+              <YAxis tick={{ fill: '#9CA3AF', fontSize: 9 }} tickFormatter={fmtShort} width={52} />
               <Tooltip content={<BarTooltip />} />
               <Bar dataKey="total" radius={[4, 4, 0, 0]}>
                 {byConcepto.map(d => (
@@ -437,16 +422,14 @@ export default function Charts({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-        <ComparacionMes
-          gastos={gastos}
-          prevGastos={prevGastos}
-          monthLabel={monthLabel}
-          prevMonthLabel={prevMonthLabel}
-          conceptos={settings.conceptos}
-        />
-        <TopGastos gastos={gastos} monthLabel={monthLabel} />
-      </div>
+      <ComparacionMes
+        gastos={gastos}
+        prevGastos={prevGastos}
+        monthLabel={monthLabel}
+        prevMonthLabel={prevMonthLabel}
+        conceptos={settings.conceptos}
+      />
+      <TopGastos gastos={gastos} monthLabel={monthLabel} />
     </div>
   )
 }

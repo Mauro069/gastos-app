@@ -1,25 +1,21 @@
 import { useState, useEffect } from 'react'
-import { DollarSign, TrendingUp, Edit2, Check, X, Calendar } from 'lucide-react'
+import { DollarSign, Edit2, Check, X, TrendingUp, TrendingDown, Minus } from 'lucide-react'
 import { updateMonthRate } from '@/api'
 import type { HeaderProps } from '@/types'
 import ProfileModal from './ProfileModal'
 
 const fmt = (n: number) =>
-  new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 2 }).format(n)
-const fmtUSD = (n: number) =>
-  new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 2 }).format(n)
+  new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(n)
 
 export default function Header({
   total,
-  inversionesTotal,
+  prevTotal,
   usdRate,
   usdRates,
   setUsdRates,
   monthKey,
   monthLabel,
-  isPromedios,
   user,
-  onSignOut,
   demo,
   onSignIn,
 }: HeaderProps) {
@@ -43,140 +39,130 @@ export default function Header({
     setEditing(false)
   }
 
-  const handleCancel = () => {
-    setTempRate(usdRate)
-    setEditing(false)
-  }
-
-  const totalUSD = total / usdRate
+  const delta = prevTotal && prevTotal > 0 ? ((total - prevTotal) / prevTotal) * 100 : null
+  const isUp = delta !== null && delta > 0
+  const isDown = delta !== null && delta < 0
 
   return (
-    <header className="bg-gray-900 border-b border-gray-800 px-6 py-3">
-      <div className="max-w-screen-2xl mx-auto">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="bg-green-500 rounded-xl p-2">
-              <DollarSign className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-lg font-bold text-white">Gastos App</h1>
-                {demo && (
-                  <span className="px-2 py-0.5 rounded-md bg-amber-500/20 text-amber-400 text-xs font-medium border border-amber-500/40">
-                    Demo
-                  </span>
-                )}
-              </div>
-              <div className="flex items-center gap-1.5 text-xs text-gray-400">
-                <Calendar className="w-3 h-3" />
-                <span>{monthLabel}</span>
-              </div>
-            </div>
+    <header className="bg-gray-900 border-b border-gray-800 px-4 sm:px-6 py-3 sticky top-0 z-20">
+      <div className="max-w-screen-2xl mx-auto flex items-center gap-3 sm:gap-4">
+
+        {/* Logo */}
+        <div className="flex items-center gap-2.5 flex-shrink-0">
+          <div className="bg-green-500 rounded-xl p-1.5">
+            <DollarSign className="w-4 h-4 text-white" />
           </div>
-
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="bg-gray-800 rounded-xl px-4 py-2.5 min-w-[160px]">
-              <p className="text-xs text-gray-400 uppercase tracking-wider mb-0.5">
-                {isPromedios ? 'Total año' : 'Total mes'} ARS
-              </p>
-              <p className="text-lg font-bold text-white">{fmt(total)}</p>
-              {!!inversionesTotal && inversionesTotal > 0 && (
-                <p className="text-xs text-gray-500 mt-0.5" title={`Se excluyen ${fmt(inversionesTotal)} en inversiones`}>
-                  + {fmt(inversionesTotal)} inv.
-                </p>
-              )}
-            </div>
-
-            <div className="bg-gray-800 rounded-xl px-4 py-2.5 min-w-[160px]">
-              <p className="text-xs text-gray-400 uppercase tracking-wider mb-0.5">
-                {isPromedios ? 'Total año' : 'Total mes'} USD
-              </p>
-              <p className="text-lg font-bold text-green-400">{fmtUSD(totalUSD)}</p>
-            </div>
-
-            <div className="bg-gray-800 rounded-xl px-4 py-2.5 min-w-[160px]">
-              <p className="text-xs text-gray-400 uppercase tracking-wider mb-0.5 flex items-center gap-1">
-                <TrendingUp className="w-3 h-3" />
-                USD {isPromedios ? '' : monthLabel}
-                {!isPromedios && !hasCustomRate && (
-                  <span className="ml-1 text-yellow-600 text-xs">(estimado)</span>
-                )}
-              </p>
-              {editing && !isPromedios && !demo ? (
-                <div className="flex items-center gap-2">
-                  <span className="text-gray-400 text-sm">$</span>
-                  <input
-                    type="number"
-                    value={tempRate}
-                    onChange={e => setTempRate(Number(e.target.value) || 0)}
-                    className="bg-gray-700 text-white rounded px-2 py-0.5 w-24 text-sm focus:outline-none focus:ring-1 focus:ring-green-500"
-                    autoFocus
-                    onKeyDown={e => {
-                      if (e.key === 'Enter') handleSave()
-                      if (e.key === 'Escape') handleCancel()
-                    }}
-                  />
-                  <button onClick={handleSave} className="text-green-400 hover:text-green-300">
-                    <Check className="w-4 h-4" />
-                  </button>
-                  <button onClick={handleCancel} className="text-red-400 hover:text-red-300">
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-              ) : (
-                <div className="flex items-center gap-2">
-                  <span
-                    className={`text-base font-bold ${hasCustomRate ? 'text-yellow-400' : 'text-yellow-700'}`}
-                  >
-                    ${usdRate.toLocaleString('es-AR')}
-                  </span>
-                  {!isPromedios && !demo && (
-                    <button
-                      onClick={() => {
-                        setTempRate(usdRate)
-                        setEditing(true)
-                      }}
-                      className="text-gray-400 hover:text-white transition-colors"
-                      title={`Editar tipo de cambio de ${monthLabel}`}
-                    >
-                      <Edit2 className="w-3.5 h-3.5" />
-                    </button>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
-
-          {demo && onSignIn && (
-            <button
-              onClick={onSignIn}
-              className="bg-green-600 hover:bg-green-500 text-white rounded-xl px-4 py-2.5 text-sm font-medium flex items-center gap-2 transition-colors"
-            >
-              Iniciar sesión con Google
-            </button>
-          )}
-          {user && !demo && (
-            <button
-              onClick={() => setShowProfile(true)}
-              className="ml-2 rounded-full ring-2 ring-gray-700 hover:ring-green-500 transition-all"
-              title="Ver perfil"
-            >
-              {user.user_metadata?.avatar_url ? (
-                <img
-                  src={user.user_metadata.avatar_url as string}
-                  alt={(user.user_metadata?.full_name as string) || 'Usuario'}
-                  className="w-8 h-8 rounded-full"
-                />
-              ) : (
-                <div className="w-8 h-8 rounded-full bg-green-600 flex items-center justify-center text-white text-sm font-bold">
-                  {((user.user_metadata?.full_name as string) || user.email || 'U')[0].toUpperCase()}
-                </div>
-              )}
-            </button>
-          )}
-
-          {showProfile && <ProfileModal onClose={() => setShowProfile(false)} />}
+          <span className="text-base font-bold text-white hidden sm:block">Gastos App</span>
         </div>
+
+        {/* Divider */}
+        <div className="w-px h-8 bg-gray-800 flex-shrink-0" />
+
+        {/* Total del mes + insight */}
+        <div className="flex items-center gap-3 flex-1 min-w-0">
+          <div className="min-w-0">
+            <p className="text-[10px] text-gray-500 uppercase tracking-wider leading-none mb-0.5 truncate">
+              {monthLabel}
+            </p>
+            <p className="text-xl sm:text-2xl font-bold text-white leading-none tabular-nums">
+              {fmt(total)}
+            </p>
+          </div>
+
+          {/* Insight chip vs mes anterior */}
+          {delta !== null && (
+            <div className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold flex-shrink-0 ${
+              isUp
+                ? 'bg-red-950/60 border border-red-800/50 text-red-400'
+                : isDown
+                  ? 'bg-green-950/60 border border-green-800/50 text-green-400'
+                  : 'bg-gray-800 border border-gray-700 text-gray-400'
+            }`}>
+              {isUp
+                ? <TrendingUp className="w-3 h-3" />
+                : isDown
+                  ? <TrendingDown className="w-3 h-3" />
+                  : <Minus className="w-3 h-3" />}
+              <span>{isUp ? '+' : ''}{delta.toFixed(0)}%</span>
+            </div>
+          )}
+        </div>
+
+        {/* USD rate — editable, compact */}
+        <div className="flex-shrink-0">
+          {editing && !demo ? (
+            <div className="flex items-center gap-1.5 bg-gray-800 border border-gray-700 rounded-xl px-3 py-1.5">
+              <span className="text-gray-400 text-xs">$</span>
+              <input
+                type="number"
+                value={tempRate}
+                onChange={e => setTempRate(Number(e.target.value) || 0)}
+                className="bg-transparent text-white w-20 text-sm focus:outline-none tabular-nums"
+                autoFocus
+                onKeyDown={e => {
+                  if (e.key === 'Enter') handleSave()
+                  if (e.key === 'Escape') { setTempRate(usdRate); setEditing(false) }
+                }}
+              />
+              <button onClick={handleSave} className="text-green-400 hover:text-green-300 transition-colors">
+                <Check className="w-3.5 h-3.5" />
+              </button>
+              <button onClick={() => { setTempRate(usdRate); setEditing(false) }} className="text-red-400 hover:text-red-300 transition-colors">
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => !demo && setEditing(true)}
+              className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 transition-colors group ${
+                demo ? 'cursor-default' : 'hover:bg-gray-800'
+              }`}
+              title={`Tipo de cambio USD — ${monthLabel}${!hasCustomRate ? ' (estimado)' : ''}`}
+            >
+              <span className="text-[10px] text-gray-600 uppercase tracking-wider">USD</span>
+              <span className={`text-sm font-semibold tabular-nums ${hasCustomRate ? 'text-yellow-400' : 'text-gray-500'}`}>
+                ${usdRate.toLocaleString('es-AR')}
+              </span>
+              {!hasCustomRate && (
+                <span className="text-[10px] text-yellow-800">est.</span>
+              )}
+              {!demo && (
+                <Edit2 className="w-3 h-3 text-gray-700 group-hover:text-gray-400 transition-colors" />
+              )}
+            </button>
+          )}
+        </div>
+
+        {/* Sign in / Avatar */}
+        {demo && onSignIn && (
+          <button
+            onClick={onSignIn}
+            className="flex-shrink-0 bg-green-600 hover:bg-green-500 text-white rounded-xl px-4 py-2 text-sm font-medium transition-colors"
+          >
+            Entrar con Google
+          </button>
+        )}
+        {user && !demo && (
+          <button
+            onClick={() => setShowProfile(true)}
+            className="flex-shrink-0 rounded-full ring-2 ring-gray-700 hover:ring-green-500 transition-all"
+            title="Ver perfil"
+          >
+            {user.user_metadata?.avatar_url ? (
+              <img
+                src={user.user_metadata.avatar_url as string}
+                alt={(user.user_metadata?.full_name as string) || 'Usuario'}
+                className="w-8 h-8 rounded-full"
+              />
+            ) : (
+              <div className="w-8 h-8 rounded-full bg-green-600 flex items-center justify-center text-white text-sm font-bold">
+                {((user.user_metadata?.full_name as string) || user.email || 'U')[0].toUpperCase()}
+              </div>
+            )}
+          </button>
+        )}
+
+        {showProfile && <ProfileModal onClose={() => setShowProfile(false)} />}
       </div>
     </header>
   )

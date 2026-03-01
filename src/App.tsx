@@ -39,7 +39,9 @@ export default function App() {
   const { user, loading: authLoading, signOut } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState<"tabla" | "charts">("tabla");
+
+  // Mobile-only view toggle (desktop shows both side by side)
+  const [mobileView, setMobileView] = useState<"tabla" | "charts">("tabla");
   const [showImport, setShowImport] = useState(false);
 
   const now = new Date();
@@ -57,8 +59,7 @@ export default function App() {
   const [selectedYear, setSelectedYear] = useState(() => initFromUrl().year);
   const [selectedMonth, setSelectedMonth] = useState(() => initFromUrl().month);
 
-  // Sync URL — solo cuando el usuario está autenticado para no pisar el
-  // hash #access_token=... que Supabase usa en el callback de OAuth
+  // Sync URL — solo cuando autenticado para no pisar el hash de OAuth
   useEffect(() => {
     if (!user) return;
     const params = new URLSearchParams(window.location.search);
@@ -129,6 +130,10 @@ export default function App() {
     .filter((g) => g.concepto !== "Inversiones")
     .reduce((acc, g) => acc + Number(g.cantidad), 0);
 
+  const prevTotalMes = gastosDelMesAnterior
+    .filter((g) => g.concepto !== "Inversiones")
+    .reduce((acc, g) => acc + Number(g.cantidad), 0);
+
   const inversionesMes = gastosDelMes
     .filter((g) => g.concepto === "Inversiones")
     .reduce((acc, g) => acc + Number(g.cantidad), 0);
@@ -185,9 +190,12 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-950 flex flex-col">
+    <div className="h-screen bg-gray-950 flex flex-col overflow-hidden">
+
+      {/* ── Header ── */}
       <Header
         total={totalMes}
+        prevTotal={prevTotalMes}
         inversionesTotal={inversionesMes}
         usdRate={currentRate}
         usdRates={usdRates}
@@ -200,23 +208,23 @@ export default function App() {
       />
 
       {/* ── Barra de año / meses ── */}
-      <div className="bg-gray-900 border-b border-gray-800 px-4">
-        <div className="max-w-screen-2xl mx-auto flex items-center gap-2 overflow-x-auto scrollbar-thin py-1">
+      <div className="bg-gray-900 border-b border-gray-800 px-4 flex-shrink-0">
+        <div className="max-w-screen-2xl mx-auto flex items-center gap-1.5 overflow-x-auto scrollbar-none py-1.5">
 
           {/* Selector de año */}
-          <div className="flex items-center gap-1 bg-gray-800 rounded-lg px-2 py-1.5 mr-2 flex-shrink-0">
+          <div className="flex items-center gap-0.5 bg-gray-800 rounded-lg px-2 py-1.5 mr-1 flex-shrink-0">
             <button
               onClick={() => setSelectedYear((y) => y - 1)}
-              className="text-gray-400 hover:text-white p-0.5"
+              className="text-gray-400 hover:text-white p-0.5 transition-colors"
             >
               <ChevronLeft className="w-3.5 h-3.5" />
             </button>
-            <span className="text-white font-bold text-sm w-10 text-center">
+            <span className="text-white font-bold text-xs w-9 text-center tabular-nums">
               {selectedYear}
             </span>
             <button
               onClick={() => setSelectedYear((y) => y + 1)}
-              className="text-gray-400 hover:text-white p-0.5"
+              className="text-gray-400 hover:text-white p-0.5 transition-colors"
             >
               <ChevronRight className="w-3.5 h-3.5" />
             </button>
@@ -229,56 +237,65 @@ export default function App() {
               return d.getFullYear() === selectedYear && d.getMonth() === idx;
             });
             const isActive = selectedMonth === idx;
+            const isCurrent =
+              idx === now.getMonth() && selectedYear === now.getFullYear();
+
             return (
               <button
                 key={idx}
-                onClick={() => { setSelectedMonth(idx); setActiveTab("tabla"); }}
-                className={`flex-shrink-0 px-3 py-2 text-xs font-semibold rounded-lg transition-all ${
+                onClick={() => { setSelectedMonth(idx); setMobileView("tabla"); }}
+                className={`flex-shrink-0 relative px-2.5 py-1.5 text-xs font-semibold rounded-lg transition-all ${
                   isActive
-                    ? "bg-green-600 text-white"
+                    ? "bg-green-600 text-white shadow-sm shadow-green-900/50"
                     : hasData
-                      ? "text-gray-200 hover:bg-gray-700"
+                      ? "text-gray-200 hover:bg-gray-700/80"
                       : "text-gray-600 hover:bg-gray-800"
                 }`}
               >
                 {name}{String(selectedYear).slice(2)}
+                {/* Dot: mes con datos pero no activo */}
                 {hasData && !isActive && (
-                  <span className="ml-1 w-1.5 h-1.5 rounded-full bg-green-500 inline-block align-middle" />
+                  <span className="absolute top-1 right-1 w-1 h-1 rounded-full bg-green-500" />
+                )}
+                {/* Ring: mes actual del calendario */}
+                {isCurrent && !isActive && (
+                  <span className="absolute inset-0 rounded-lg ring-1 ring-green-600/40 pointer-events-none" />
                 )}
               </button>
             );
           })}
 
-          <div className="w-px h-6 bg-gray-700 mx-1 flex-shrink-0" />
+          <div className="w-px h-5 bg-gray-700/80 mx-0.5 flex-shrink-0" />
 
-          {/* Link a /promedios */}
+          {/* Promedios */}
           <button
             onClick={() => navigate(`/promedios/resumen?year=${selectedYear}`)}
-            className="flex-shrink-0 flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg transition-all text-gray-400 hover:bg-gray-700 hover:text-white"
+            className="flex-shrink-0 flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold rounded-lg transition-all text-gray-400 hover:bg-gray-700 hover:text-white"
           >
             <TrendingUp className="w-3.5 h-3.5" />
-            Promedios
+            <span className="hidden sm:inline">Promedios</span>
           </button>
 
           <div className="flex-1" />
 
+          {/* Importar */}
           <button
             onClick={() => setShowImport(true)}
-            className="flex-shrink-0 flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg text-gray-400 hover:bg-gray-700 hover:text-white transition-all"
+            className="flex-shrink-0 flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold rounded-lg text-gray-400 hover:bg-gray-700 hover:text-white transition-all"
           >
             <Upload className="w-3.5 h-3.5" />
-            Importar
+            <span className="hidden sm:inline">Importar</span>
           </button>
         </div>
       </div>
 
-      {/* ── Tabs Tabla / Gráficos ── */}
-      <div className="bg-gray-900/50 border-b border-gray-800/50 px-6">
-        <div className="max-w-screen-2xl mx-auto flex gap-1">
+      {/* ── Mobile tab switcher (solo en pantallas pequeñas) ── */}
+      <div className="lg:hidden bg-gray-900/60 border-b border-gray-800/60 px-4 flex-shrink-0">
+        <div className="flex gap-1 max-w-screen-2xl mx-auto">
           <button
-            onClick={() => setActiveTab("tabla")}
-            className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
-              activeTab === "tabla"
+            onClick={() => setMobileView("tabla")}
+            className={`flex items-center gap-2 px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+              mobileView === "tabla"
                 ? "border-green-500 text-green-400"
                 : "border-transparent text-gray-500 hover:text-white"
             }`}
@@ -287,9 +304,9 @@ export default function App() {
             Tabla
           </button>
           <button
-            onClick={() => setActiveTab("charts")}
-            className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
-              activeTab === "charts"
+            onClick={() => setMobileView("charts")}
+            className={`flex items-center gap-2 px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+              mobileView === "charts"
                 ? "border-green-500 text-green-400"
                 : "border-transparent text-gray-500 hover:text-white"
             }`}
@@ -304,27 +321,35 @@ export default function App() {
         <ImportModal onClose={() => setShowImport(false)} onImported={handleImported} />
       )}
 
-      <main className="flex-1 overflow-hidden">
-        <div className="max-w-screen-2xl mx-auto h-full p-6">
-          {activeTab === "tabla" ? (
-            <div className="flex flex-col" style={{ minHeight: "calc(100vh - 180px)" }}>
-              <GastosTable
-                gastos={gastosDelMes}
-                selectedYear={selectedYear}
-                selectedMonth={selectedMonth}
-              />
-            </div>
-          ) : (
-            <div className="overflow-y-auto scrollbar-thin" style={{ maxHeight: "calc(100vh - 180px)" }}>
-              <Charts
-                gastos={gastosDelMes}
-                prevGastos={gastosDelMesAnterior}
-                monthLabel={currMonthLabel}
-                prevMonthLabel={prevMonthLabel}
-              />
-            </div>
-          )}
+      {/* ── Contenido principal ── */}
+      <main className="flex-1 flex overflow-hidden min-h-0">
+
+        {/* Tabla — siempre visible en desktop, condicional en mobile */}
+        <div className={`flex-1 overflow-auto min-w-0 p-4 lg:p-6 ${mobileView === "charts" ? "hidden lg:flex lg:flex-col" : "flex flex-col"}`}>
+          <GastosTable
+            gastos={gastosDelMes}
+            selectedYear={selectedYear}
+            selectedMonth={selectedMonth}
+          />
         </div>
+
+        {/* Charts — sidebar en desktop, tab en mobile */}
+        <aside className={`
+          lg:w-80 xl:w-96 flex-shrink-0
+          border-l border-gray-800
+          overflow-y-auto scrollbar-thin
+          bg-gray-900/20
+          ${mobileView === "charts" ? "flex-1 flex flex-col" : "hidden lg:block"}
+        `}>
+          <div className="p-4">
+            <Charts
+              gastos={gastosDelMes}
+              prevGastos={gastosDelMesAnterior}
+              monthLabel={currMonthLabel}
+              prevMonthLabel={prevMonthLabel}
+            />
+          </div>
+        </aside>
       </main>
     </div>
   );
