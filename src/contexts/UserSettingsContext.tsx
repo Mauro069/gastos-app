@@ -26,7 +26,7 @@ export function UserSettingsProvider({ children }: { children: React.ReactNode }
       .then(setSettings)
       .catch(console.error)
       .finally(() => setLoading(false))
-  }, [user])
+  }, [user?.id])
 
   const updateFormas = async (formas: string[]) => {
     const next = { ...settings, formas }

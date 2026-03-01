@@ -54,7 +54,7 @@ export default function App() {
       })
       .catch(() => setError('Error cargando los datos. Recargá la página.'))
       .finally(() => setLoading(false))
-  }, [user])
+  }, [user?.id])
 
   const currentMonthKey = monthKey(selectedYear, selectedMonth)
   const currentRate = useMemo(() => {
