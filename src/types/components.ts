@@ -45,10 +45,16 @@ export interface ChartsProps {
   prevMonthLabel: string;
 }
 
+export type PromediosTab = 'resumen' | 'meses' | 'categorias' | 'comparacion';
+
 export interface PromediosProps {
   gastos: Gasto[];
   selectedYear: number;
   usdRates: UsdRates;
+  prevYearGastos?: Gasto[];
+  prevYear?: number;
+  activeTab: PromediosTab;
+  onTabChange: (tab: PromediosTab) => void;
 }
 
 export interface LandingProps {

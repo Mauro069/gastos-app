@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo } from "react";
 import {
   BarChart,
   Bar,
@@ -11,102 +11,135 @@ import {
   ReferenceLine,
   Area,
   AreaChart,
-} from 'recharts'
-import { RefreshCw } from 'lucide-react'
-import { CONCEPTO_COLORS } from '@/constants'
-import type { PromediosProps, Gasto, UsdRates } from '@/types'
-import { useUserSettings } from '@/contexts'
+  LineChart,
+  Line,
+  Legend,
+} from "recharts";
+import { RefreshCw } from "lucide-react";
+import { CONCEPTO_COLORS } from "@/constants";
+import type { PromediosProps, PromediosTab, Gasto, UsdRates } from "@/types";
+import { useUserSettings } from "@/contexts";
 
 const MONTH_FULL = [
-  'Enero',
-  'Febrero',
-  'Marzo',
-  'Abril',
-  'Mayo',
-  'Junio',
-  'Julio',
-  'Agosto',
-  'Septiembre',
-  'Octubre',
-  'Noviembre',
-  'Diciembre',
-]
-const MONTH_SHORT = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
+  "Enero",
+  "Febrero",
+  "Marzo",
+  "Abril",
+  "Mayo",
+  "Junio",
+  "Julio",
+  "Agosto",
+  "Septiembre",
+  "Octubre",
+  "Noviembre",
+  "Diciembre",
+];
+const MONTH_SHORT = [
+  "Ene",
+  "Feb",
+  "Mar",
+  "Abr",
+  "May",
+  "Jun",
+  "Jul",
+  "Ago",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dic",
+];
 
 const fmt = (n: number) =>
-  new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(n)
+  new Intl.NumberFormat("es-AR", {
+    style: "currency",
+    currency: "ARS",
+    maximumFractionDigits: 0,
+  }).format(n);
 const fmtShort = (n: number) => {
-  if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}M`
-  if (n >= 1_000) return `$${(n / 1_000).toFixed(0)}K`
-  return `$${n}`
-}
+  if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `$${(n / 1_000).toFixed(0)}K`;
+  return `$${n}`;
+};
 const fmtUSD = (n: number) =>
-  new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n)
+  new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 0,
+  }).format(n);
 
 const TrendTooltip = ({
   active,
   payload,
   label,
 }: {
-  active?: boolean
-  payload?: Array<{ dataKey: string; name: string; value: number; color: string }>
-  label?: string
+  active?: boolean;
+  payload?: Array<{
+    dataKey: string;
+    name: string;
+    value: number;
+    color: string;
+  }>;
+  label?: string;
 }) => {
-  if (!active || !payload?.length) return null
+  if (!active || !payload?.length) return null;
   return (
     <div className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 shadow-xl text-xs">
       <p className="font-semibold text-white mb-1">{label}</p>
-      {payload.map(p => (
+      {payload.map((p) => (
         <p key={p.dataKey} style={{ color: p.color }}>
           {p.name}: {fmt(p.value)}
         </p>
       ))}
     </div>
-  )
-}
+  );
+};
 
 const BarTooltipMonth = ({
   active,
   payload,
   label,
 }: {
-  active?: boolean
-  payload?: Array<{ value: number }>
-  label?: string
+  active?: boolean;
+  payload?: Array<{ value: number }>;
+  label?: string;
 }) => {
-  if (!active || !payload?.length) return null
+  if (!active || !payload?.length) return null;
   return (
     <div className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 shadow-xl text-xs">
       <p className="font-semibold text-white mb-1">{label}</p>
       <p className="text-green-300">{fmt(payload[0].value)}</p>
     </div>
-  )
-}
+  );
+};
 
 const BarTooltipCat = ({
   active,
   payload,
   label,
 }: {
-  active?: boolean
-  payload?: Array<{ value: number }>
-  label?: string
+  active?: boolean;
+  payload?: Array<{ value: number }>;
+  label?: string;
 }) => {
-  if (!active || !payload?.length) return null
+  if (!active || !payload?.length) return null;
   return (
     <div className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 shadow-xl text-xs">
       <p className="font-semibold text-white mb-1">{label}</p>
       <p className="text-gray-300">{fmt(payload[0].value)}</p>
     </div>
-  )
-}
+  );
+};
 
-function getRateForMonth(usdRates: UsdRates, year: number, monthIdx: number): number {
-  const key = `${year}-${String(monthIdx + 1).padStart(2, '0')}`
-  if (usdRates[key]) return usdRates[key]
-  const keys = Object.keys(usdRates).sort()
-  const prior = [...keys].reverse().find(k => k <= key)
-  return prior ? usdRates[prior] : 1000
+function getRateForMonth(
+  usdRates: UsdRates,
+  year: number,
+  monthIdx: number,
+): number {
+  const key = `${year}-${String(monthIdx + 1).padStart(2, "0")}`;
+  if (usdRates[key]) return usdRates[key];
+  const keys = Object.keys(usdRates).sort();
+  const prior = [...keys].reverse().find((k) => k <= key);
+  return prior ? usdRates[prior] : 1000;
 }
 
 function Tendencia({
@@ -114,12 +147,17 @@ function Tendencia({
   promedio,
   selectedYear,
 }: {
-  monthlyData: Array<{ name: string; short: string; total: number; count: number }>
-  promedio: number
-  selectedYear: number
+  monthlyData: Array<{
+    name: string;
+    short: string;
+    total: number;
+    count: number;
+  }>;
+  promedio: number;
+  selectedYear: number;
 }) {
-  const withData = monthlyData.filter(m => m.total > 0)
-  if (withData.length < 2) return null
+  const withData = monthlyData.filter((m) => m.total > 0);
+  if (withData.length < 2) return null;
 
   return (
     <div className="bg-gray-800/30 border border-gray-800 rounded-2xl p-5">
@@ -128,13 +166,14 @@ function Tendencia({
           Tendencia de gastos {selectedYear}
         </h3>
         <span className="text-xs text-gray-500">
-          Promedio: <span className="text-yellow-400 font-semibold">{fmt(promedio)}</span>
+          Promedio:{" "}
+          <span className="text-yellow-400 font-semibold">{fmt(promedio)}</span>
         </span>
       </div>
       <div style={{ height: 260 }}>
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart
-            data={monthlyData.filter(m => m.total > 0)}
+            data={monthlyData.filter((m) => m.total > 0)}
             margin={{ top: 10, right: 10, left: 10, bottom: 5 }}
           >
             <defs>
@@ -143,15 +182,28 @@ function Tendencia({
                 <stop offset="95%" stopColor="#3B82F6" stopOpacity={0} />
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="#374151" vertical={false} />
-            <XAxis dataKey="short" tick={{ fill: '#9CA3AF', fontSize: 11 }} />
-            <YAxis tick={{ fill: '#9CA3AF', fontSize: 10 }} tickFormatter={fmtShort} width={72} />
+            <CartesianGrid
+              strokeDasharray="3 3"
+              stroke="#374151"
+              vertical={false}
+            />
+            <XAxis dataKey="short" tick={{ fill: "#9CA3AF", fontSize: 11 }} />
+            <YAxis
+              tick={{ fill: "#9CA3AF", fontSize: 10 }}
+              tickFormatter={fmtShort}
+              width={72}
+            />
             <Tooltip content={<TrendTooltip />} />
             <ReferenceLine
               y={promedio}
               stroke="#EAB308"
               strokeDasharray="5 3"
-              label={{ value: 'Promedio', fill: '#EAB308', fontSize: 10, position: 'right' }}
+              label={{
+                value: "Promedio",
+                fill: "#EAB308",
+                fontSize: 10,
+                position: "right",
+              }}
             />
             <Area
               type="monotone"
@@ -160,32 +212,38 @@ function Tendencia({
               stroke="#3B82F6"
               strokeWidth={2.5}
               fill="url(#gradTotal)"
-              dot={{ fill: '#3B82F6', r: 4, strokeWidth: 0 }}
+              dot={{ fill: "#3B82F6", r: 4, strokeWidth: 0 }}
               activeDot={{ r: 6 }}
             />
           </AreaChart>
         </ResponsiveContainer>
       </div>
     </div>
-  )
+  );
 }
 
 function GastosRecurrentes({
   gastosAno,
   selectedYear,
 }: {
-  gastosAno: Gasto[]
-  allGastos: Gasto[]
-  selectedYear: number
+  gastosAno: Gasto[];
+  allGastos: Gasto[];
+  selectedYear: number;
 }) {
   const recurrentes = useMemo(() => {
     const map: Record<
       string,
-      { nota: string; concepto: string; months: Set<number>; amounts: number[]; total: number }
-    > = {}
+      {
+        nota: string;
+        concepto: string;
+        months: Set<number>;
+        amounts: number[];
+        total: number;
+      }
+    > = {};
 
-    gastosAno.forEach(g => {
-      const key = (g.nota || g.concepto).toLowerCase().trim()
+    gastosAno.forEach((g) => {
+      const key = (g.nota || g.concepto).toLowerCase().trim();
       if (!map[key])
         map[key] = {
           nota: g.nota || g.concepto,
@@ -193,16 +251,16 @@ function GastosRecurrentes({
           months: new Set(),
           amounts: [],
           total: 0,
-        }
-      const month = new Date(g.fecha + 'T12:00:00').getMonth()
-      map[key].months.add(month)
-      map[key].amounts.push(Number(g.cantidad))
-      map[key].total += Number(g.cantidad)
-    })
+        };
+      const month = new Date(g.fecha + "T12:00:00").getMonth();
+      map[key].months.add(month);
+      map[key].amounts.push(Number(g.cantidad));
+      map[key].total += Number(g.cantidad);
+    });
 
     return Object.values(map)
-      .filter(d => d.months.size >= 2)
-      .map(d => ({
+      .filter((d) => d.months.size >= 2)
+      .map((d) => ({
         ...d,
         monthCount: d.months.size,
         avg: d.total / d.amounts.length,
@@ -210,8 +268,8 @@ function GastosRecurrentes({
         maxAmt: Math.max(...d.amounts),
       }))
       .sort((a, b) => b.monthCount - a.monthCount || b.total - a.total)
-      .slice(0, 15)
-  }, [gastosAno])
+      .slice(0, 15);
+  }, [gastosAno]);
 
   if (recurrentes.length === 0) {
     return (
@@ -226,7 +284,7 @@ function GastosRecurrentes({
           No se detectaron gastos que se repitan en 2+ meses todavía.
         </p>
       </div>
-    )
+    );
   }
 
   return (
@@ -236,7 +294,9 @@ function GastosRecurrentes({
         <h3 className="text-sm font-semibold text-gray-300 uppercase tracking-wider">
           Gastos recurrentes — {selectedYear}
         </h3>
-        <span className="ml-auto text-xs text-gray-500">Se repiten en 2+ meses</span>
+        <span className="ml-auto text-xs text-gray-500">
+          Se repiten en 2+ meses
+        </span>
       </div>
 
       <div className="flex items-center gap-2 px-2 mb-1 text-xs text-gray-600 uppercase tracking-wider">
@@ -253,10 +313,12 @@ function GastosRecurrentes({
             className="flex items-center gap-2 px-2 py-2 rounded-lg hover:bg-gray-800/50 text-sm"
           >
             <div className="flex-1 min-w-0">
-              <p className="text-gray-200 truncate text-sm">{r.nota || r.concepto}</p>
+              <p className="text-gray-200 truncate text-sm">
+                {r.nota || r.concepto}
+              </p>
               <p
                 className="text-xs mt-0.5"
-                style={{ color: CONCEPTO_COLORS[r.concepto] || '#6B7280' }}
+                style={{ color: CONCEPTO_COLORS[r.concepto] || "#6B7280" }}
               >
                 {r.concepto}
               </p>
@@ -265,234 +327,508 @@ function GastosRecurrentes({
               <span
                 className={`text-xs font-bold px-1.5 py-0.5 rounded-full ${
                   r.monthCount >= 6
-                    ? 'bg-green-900 text-green-300'
+                    ? "bg-green-900 text-green-300"
                     : r.monthCount >= 3
-                      ? 'bg-blue-900 text-blue-300'
-                      : 'bg-gray-700 text-gray-400'
+                      ? "bg-blue-900 text-blue-300"
+                      : "bg-gray-700 text-gray-400"
                 }`}
               >
                 {r.monthCount}x
               </span>
             </div>
             <div className="w-28 text-right">
-              <p className="text-gray-300 text-sm font-semibold">{fmt(r.avg)}</p>
+              <p className="text-gray-300 text-sm font-semibold">
+                {fmt(r.avg)}
+              </p>
               {r.minAmt !== r.maxAmt && (
                 <p className="text-gray-600 text-xs">
                   {fmt(r.minAmt)} – {fmt(r.maxAmt)}
                 </p>
               )}
             </div>
-            <span className="text-white font-bold text-sm w-28 text-right">{fmt(r.total)}</span>
+            <span className="text-white font-bold text-sm w-28 text-right">
+              {fmt(r.total)}
+            </span>
           </div>
         ))}
       </div>
     </div>
-  )
+  );
 }
 
-export default function Promedios({ gastos, selectedYear, usdRates }: PromediosProps) {
-  const { settings } = useUserSettings()
+const LineTooltipComp = ({
+  active,
+  payload,
+  label,
+}: {
+  active?: boolean;
+  payload?: Array<{ name: string; value: number; color: string }>;
+  label?: string;
+}) => {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 shadow-xl text-xs">
+      <p className="font-semibold text-white mb-1">{label}</p>
+      {payload.map((p) => (
+        <p key={p.name} style={{ color: p.color }}>
+          {p.name}: {fmt(p.value)}
+        </p>
+      ))}
+    </div>
+  );
+};
+
+function ComparacionAnual({
+  gastos,
+  prevYearGastos,
+  selectedYear,
+  prevYear,
+}: {
+  gastos: Gasto[];
+  prevYearGastos: Gasto[];
+  selectedYear: number;
+  prevYear: number;
+}) {
+  const data = useMemo(() => {
+    return MONTH_SHORT.map((short, idx) => {
+      const curr = gastos
+        .filter((g) => {
+          const d = new Date(g.fecha + "T12:00:00");
+          return d.getFullYear() === selectedYear && d.getMonth() === idx;
+        })
+        .reduce((a, g) => a + Number(g.cantidad), 0);
+
+      const prev = prevYearGastos
+        .filter((g) => {
+          const d = new Date(g.fecha + "T12:00:00");
+          return d.getFullYear() === prevYear && d.getMonth() === idx;
+        })
+        .reduce((a, g) => a + Number(g.cantidad), 0);
+
+      const delta = prev > 0 ? ((curr - prev) / prev) * 100 : null;
+
+      return {
+        short,
+        curr: curr || null,
+        prev: prev || null,
+        delta,
+        currRaw: curr,
+        prevRaw: prev,
+      };
+    });
+  }, [gastos, prevYearGastos, selectedYear, prevYear]);
+
+  const hasCurr = data.some((d) => d.currRaw > 0);
+  const hasPrev = data.some((d) => d.prevRaw > 0);
+
+  if (!hasCurr && !hasPrev) return null;
+
+  const totalCurr = data.reduce((a, d) => a + d.currRaw, 0);
+  const totalPrev = data.reduce((a, d) => a + d.prevRaw, 0);
+  const totalDelta =
+    totalPrev > 0 ? ((totalCurr - totalPrev) / totalPrev) * 100 : null;
+
+  return (
+    <div className="bg-gray-800/30 border border-gray-800 rounded-2xl p-5 space-y-6">
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-semibold text-gray-300 uppercase tracking-wider">
+          Comparación {prevYear} vs {selectedYear}
+        </h3>
+        <div className="flex items-center gap-4 text-xs">
+          <span className="flex items-center gap-1.5">
+            <span className="w-3 h-0.5 bg-gray-500 inline-block rounded" />
+            <span className="text-gray-400">{prevYear}</span>
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="w-3 h-0.5 bg-blue-400 inline-block rounded" />
+            <span className="text-gray-200">{selectedYear}</span>
+          </span>
+        </div>
+      </div>
+
+      {/* Gráfico de líneas superpuesto */}
+      <div style={{ height: 260 }}>
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart
+            data={data}
+            margin={{ top: 10, right: 10, left: 10, bottom: 5 }}
+          >
+            <CartesianGrid
+              strokeDasharray="3 3"
+              stroke="#374151"
+              vertical={false}
+            />
+            <XAxis dataKey="short" tick={{ fill: "#9CA3AF", fontSize: 11 }} />
+            <YAxis
+              tick={{ fill: "#9CA3AF", fontSize: 10 }}
+              tickFormatter={fmtShort}
+              width={72}
+            />
+            <Tooltip content={<LineTooltipComp />} />
+            <Legend
+              formatter={(value) => (
+                <span style={{ color: "#9CA3AF", fontSize: 12 }}>{value}</span>
+              )}
+            />
+            {hasPrev && (
+              <Line
+                type="monotone"
+                dataKey="prev"
+                name={String(prevYear)}
+                stroke="#6B7280"
+                strokeWidth={2}
+                strokeDasharray="5 3"
+                dot={{ fill: "#6B7280", r: 3, strokeWidth: 0 }}
+                activeDot={{ r: 5 }}
+                connectNulls={false}
+              />
+            )}
+            {hasCurr && (
+              <Line
+                type="monotone"
+                dataKey="curr"
+                name={String(selectedYear)}
+                stroke="#3B82F6"
+                strokeWidth={2.5}
+                dot={{ fill: "#3B82F6", r: 4, strokeWidth: 0 }}
+                activeDot={{ r: 6 }}
+                connectNulls={false}
+              />
+            )}
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+
+      {/* Tabla mes a mes con Δ% */}
+      <div>
+        <div className="flex items-center py-1 px-2 text-xs text-gray-500 uppercase tracking-wider border-b border-gray-700/50">
+          <span className="w-16">Mes</span>
+          <span className="flex-1 text-right">{prevYear}</span>
+          <span className="flex-1 text-right">{selectedYear}</span>
+          <span className="w-20 text-right">Δ%</span>
+        </div>
+        <div className="space-y-0.5 mt-1">
+          {data.map((m, i) => {
+            const hasAny = m.currRaw > 0 || m.prevRaw > 0;
+            if (!hasAny) return null;
+            const isDecrease = m.delta !== null && m.delta < 0;
+            const isIncrease = m.delta !== null && m.delta > 0;
+            return (
+              <div
+                key={i}
+                className="flex items-center py-1.5 px-2 rounded-lg hover:bg-gray-700/30 text-sm"
+              >
+                <span className="w-16 text-gray-400 text-xs">
+                  {MONTH_SHORT[i]}
+                </span>
+                <span className="flex-1 text-right text-gray-500 text-sm">
+                  {m.prevRaw > 0 ? fmt(m.prevRaw) : "—"}
+                </span>
+                <span className="flex-1 text-right text-white font-semibold text-sm">
+                  {m.currRaw > 0 ? fmt(m.currRaw) : "—"}
+                </span>
+                <span
+                  className={`w-20 text-right text-xs font-semibold ${
+                    isDecrease
+                      ? "text-green-400"
+                      : isIncrease
+                        ? "text-red-400"
+                        : "text-gray-500"
+                  }`}
+                >
+                  {m.delta !== null
+                    ? `${isIncrease ? "+" : ""}${m.delta.toFixed(1)}%`
+                    : "—"}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+        {/* Fila total */}
+        <div className="border-t border-gray-700 pt-2 mt-2 flex items-center px-2">
+          <span className="w-16 text-gray-400 font-semibold text-sm">
+            TOTAL
+          </span>
+          <span className="flex-1 text-right text-gray-400 font-bold text-sm">
+            {totalPrev > 0 ? fmt(totalPrev) : "—"}
+          </span>
+          <span className="flex-1 text-right text-green-400 font-bold text-sm">
+            {totalCurr > 0 ? fmt(totalCurr) : "—"}
+          </span>
+          <span
+            className={`w-20 text-right text-xs font-bold ${
+              totalDelta !== null && totalDelta < 0
+                ? "text-green-400"
+                : totalDelta !== null && totalDelta > 0
+                  ? "text-red-400"
+                  : "text-gray-500"
+            }`}
+          >
+            {totalDelta !== null
+              ? `${totalDelta > 0 ? "+" : ""}${totalDelta.toFixed(1)}%`
+              : "—"}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function Promedios({
+  gastos,
+  selectedYear,
+  usdRates,
+  prevYearGastos,
+  prevYear,
+  activeTab,
+  onTabChange,
+}: PromediosProps) {
+  const { settings } = useUserSettings();
   const gastosAno = useMemo(
     () =>
-      gastos.filter(g => new Date(g.fecha + 'T12:00:00').getFullYear() === selectedYear),
-    [gastos, selectedYear]
-  )
+      gastos.filter(
+        (g) => new Date(g.fecha + "T12:00:00").getFullYear() === selectedYear,
+      ),
+    [gastos, selectedYear],
+  );
 
   const monthlyData = useMemo(() => {
     return MONTH_FULL.map((name, idx) => {
-      const items = gastosAno.filter(g => new Date(g.fecha + 'T12:00:00').getMonth() === idx)
-      const total = items.reduce((a, g) => a + Number(g.cantidad), 0)
-      const rate = getRateForMonth(usdRates, selectedYear, idx)
-      const mk = `${selectedYear}-${String(idx + 1).padStart(2, '0')}`
-      const hasCustomRate = !!usdRates[mk]
-      return { name, short: MONTH_SHORT[idx], total, count: items.length, rate, hasCustomRate }
-    })
-  }, [gastosAno, usdRates, selectedYear])
+      const items = gastosAno.filter(
+        (g) => new Date(g.fecha + "T12:00:00").getMonth() === idx,
+      );
+      const total = items.reduce((a, g) => a + Number(g.cantidad), 0);
+      const rate = getRateForMonth(usdRates, selectedYear, idx);
+      const mk = `${selectedYear}-${String(idx + 1).padStart(2, "0")}`;
+      const hasCustomRate = !!usdRates[mk];
+      return {
+        name,
+        short: MONTH_SHORT[idx],
+        total,
+        count: items.length,
+        rate,
+        hasCustomRate,
+      };
+    });
+  }, [gastosAno, usdRates, selectedYear]);
 
   const catData = useMemo(() => {
-    return settings.conceptos.map(c => {
-      const items = gastosAno.filter(g => g.concepto === c)
-      const total = items.reduce((a, g) => a + Number(g.cantidad), 0)
-      return { name: c, total, count: items.length }
-    })
-      .filter(d => d.total > 0)
-      .sort((a, b) => b.total - a.total)
-  }, [gastosAno, settings.conceptos])
+    return settings.conceptos
+      .map((c) => {
+        const items = gastosAno.filter((g) => g.concepto === c);
+        const total = items.reduce((a, g) => a + Number(g.cantidad), 0);
+        return { name: c, total, count: items.length };
+      })
+      .filter((d) => d.total > 0)
+      .sort((a, b) => b.total - a.total);
+  }, [gastosAno, settings.conceptos]);
 
-  const totalAno = gastosAno.reduce((a, g) => a + Number(g.cantidad), 0)
-  const totalAnoUSD = monthlyData.reduce((a, m) => a + (m.rate > 0 ? m.total / m.rate : 0), 0)
-  const monthsWithData = monthlyData.filter(m => m.total > 0).length
-  const promedio = monthsWithData > 0 ? totalAno / monthsWithData : 0
-  const maxMonth = monthlyData.reduce(
-    (a, b) => (b.total > a.total ? b : a),
-    { name: '', short: '', total: 0, count: 0, rate: 0, hasCustomRate: false }
-  )
+  const totalAno = gastosAno.reduce((a, g) => a + Number(g.cantidad), 0);
+  const totalAnoUSD = monthlyData.reduce(
+    (a, m) => a + (m.rate > 0 ? m.total / m.rate : 0),
+    0,
+  );
+  const monthsWithData = monthlyData.filter((m) => m.total > 0).length;
+  const promedio = monthsWithData > 0 ? totalAno / monthsWithData : 0;
+  const maxMonth = monthlyData.reduce((a, b) => (b.total > a.total ? b : a), {
+    name: "",
+    short: "",
+    total: 0,
+    count: 0,
+    rate: 0,
+    hasCustomRate: false,
+  });
   const minMonth = monthlyData
-    .filter(m => m.total > 0)
-    .reduce(
-      (a, b) => (b.total < a.total ? b : a),
-      { name: '', short: '', total: Infinity, count: 0, rate: 0, hasCustomRate: false }
-    )
+    .filter((m) => m.total > 0)
+    .reduce((a, b) => (b.total < a.total ? b : a), {
+      name: "",
+      short: "",
+      total: Infinity,
+      count: 0,
+      rate: 0,
+      hasCustomRate: false,
+    });
+
+  const TABS: { id: PromediosTab; label: string }[] = [
+    { id: "resumen", label: "Resumen" },
+    { id: "meses", label: "Por mes" },
+    { id: "categorias", label: "Categorías" },
+    { id: "comparacion", label: "Comparación" },
+  ];
 
   return (
     <div className="space-y-6">
+      {/* Tarjetas de stats — siempre visibles */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-gray-800/60 border border-gray-700/50 rounded-2xl p-4">
-          <p className="text-xs text-gray-400 uppercase tracking-wider mb-1">Total {selectedYear}</p>
+          <p className="text-xs text-gray-400 uppercase tracking-wider mb-1">
+            Total {selectedYear}
+          </p>
           <p className="text-xl font-bold text-white">{fmt(totalAno)}</p>
           <p className="text-sm text-green-400 mt-0.5">{fmtUSD(totalAnoUSD)}</p>
         </div>
         <div className="bg-gray-800/60 border border-gray-700/50 rounded-2xl p-4">
-          <p className="text-xs text-gray-400 uppercase tracking-wider mb-1">Promedio mensual</p>
+          <p className="text-xs text-gray-400 uppercase tracking-wider mb-1">
+            Promedio mensual
+          </p>
           <p className="text-xl font-bold text-white">{fmt(promedio)}</p>
           <p className="text-xs text-gray-500 mt-0.5">
-            {monthsWithData} mes{monthsWithData !== 1 ? 'es' : ''} con datos
+            {monthsWithData} mes{monthsWithData !== 1 ? "es" : ""} con datos
           </p>
         </div>
         <div className="bg-gray-800/60 border border-gray-700/50 rounded-2xl p-4">
-          <p className="text-xs text-gray-400 uppercase tracking-wider mb-1">Mes más caro</p>
+          <p className="text-xs text-gray-400 uppercase tracking-wider mb-1">
+            Mes más caro
+          </p>
           <p className="text-xl font-bold text-red-400">
-            {maxMonth.total > 0 ? fmt(maxMonth.total) : '—'}
+            {maxMonth.total > 0 ? fmt(maxMonth.total) : "—"}
           </p>
-          <p className="text-xs text-gray-400 mt-0.5">{maxMonth.name || '—'}</p>
+          <p className="text-xs text-gray-400 mt-0.5">{maxMonth.name || "—"}</p>
         </div>
         <div className="bg-gray-800/60 border border-gray-700/50 rounded-2xl p-4">
-          <p className="text-xs text-gray-400 uppercase tracking-wider mb-1">Mes más barato</p>
+          <p className="text-xs text-gray-400 uppercase tracking-wider mb-1">
+            Mes más barato
+          </p>
           <p className="text-xl font-bold text-green-400">
-            {minMonth.total !== Infinity ? fmt(minMonth.total) : '—'}
+            {minMonth.total !== Infinity ? fmt(minMonth.total) : "—"}
           </p>
           <p className="text-xs text-gray-400 mt-0.5">
-            {minMonth.total !== Infinity ? minMonth.name : '—'}
+            {minMonth.total !== Infinity ? minMonth.name : "—"}
           </p>
         </div>
       </div>
 
-      <Tendencia monthlyData={monthlyData} promedio={promedio} selectedYear={selectedYear} />
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="bg-gray-800/30 border border-gray-800 rounded-2xl p-5">
-          <h3 className="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-4">
-            Totales por mes — {selectedYear}
-          </h3>
-          <div className="space-y-1">
-            <div className="flex items-center py-1 px-2 text-xs text-gray-500 uppercase tracking-wider">
-              <span className="w-20">Mes</span>
-              <span className="flex-1 text-right">ARS</span>
-              <span className="w-28 text-right">USD</span>
-            </div>
-            {monthlyData.map((m, i) => (
-              <div
-                key={i}
-                className={`flex items-center py-1.5 px-2 rounded-lg text-sm ${m.total > 0 ? 'hover:bg-gray-700/40' : ''}`}
-              >
-                <span className={`w-20 ${m.total > 0 ? 'text-gray-200' : 'text-gray-600'}`}>
-                  {m.name}
-                </span>
-                <span
-                  className={`flex-1 text-right font-semibold ${m.total > 0 ? 'text-white' : 'text-gray-700'}`}
-                >
-                  {m.total > 0 ? fmt(m.total) : '—'}
-                </span>
-                <span
-                  className={`w-28 text-right text-xs ${m.total > 0 ? (m.hasCustomRate ? 'text-green-400' : 'text-gray-500') : 'text-gray-700'}`}
-                >
-                  {m.total > 0 ? (
-                    <>
-                      {fmtUSD(m.total / m.rate)}
-                      {!m.hasCustomRate && <span className="ml-0.5 text-yellow-700">*</span>}
-                    </>
-                  ) : (
-                    '—'
-                  )}
-                </span>
-              </div>
-            ))}
-            <div className="border-t border-gray-700 pt-2 mt-2 flex items-center px-2">
-              <span className="text-gray-400 font-semibold text-sm w-20">TOTAL</span>
-              <span className="flex-1 text-right text-green-400 font-bold text-sm">
-                {fmt(totalAno)}
-              </span>
-              <span className="w-28 text-right text-green-400 font-bold text-sm">
-                {fmtUSD(totalAnoUSD)}
-              </span>
-            </div>
-            <p className="text-xs text-gray-600 px-2 mt-1">* Rate estimado del mes anterior</p>
-          </div>
-        </div>
-
-        <div className="lg:col-span-2 bg-gray-800/30 border border-gray-800 rounded-2xl p-5">
-          <h3 className="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-4">
-            Gasto mensual {selectedYear}
-          </h3>
-          <div style={{ height: 300 }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={monthlyData} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#374151" vertical={false} />
-                <XAxis dataKey="short" tick={{ fill: '#9CA3AF', fontSize: 11 }} />
-                <YAxis tick={{ fill: '#9CA3AF', fontSize: 10 }} tickFormatter={fmtShort} width={72} />
-                <Tooltip content={<BarTooltipMonth />} />
-                <ReferenceLine y={promedio} stroke="#EAB308" strokeDasharray="4 3" />
-                <Bar dataKey="total" radius={[4, 4, 0, 0]}>
-                  {monthlyData.map((m, i) => (
-                    <Cell key={i} fill={m.total > 0 ? '#3B82F6' : '#1F2937'} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
+      {/* Tabs */}
+      <div className="flex gap-1 border-b border-gray-800">
+        {TABS.map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => onTabChange(tab.id)}
+            className={`px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px ${
+              activeTab === tab.id
+                ? "border-blue-500 text-white"
+                : "border-transparent text-gray-500 hover:text-gray-300"
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
       </div>
 
-      <GastosRecurrentes gastosAno={gastosAno} allGastos={gastos} selectedYear={selectedYear} />
+      {/* Tab: Resumen */}
+      {activeTab === "resumen" && (
+        <div className="space-y-6">
+          <Tendencia
+            monthlyData={monthlyData}
+            promedio={promedio}
+            selectedYear={selectedYear}
+          />
+          {gastosAno.length === 0 && (
+            <div className="text-center py-16 text-gray-500">
+              <p className="text-lg">No hay datos para {selectedYear}</p>
+              <p className="text-sm mt-1">Agregá gastos en los meses del año</p>
+            </div>
+          )}
+        </div>
+      )}
 
-      {catData.length > 0 && (
+      {/* Tab: Por mes */}
+      {activeTab === "meses" && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="bg-gray-800/30 border border-gray-800 rounded-2xl p-5">
             <h3 className="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-4">
-              Categorías {selectedYear}
+              Totales por mes — {selectedYear}
             </h3>
             <div className="space-y-1">
-              {catData.map(d => (
+              <div className="flex items-center py-1 px-2 text-xs text-gray-500 uppercase tracking-wider">
+                <span className="w-20">Mes</span>
+                <span className="flex-1 text-right">ARS</span>
+                <span className="w-28 text-right">USD</span>
+              </div>
+              {monthlyData.map((m, i) => (
                 <div
-                  key={d.name}
-                  className="flex items-center gap-2 py-1.5 px-2 rounded-lg hover:bg-gray-700/40 text-sm"
+                  key={i}
+                  className={`flex items-center py-1.5 px-2 rounded-lg text-sm ${m.total > 0 ? "hover:bg-gray-700/40" : ""}`}
                 >
-                  <div
-                    className="w-2.5 h-2.5 rounded-full flex-shrink-0"
-                    style={{ backgroundColor: CONCEPTO_COLORS[d.name] || '#6B7280' }}
-                  />
-                  <span className="text-gray-300 flex-1 truncate">{d.name}</span>
-                  <span className="text-white font-semibold">{fmt(d.total)}</span>
+                  <span
+                    className={`w-20 ${m.total > 0 ? "text-gray-200" : "text-gray-600"}`}
+                  >
+                    {m.name}
+                  </span>
+                  <span
+                    className={`flex-1 text-right font-semibold ${m.total > 0 ? "text-white" : "text-gray-700"}`}
+                  >
+                    {m.total > 0 ? fmt(m.total) : "—"}
+                  </span>
+                  <span
+                    className={`w-28 text-right text-xs ${m.total > 0 ? (m.hasCustomRate ? "text-green-400" : "text-gray-500") : "text-gray-700"}`}
+                  >
+                    {m.total > 0 ? (
+                      <>
+                        {fmtUSD(m.total / m.rate)}
+                        {!m.hasCustomRate && (
+                          <span className="ml-0.5 text-yellow-700">*</span>
+                        )}
+                      </>
+                    ) : (
+                      "—"
+                    )}
+                  </span>
                 </div>
               ))}
-              <div className="border-t border-gray-700 pt-2 mt-2 flex items-center justify-between px-2">
-                <span className="text-gray-400 font-semibold text-sm">TOTAL</span>
-                <span className="text-green-400 font-bold text-sm">{fmt(totalAno)}</span>
+              <div className="border-t border-gray-700 pt-2 mt-2 flex items-center px-2">
+                <span className="text-gray-400 font-semibold text-sm w-20">
+                  TOTAL
+                </span>
+                <span className="flex-1 text-right text-green-400 font-bold text-sm">
+                  {fmt(totalAno)}
+                </span>
+                <span className="w-28 text-right text-green-400 font-bold text-sm">
+                  {fmtUSD(totalAnoUSD)}
+                </span>
               </div>
+              <p className="text-xs text-gray-600 px-2 mt-1">
+                * Rate estimado del mes anterior
+              </p>
             </div>
           </div>
 
           <div className="lg:col-span-2 bg-gray-800/30 border border-gray-800 rounded-2xl p-5">
             <h3 className="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-4">
-              Gasto por categoría {selectedYear}
+              Gasto mensual {selectedYear}
             </h3>
             <div style={{ height: 300 }}>
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={catData} margin={{ top: 5, right: 10, left: 10, bottom: 50 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#374151" vertical={false} />
-                  <XAxis
-                    dataKey="name"
-                    tick={{ fill: '#9CA3AF', fontSize: 10 }}
-                    angle={-35}
-                    textAnchor="end"
-                    interval={0}
-                    height={65}
+                <BarChart
+                  data={monthlyData}
+                  margin={{ top: 5, right: 10, left: 10, bottom: 5 }}
+                >
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    stroke="#374151"
+                    vertical={false}
                   />
-                  <YAxis tick={{ fill: '#9CA3AF', fontSize: 10 }} tickFormatter={fmtShort} width={72} />
-                  <Tooltip content={<BarTooltipCat />} />
+                  <XAxis
+                    dataKey="short"
+                    tick={{ fill: "#9CA3AF", fontSize: 11 }}
+                  />
+                  <YAxis
+                    tick={{ fill: "#9CA3AF", fontSize: 10 }}
+                    tickFormatter={fmtShort}
+                    width={72}
+                  />
+                  <Tooltip content={<BarTooltipMonth />} />
+                  <ReferenceLine
+                    y={promedio}
+                    stroke="#EAB308"
+                    strokeDasharray="4 3"
+                  />
                   <Bar dataKey="total" radius={[4, 4, 0, 0]}>
-                    {catData.map(d => (
-                      <Cell key={d.name} fill={CONCEPTO_COLORS[d.name] || '#6B7280'} />
+                    {monthlyData.map((m, i) => (
+                      <Cell
+                        key={i}
+                        fill={m.total > 0 ? "#3B82F6" : "#1F2937"}
+                      />
                     ))}
                   </Bar>
                 </BarChart>
@@ -502,12 +838,122 @@ export default function Promedios({ gastos, selectedYear, usdRates }: PromediosP
         </div>
       )}
 
-      {gastosAno.length === 0 && (
-        <div className="text-center py-16 text-gray-500">
-          <p className="text-lg">No hay datos para {selectedYear}</p>
-          <p className="text-sm mt-1">Agregá gastos en los meses del año</p>
+      {/* Tab: Categorías */}
+      {activeTab === "categorias" && (
+        <div className="space-y-6">
+          {catData.length > 0 ? (
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="bg-gray-800/30 border border-gray-800 rounded-2xl p-5">
+                <h3 className="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-4">
+                  Categorías {selectedYear}
+                </h3>
+                <div className="space-y-1">
+                  {catData.map((d) => (
+                    <div
+                      key={d.name}
+                      className="flex items-center gap-2 py-1.5 px-2 rounded-lg hover:bg-gray-700/40 text-sm"
+                    >
+                      <div
+                        className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                        style={{
+                          backgroundColor: CONCEPTO_COLORS[d.name] || "#6B7280",
+                        }}
+                      />
+                      <span className="text-gray-300 flex-1 truncate">
+                        {d.name}
+                      </span>
+                      <span className="text-white font-semibold">
+                        {fmt(d.total)}
+                      </span>
+                    </div>
+                  ))}
+                  <div className="border-t border-gray-700 pt-2 mt-2 flex items-center justify-between px-2">
+                    <span className="text-gray-400 font-semibold text-sm">
+                      TOTAL
+                    </span>
+                    <span className="text-green-400 font-bold text-sm">
+                      {fmt(totalAno)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="lg:col-span-2 bg-gray-800/30 border border-gray-800 rounded-2xl p-5">
+                <h3 className="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-4">
+                  Gasto por categoría {selectedYear}
+                </h3>
+                <div style={{ height: 300 }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart
+                      data={catData}
+                      margin={{ top: 5, right: 10, left: 10, bottom: 50 }}
+                    >
+                      <CartesianGrid
+                        strokeDasharray="3 3"
+                        stroke="#374151"
+                        vertical={false}
+                      />
+                      <XAxis
+                        dataKey="name"
+                        tick={{ fill: "#9CA3AF", fontSize: 10 }}
+                        angle={-35}
+                        textAnchor="end"
+                        interval={0}
+                        height={65}
+                      />
+                      <YAxis
+                        tick={{ fill: "#9CA3AF", fontSize: 10 }}
+                        tickFormatter={fmtShort}
+                        width={72}
+                      />
+                      <Tooltip content={<BarTooltipCat />} />
+                      <Bar dataKey="total" radius={[4, 4, 0, 0]}>
+                        {catData.map((d) => (
+                          <Cell
+                            key={d.name}
+                            fill={CONCEPTO_COLORS[d.name] || "#6B7280"}
+                          />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-16 text-gray-500">
+              <p className="text-sm">
+                Sin datos de categorías para {selectedYear}
+              </p>
+            </div>
+          )}
+          <GastosRecurrentes
+            gastosAno={gastosAno}
+            allGastos={gastos}
+            selectedYear={selectedYear}
+          />
         </div>
       )}
+
+      {/* Tab: Comparación */}
+      {activeTab === "comparacion" && (
+        <>
+          {prevYearGastos && prevYear ? (
+            <ComparacionAnual
+              gastos={gastosAno}
+              prevYearGastos={prevYearGastos}
+              selectedYear={selectedYear}
+              prevYear={prevYear}
+            />
+          ) : (
+            <div className="text-center py-16 text-gray-500">
+              <p className="text-sm">
+                No hay datos del año anterior para comparar
+              </p>
+            </div>
+          )}
+        </>
+      )}
     </div>
-  )
+  );
 }

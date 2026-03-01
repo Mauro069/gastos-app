@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
 import {
   BarChart2,
   Table2,
@@ -13,7 +14,6 @@ import {
   Header,
   GastosTable,
   Charts,
-  Promedios,
   Landing,
   ImportModal,
 } from "@/components";
@@ -26,41 +26,20 @@ export function monthKey(year: number, month: number): string {
 }
 
 const MONTH_NAMES = [
-  "Ene",
-  "Feb",
-  "Mar",
-  "Abr",
-  "May",
-  "Jun",
-  "Jul",
-  "Ago",
-  "Sep",
-  "Oct",
-  "Nov",
-  "Dic",
+  "Ene", "Feb", "Mar", "Abr", "May", "Jun",
+  "Jul", "Ago", "Sep", "Oct", "Nov", "Dic",
 ];
 const MONTH_FULL = [
-  "Enero",
-  "Febrero",
-  "Marzo",
-  "Abril",
-  "Mayo",
-  "Junio",
-  "Julio",
-  "Agosto",
-  "Septiembre",
-  "Octubre",
-  "Noviembre",
-  "Diciembre",
+  "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+  "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
 ];
 const DEFAULT_RATE = 1000;
 
 export default function App() {
   const { user, loading: authLoading, signOut } = useAuth();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState<"tabla" | "charts" | "promedios">(
-    "tabla",
-  );
+  const [activeTab, setActiveTab] = useState<"tabla" | "charts">("tabla");
   const [showImport, setShowImport] = useState(false);
 
   const now = new Date();
@@ -88,7 +67,7 @@ export default function App() {
     history.replaceState(null, "", `?${params.toString()}`);
   }, [selectedYear, selectedMonth, user]);
 
-  // ── Queries ────────────────────────────────────────────────────────────────
+  // ── Queries ───────────────────────────────────────────────────────────────
 
   const {
     data: gastos = [],
@@ -100,18 +79,16 @@ export default function App() {
     enabled: !!user?.id,
   });
 
-  const { data: usdRates = {} as UsdRates, isLoading: ratesLoading } = useQuery(
-    {
-      queryKey: ["usd_rates", user?.id],
-      queryFn: fetchUsdRates,
-      enabled: !!user?.id,
-      staleTime: 1000 * 60 * 10, // rates cambian poco, 10 min
-    },
-  );
+  const { data: usdRates = {} as UsdRates, isLoading: ratesLoading } = useQuery({
+    queryKey: ["usd_rates", user?.id],
+    queryFn: fetchUsdRates,
+    enabled: !!user?.id,
+    staleTime: 1000 * 60 * 10,
+  });
 
   const loading = gastosLoading || ratesLoading;
 
-  // ── Derived data ────────────────────────────────────────────────────────────
+  // ── Derived data ──────────────────────────────────────────────────────────
 
   const currentMonthKey = monthKey(selectedYear, selectedMonth);
 
@@ -126,16 +103,13 @@ export default function App() {
     () =>
       gastos.filter((g) => {
         const d = new Date(g.fecha + "T12:00:00");
-        return (
-          d.getFullYear() === selectedYear && d.getMonth() === selectedMonth
-        );
+        return d.getFullYear() === selectedYear && d.getMonth() === selectedMonth;
       }),
     [gastos, selectedYear, selectedMonth],
   );
 
   const { prevYear, prevMonth: prevMonthIdx } = useMemo(() => {
-    if (selectedMonth === 0)
-      return { prevYear: selectedYear - 1, prevMonth: 11 };
+    if (selectedMonth === 0) return { prevYear: selectedYear - 1, prevMonth: 11 };
     return { prevYear: selectedYear, prevMonth: selectedMonth - 1 };
   }, [selectedYear, selectedMonth]);
 
@@ -159,32 +133,18 @@ export default function App() {
     .filter((g) => g.concepto === "Inversiones")
     .reduce((acc, g) => acc + Number(g.cantidad), 0);
 
-  const totalAno = useMemo(
-    () =>
-      gastos
-        .filter((g) => g.concepto !== "Inversiones")
-        .reduce((a, g) => a + Number(g.cantidad), 0),
-    [gastos],
-  );
+  // ── Handlers ──────────────────────────────────────────────────────────────
 
-  const isPromedios = activeTab === "promedios";
-
-  // ── Handlers ────────────────────────────────────────────────────────────────
-
-  // After import: invalidate current year's cache so data refetches
   const handleImported = () => {
-    queryClient.invalidateQueries({
-      queryKey: ["gastos", user?.id, selectedYear],
-    });
+    queryClient.invalidateQueries({ queryKey: ["gastos", user?.id, selectedYear] });
     setShowImport(false);
   };
 
-  // When Header updates a USD rate, invalidate rates cache
   const handleRatesUpdated = (newRates: UsdRates) => {
     queryClient.setQueryData(["usd_rates", user?.id], newRates);
   };
 
-  // ── Render ──────────────────────────────────────────────────────────────────
+  // ── Render ────────────────────────────────────────────────────────────────
 
   if (authLoading) {
     return (
@@ -212,13 +172,9 @@ export default function App() {
       <div className="min-h-screen bg-gray-950 flex items-center justify-center p-6">
         <div className="bg-red-900/30 border border-red-700 rounded-2xl p-8 max-w-md text-center">
           <p className="text-red-400 font-semibold text-lg mb-2">Error</p>
-          <p className="text-gray-400 text-sm">
-            No se pudieron cargar los datos.
-          </p>
+          <p className="text-gray-400 text-sm">No se pudieron cargar los datos.</p>
           <button
-            onClick={() =>
-              queryClient.invalidateQueries({ queryKey: ["gastos", user?.id] })
-            }
+            onClick={() => queryClient.invalidateQueries({ queryKey: ["gastos", user?.id] })}
             className="mt-4 bg-gray-800 hover:bg-gray-700 text-white rounded-xl px-4 py-2 text-sm"
           >
             Reintentar
@@ -231,24 +187,23 @@ export default function App() {
   return (
     <div className="min-h-screen bg-gray-950 flex flex-col">
       <Header
-        total={isPromedios ? totalAno : totalMes}
-        inversionesTotal={isPromedios ? undefined : inversionesMes}
+        total={totalMes}
+        inversionesTotal={inversionesMes}
         usdRate={currentRate}
         usdRates={usdRates}
         setUsdRates={handleRatesUpdated}
         monthKey={currentMonthKey}
-        monthLabel={
-          isPromedios
-            ? `Año ${selectedYear}`
-            : `${MONTH_FULL[selectedMonth]} ${selectedYear}`
-        }
-        isPromedios={isPromedios}
+        monthLabel={`${MONTH_FULL[selectedMonth]} ${selectedYear}`}
+        isPromedios={false}
         user={user}
         onSignOut={signOut}
       />
 
+      {/* ── Barra de año / meses ── */}
       <div className="bg-gray-900 border-b border-gray-800 px-4">
         <div className="max-w-screen-2xl mx-auto flex items-center gap-2 overflow-x-auto scrollbar-thin py-1">
+
+          {/* Selector de año */}
           <div className="flex items-center gap-1 bg-gray-800 rounded-lg px-2 py-1.5 mr-2 flex-shrink-0">
             <button
               onClick={() => setSelectedYear((y) => y - 1)}
@@ -267,19 +222,17 @@ export default function App() {
             </button>
           </div>
 
+          {/* Meses */}
           {MONTH_NAMES.map((name, idx) => {
             const hasData = gastos.some((g) => {
               const d = new Date(g.fecha + "T12:00:00");
-              return d.getMonth() === idx;
+              return d.getFullYear() === selectedYear && d.getMonth() === idx;
             });
-            const isActive = !isPromedios && selectedMonth === idx;
+            const isActive = selectedMonth === idx;
             return (
               <button
                 key={idx}
-                onClick={() => {
-                  setSelectedMonth(idx);
-                  setActiveTab("tabla");
-                }}
+                onClick={() => { setSelectedMonth(idx); setActiveTab("tabla"); }}
                 className={`flex-shrink-0 px-3 py-2 text-xs font-semibold rounded-lg transition-all ${
                   isActive
                     ? "bg-green-600 text-white"
@@ -288,8 +241,7 @@ export default function App() {
                       : "text-gray-600 hover:bg-gray-800"
                 }`}
               >
-                {name}
-                {String(selectedYear).slice(2)}
+                {name}{String(selectedYear).slice(2)}
                 {hasData && !isActive && (
                   <span className="ml-1 w-1.5 h-1.5 rounded-full bg-green-500 inline-block align-middle" />
                 )}
@@ -299,13 +251,10 @@ export default function App() {
 
           <div className="w-px h-6 bg-gray-700 mx-1 flex-shrink-0" />
 
+          {/* Link a /promedios */}
           <button
-            onClick={() => setActiveTab("promedios")}
-            className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg transition-all ${
-              isPromedios
-                ? "bg-blue-600 text-white"
-                : "text-gray-400 hover:bg-gray-700 hover:text-white"
-            }`}
+            onClick={() => navigate(`/promedios/resumen?year=${selectedYear}`)}
+            className="flex-shrink-0 flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg transition-all text-gray-400 hover:bg-gray-700 hover:text-white"
           >
             <TrendingUp className="w-3.5 h-3.5" />
             Promedios
@@ -323,60 +272,42 @@ export default function App() {
         </div>
       </div>
 
-      {!isPromedios && (
-        <div className="bg-gray-900/50 border-b border-gray-800/50 px-6">
-          <div className="max-w-screen-2xl mx-auto flex gap-1">
-            <button
-              onClick={() => setActiveTab("tabla")}
-              className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
-                activeTab === "tabla"
-                  ? "border-green-500 text-green-400"
-                  : "border-transparent text-gray-500 hover:text-white"
-              }`}
-            >
-              <Table2 className="w-4 h-4" />
-              Tabla
-            </button>
-            <button
-              onClick={() => setActiveTab("charts")}
-              className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
-                activeTab === "charts"
-                  ? "border-green-500 text-green-400"
-                  : "border-transparent text-gray-500 hover:text-white"
-              }`}
-            >
-              <BarChart2 className="w-4 h-4" />
-              Gráficos
-            </button>
-          </div>
+      {/* ── Tabs Tabla / Gráficos ── */}
+      <div className="bg-gray-900/50 border-b border-gray-800/50 px-6">
+        <div className="max-w-screen-2xl mx-auto flex gap-1">
+          <button
+            onClick={() => setActiveTab("tabla")}
+            className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === "tabla"
+                ? "border-green-500 text-green-400"
+                : "border-transparent text-gray-500 hover:text-white"
+            }`}
+          >
+            <Table2 className="w-4 h-4" />
+            Tabla
+          </button>
+          <button
+            onClick={() => setActiveTab("charts")}
+            className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === "charts"
+                ? "border-green-500 text-green-400"
+                : "border-transparent text-gray-500 hover:text-white"
+            }`}
+          >
+            <BarChart2 className="w-4 h-4" />
+            Gráficos
+          </button>
         </div>
-      )}
+      </div>
 
       {showImport && (
-        <ImportModal
-          onClose={() => setShowImport(false)}
-          onImported={handleImported}
-        />
+        <ImportModal onClose={() => setShowImport(false)} onImported={handleImported} />
       )}
 
       <main className="flex-1 overflow-hidden">
         <div className="max-w-screen-2xl mx-auto h-full p-6">
-          {isPromedios ? (
-            <div
-              className="overflow-y-auto scrollbar-thin"
-              style={{ maxHeight: "calc(100vh - 140px)" }}
-            >
-              <Promedios
-                gastos={gastos}
-                selectedYear={selectedYear}
-                usdRates={usdRates}
-              />
-            </div>
-          ) : activeTab === "tabla" ? (
-            <div
-              className="flex flex-col"
-              style={{ minHeight: "calc(100vh - 180px)" }}
-            >
+          {activeTab === "tabla" ? (
+            <div className="flex flex-col" style={{ minHeight: "calc(100vh - 180px)" }}>
               <GastosTable
                 gastos={gastosDelMes}
                 selectedYear={selectedYear}
@@ -384,10 +315,7 @@ export default function App() {
               />
             </div>
           ) : (
-            <div
-              className="overflow-y-auto scrollbar-thin"
-              style={{ maxHeight: "calc(100vh - 180px)" }}
-            >
+            <div className="overflow-y-auto scrollbar-thin" style={{ maxHeight: "calc(100vh - 180px)" }}>
               <Charts
                 gastos={gastosDelMes}
                 prevGastos={gastosDelMesAnterior}
