@@ -36,8 +36,28 @@ export default function App() {
   const [showImport, setShowImport] = useState(false)
 
   const now = new Date()
-  const [selectedYear, setSelectedYear] = useState(now.getFullYear())
-  const [selectedMonth, setSelectedMonth] = useState(now.getMonth())
+
+  // Read initial year/month from URL params, fall back to current date
+  const initFromUrl = () => {
+    const params = new URLSearchParams(window.location.search)
+    const y = parseInt(params.get('year') ?? '')
+    const m = parseInt(params.get('month') ?? '')
+    return {
+      year: isNaN(y) ? now.getFullYear() : y,
+      month: isNaN(m) || m < 1 || m > 12 ? now.getMonth() : m - 1, // URL is 1-indexed
+    }
+  }
+
+  const [selectedYear, setSelectedYear] = useState(() => initFromUrl().year)
+  const [selectedMonth, setSelectedMonth] = useState(() => initFromUrl().month)
+
+  // Keep URL in sync whenever year or month changes
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    params.set('year', String(selectedYear))
+    params.set('month', String(selectedMonth + 1)) // URL is 1-indexed
+    history.replaceState(null, '', `?${params.toString()}`)
+  }, [selectedYear, selectedMonth])
 
   useEffect(() => {
     if (!user) {
