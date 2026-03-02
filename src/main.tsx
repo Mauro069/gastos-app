@@ -6,6 +6,7 @@ import "./index.css";
 import App from "./App";
 import PromediosPage from "./pages/PromediosPage";
 import IngresosPage from "./pages/IngresosPage";
+import ActivosPage from "./pages/ActivosPage";
 import { AuthProvider, UserSettingsProvider } from "@/contexts";
 import { SpeedInsights } from "@vercel/speed-insights/react";
 import { Analytics } from "@vercel/analytics/react";
@@ -31,6 +32,7 @@ createRoot(document.getElementById("root")!).render(
               <Route path="/promedios" element={<Navigate to="/promedios/resumen" replace />} />
               <Route path="/promedios/:tab" element={<PromediosPage />} />
               <Route path="/ingresos" element={<IngresosPage />} />
+              <Route path="/activos" element={<ActivosPage />} />
             </Routes>
           </BrowserRouter>
         </UserSettingsProvider>

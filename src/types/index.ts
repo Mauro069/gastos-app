@@ -1,5 +1,6 @@
 export * from './gasto'
 export * from './ingreso'
+export * from './activo'
 export * from './api'
 export * from './auth'
 export * from './components'

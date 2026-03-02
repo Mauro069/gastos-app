@@ -9,6 +9,7 @@ import {
   ChevronLeft,
   ChevronRight,
   DollarSign,
+  Wallet,
 } from "lucide-react";
 import {
   Header,
@@ -316,6 +317,15 @@ export default function App() {
           >
             <DollarSign className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Ingresos</span>
+          </button>
+
+          {/* Activos */}
+          <button
+            onClick={() => navigate(`/activos`)}
+            className="flex-shrink-0 flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold rounded-lg transition-all text-gray-400 hover:bg-gray-700 hover:text-white"
+          >
+            <Wallet className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Activos</span>
           </button>
 
           <div className="flex-1" />
