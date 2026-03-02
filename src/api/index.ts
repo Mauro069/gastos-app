@@ -1,4 +1,5 @@
 import { supabase } from "@/lib";
+import type { Ingreso } from "@/types";
 import type {
   FetchAllResponse,
   CreateGastoData,
@@ -32,7 +33,10 @@ export async function fetchUsdRates(): Promise<FetchAllResponse["usdRates"]> {
 
   if (error) throw error;
   return Object.fromEntries(
-    (data || []).map((r: { month_key: string; rate: number }) => [r.month_key, r.rate])
+    (data || []).map((r: { month_key: string; rate: number }) => [
+      r.month_key,
+      r.rate,
+    ]),
   );
 }
 
@@ -76,7 +80,9 @@ export async function deleteGasto(id: string): Promise<{ ok: boolean }> {
   return { ok: true };
 }
 
-export async function deleteManyGastos(ids: string[]): Promise<{ ok: boolean }> {
+export async function deleteManyGastos(
+  ids: string[],
+): Promise<{ ok: boolean }> {
   if (ids.length === 0) return { ok: true };
   const { error } = await supabase.from("gastos").delete().in("id", ids);
   if (error) throw error;
@@ -86,40 +92,50 @@ export async function deleteManyGastos(ids: string[]): Promise<{ ok: boolean }> 
 // ── User Settings ────────────────────────────────────────────────────────────
 
 export async function getUserSettings(): Promise<UserSettings> {
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return DEFAULT_SETTINGS
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return DEFAULT_SETTINGS;
 
   const { data, error } = await supabase
     .from("user_settings")
     .select("settings")
     .eq("user_id", user.id)
-    .maybeSingle()
+    .maybeSingle();
 
-  if (error) throw error
-  if (!data) return DEFAULT_SETTINGS
+  if (error) throw error;
+  if (!data) return DEFAULT_SETTINGS;
 
-  const s = data.settings as Partial<UserSettings>
+  const s = data.settings as Partial<UserSettings>;
   return {
-    formas: Array.isArray(s.formas) && s.formas.length > 0 ? s.formas : DEFAULT_SETTINGS.formas,
-    conceptos: Array.isArray(s.conceptos) && s.conceptos.length > 0 ? s.conceptos : DEFAULT_SETTINGS.conceptos,
-  }
+    formas:
+      Array.isArray(s.formas) && s.formas.length > 0
+        ? s.formas
+        : DEFAULT_SETTINGS.formas,
+    conceptos:
+      Array.isArray(s.conceptos) && s.conceptos.length > 0
+        ? s.conceptos
+        : DEFAULT_SETTINGS.conceptos,
+  };
 }
 
 export async function saveUserSettings(settings: UserSettings): Promise<void> {
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error("Not authenticated")
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not authenticated");
 
   const { error } = await supabase
     .from("user_settings")
-    .upsert({ user_id: user.id, settings })
+    .upsert({ user_id: user.id, settings });
 
-  if (error) throw error
+  if (error) throw error;
 }
 
 export async function deleteAccount(): Promise<void> {
-  const { error } = await supabase.rpc("delete_user_account")
-  if (error) throw error
-  await supabase.auth.signOut()
+  const { error } = await supabase.rpc("delete_user_account");
+  if (error) throw error;
+  await supabase.auth.signOut();
 }
 
 // ── USD Rates ─────────────────────────────────────────────────────────────────
@@ -151,4 +167,53 @@ export async function updateMonthRate(
     ]),
   ) as UpdateMonthRateResponse["usdRates"];
   return { usdRates };
+}
+
+// ── Ingresos ──────────────────────────────────────────────────────────────────
+
+export async function fetchIngresosByYear(year: number): Promise<Ingreso[]> {
+  const { data, error } = await supabase
+    .from("ingresos")
+    .select("*")
+    .gte("fecha", `${year}-01-01`)
+    .lte("fecha", `${year}-12-31`)
+    .order("fecha", { ascending: false });
+
+  if (error) throw error;
+  return (data || []) as Ingreso[];
+}
+
+export async function createIngreso(
+  payload: Omit<Ingreso, "id" | "user_id" | "created_at">,
+): Promise<Ingreso> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not authenticated");
+  const { data, error } = await supabase
+    .from("ingresos")
+    .insert({ ...payload, user_id: user.id })
+    .select()
+    .single();
+  if (error) throw error;
+  return data as Ingreso;
+}
+
+export async function updateIngreso(
+  id: string,
+  payload: Partial<Omit<Ingreso, "id" | "user_id" | "created_at">>,
+): Promise<Ingreso> {
+  const { data, error } = await supabase
+    .from("ingresos")
+    .update(payload)
+    .eq("id", id)
+    .select()
+    .single();
+  if (error) throw error;
+  return data as Ingreso;
+}
+
+export async function deleteIngreso(id: string): Promise<void> {
+  const { error } = await supabase.from("ingresos").delete().eq("id", id);
+  if (error) throw error;
 }
