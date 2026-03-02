@@ -1,85 +1,114 @@
-import { useState, useMemo } from 'react'
-import { BarChart2, Table2, TrendingUp, DollarSign, ArrowLeft } from 'lucide-react'
-import Header from './Header'
-import GastosTable from './GastosTable'
-import Charts from './Charts'
-import Promedios from './Promedios'
-import Login from './Login'
-import { demoGastos, demoUsdRates } from '@/data'
-import { useAuth } from '@/contexts'
+import { useState, useMemo } from "react";
+import {
+  BarChart2,
+  Table2,
+  TrendingUp,
+  DollarSign,
+  ArrowLeft,
+} from "lucide-react";
+import Header from "./Header";
+import GastosTable from "./GastosTable";
+import Charts from "./Charts";
+import Promedios from "./Promedios";
+import Login from "./Login";
+import { demoGastos, demoUsdRates, demoPrevYearGastos } from "@/data";
+import { useAuth } from "@/contexts";
 
-const MONTH_NAMES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
+const MONTH_NAMES = [
+  "Ene",
+  "Feb",
+  "Mar",
+  "Abr",
+  "May",
+  "Jun",
+  "Jul",
+  "Ago",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dic",
+];
 const MONTH_FULL = [
-  'Enero',
-  'Febrero',
-  'Marzo',
-  'Abril',
-  'Mayo',
-  'Junio',
-  'Julio',
-  'Agosto',
-  'Septiembre',
-  'Octubre',
-  'Noviembre',
-  'Diciembre',
-]
-const DEFAULT_RATE = 1000
-const monthKey = (year: number, month: number) => `${year}-${String(month + 1).padStart(2, '0')}`
+  "Enero",
+  "Febrero",
+  "Marzo",
+  "Abril",
+  "Mayo",
+  "Junio",
+  "Julio",
+  "Agosto",
+  "Septiembre",
+  "Octubre",
+  "Noviembre",
+  "Diciembre",
+];
+const DEFAULT_RATE = 1000;
+const monthKey = (year: number, month: number) =>
+  `${year}-${String(month + 1).padStart(2, "0")}`;
 
 export default function Landing() {
-  const { signInWithGoogle } = useAuth()
-  const [showLogin, setShowLogin] = useState(false)
-  const [activeTab, setActiveTab] = useState<'tabla' | 'charts' | 'promedios'>('tabla')
-  const [selectedYear] = useState(2026)
-  const [selectedMonth, setSelectedMonth] = useState(0)
+  const { signInWithGoogle } = useAuth();
+  const [showLogin, setShowLogin] = useState(false);
+  const [activeTab, setActiveTab] = useState<"tabla" | "charts" | "promedios">(
+    "tabla",
+  );
+  const [promediosTab, setPromediosTab] = useState<
+    "resumen" | "meses" | "categorias" | "comparacion"
+  >("resumen");
+  const [selectedYear] = useState(2026);
+  const [selectedMonth, setSelectedMonth] = useState(0);
 
-  const gastos = demoGastos
-  const usdRates = demoUsdRates
+  const gastos = demoGastos;
+  const usdRates = demoUsdRates;
+  const prevYearGastos = demoPrevYearGastos;
 
-  const currentMonthKey = monthKey(selectedYear, selectedMonth)
+  const currentMonthKey = monthKey(selectedYear, selectedMonth);
   const currentRate = useMemo(() => {
-    if (usdRates[currentMonthKey]) return usdRates[currentMonthKey]
-    const keys = Object.keys(usdRates).sort()
-    const prior = [...keys].reverse().find(k => k <= currentMonthKey)
-    return prior ? usdRates[prior] : DEFAULT_RATE
-  }, [usdRates, currentMonthKey])
+    if (usdRates[currentMonthKey]) return usdRates[currentMonthKey];
+    const keys = Object.keys(usdRates).sort();
+    const prior = [...keys].reverse().find((k) => k <= currentMonthKey);
+    return prior ? usdRates[prior] : DEFAULT_RATE;
+  }, [usdRates, currentMonthKey]);
 
   const gastosDelMes = useMemo(() => {
-    return gastos.filter(g => {
-      const d = new Date(g.fecha + 'T12:00:00')
-      return d.getFullYear() === selectedYear && d.getMonth() === selectedMonth
-    })
-  }, [gastos, selectedYear, selectedMonth])
+    return gastos.filter((g) => {
+      const d = new Date(g.fecha + "T12:00:00");
+      return d.getFullYear() === selectedYear && d.getMonth() === selectedMonth;
+    });
+  }, [gastos, selectedYear, selectedMonth]);
 
   const { prevYear, prevMonth: prevMonthIdx } = useMemo(() => {
-    if (selectedMonth === 0) return { prevYear: selectedYear - 1, prevMonth: 11 }
-    return { prevYear: selectedYear, prevMonth: selectedMonth - 1 }
-  }, [selectedYear, selectedMonth])
+    if (selectedMonth === 0)
+      return { prevYear: selectedYear - 1, prevMonth: 11 };
+    return { prevYear: selectedYear, prevMonth: selectedMonth - 1 };
+  }, [selectedYear, selectedMonth]);
 
   const gastosDelMesAnterior = useMemo(() => {
-    return gastos.filter(g => {
-      const d = new Date(g.fecha + 'T12:00:00')
-      return d.getFullYear() === prevYear && d.getMonth() === prevMonthIdx
-    })
-  }, [gastos, prevYear, prevMonthIdx])
+    return gastos.filter((g) => {
+      const d = new Date(g.fecha + "T12:00:00");
+      return d.getFullYear() === prevYear && d.getMonth() === prevMonthIdx;
+    });
+  }, [gastos, prevYear, prevMonthIdx]);
 
-  const prevMonthLabel = `${MONTH_NAMES[prevMonthIdx]}${String(prevYear).slice(2)}`
-  const currMonthLabel = `${MONTH_NAMES[selectedMonth]}${String(selectedYear).slice(2)}`
+  const prevMonthLabel = `${MONTH_NAMES[prevMonthIdx]}${String(prevYear).slice(2)}`;
+  const currMonthLabel = `${MONTH_NAMES[selectedMonth]}${String(selectedYear).slice(2)}`;
 
   const totalMes = gastosDelMes
-    .filter(g => g.concepto !== 'Inversiones')
-    .reduce((acc, g) => acc + Number(g.cantidad), 0)
+    .filter((g) => g.concepto !== "Inversiones")
+    .reduce((acc, g) => acc + Number(g.cantidad), 0);
 
   const totalAno = useMemo(
     () =>
       gastos
-        .filter(g => new Date(g.fecha + 'T12:00:00').getFullYear() === selectedYear)
-        .filter(g => g.concepto !== 'Inversiones')
+        .filter(
+          (g) => new Date(g.fecha + "T12:00:00").getFullYear() === selectedYear,
+        )
+        .filter((g) => g.concepto !== "Inversiones")
         .reduce((a, g) => a + Number(g.cantidad), 0),
-    [gastos, selectedYear]
-  )
+    [gastos, selectedYear],
+  );
 
-  const isPromedios = activeTab === 'promedios'
+  const isPromedios = activeTab === "promedios";
 
   if (showLogin) {
     return (
@@ -97,7 +126,7 @@ export default function Landing() {
           <Login />
         </div>
       </div>
-    )
+    );
   }
 
   return (
@@ -107,10 +136,13 @@ export default function Landing() {
           <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-green-500 mb-4 shadow-lg shadow-green-500/20">
             <DollarSign className="w-7 h-7 text-white" />
           </div>
-          <h1 className="text-3xl md:text-4xl font-bold text-white mb-2">Gastos App</h1>
+          <h1 className="text-3xl md:text-4xl font-bold text-white mb-2">
+            Gastos App
+          </h1>
           <p className="text-gray-400 max-w-xl mx-auto mb-8">
-            Controlá tus gastos personales por mes, categorías y forma de pago. Gráficos, promedios
-            anuales, gastos recurrentes y tipo de cambio USD.
+            Controlá tus gastos personales por mes, categorías y forma de pago.
+            Gráficos, promedios anuales, gastos recurrentes y tipo de cambio
+            USD.
           </p>
           <button
             onClick={signInWithGoogle}
@@ -149,7 +181,9 @@ export default function Landing() {
         setUsdRates={() => {}}
         monthKey={currentMonthKey}
         monthLabel={
-          isPromedios ? `Año ${selectedYear}` : `${MONTH_FULL[selectedMonth]} ${selectedYear}`
+          isPromedios
+            ? `Año ${selectedYear}`
+            : `${MONTH_FULL[selectedMonth]} ${selectedYear}`
         }
         isPromedios={isPromedios}
         user={null}
@@ -160,27 +194,29 @@ export default function Landing() {
       <div className="bg-gray-900 border-b border-gray-800 px-4">
         <div className="max-w-screen-2xl mx-auto flex items-center gap-2 overflow-x-auto py-1">
           <div className="flex items-center gap-1 bg-gray-800 rounded-lg px-2 py-1.5 mr-2 flex-shrink-0">
-            <span className="text-white font-bold text-sm w-10 text-center">{selectedYear}</span>
+            <span className="text-white font-bold text-sm w-10 text-center">
+              {selectedYear}
+            </span>
           </div>
           {MONTH_NAMES.map((name, idx) => {
-            const hasData = gastos.some(g => {
-              const d = new Date(g.fecha + 'T12:00:00')
-              return d.getFullYear() === selectedYear && d.getMonth() === idx
-            })
-            const isActive = !isPromedios && selectedMonth === idx
+            const hasData = gastos.some((g) => {
+              const d = new Date(g.fecha + "T12:00:00");
+              return d.getFullYear() === selectedYear && d.getMonth() === idx;
+            });
+            const isActive = !isPromedios && selectedMonth === idx;
             return (
               <button
                 key={idx}
                 onClick={() => {
-                  setSelectedMonth(idx)
-                  setActiveTab('tabla')
+                  setSelectedMonth(idx);
+                  setActiveTab("tabla");
                 }}
                 className={`flex-shrink-0 px-3 py-2 text-xs font-semibold rounded-lg transition-all ${
                   isActive
-                    ? 'bg-green-600 text-white'
+                    ? "bg-green-600 text-white"
                     : hasData
-                      ? 'text-gray-200 hover:bg-gray-700'
-                      : 'text-gray-600'
+                      ? "text-gray-200 hover:bg-gray-700"
+                      : "text-gray-600"
                 }`}
               >
                 {name}
@@ -189,13 +225,15 @@ export default function Landing() {
                   <span className="ml-1 w-1.5 h-1.5 rounded-full bg-green-500 inline-block align-middle" />
                 )}
               </button>
-            )
+            );
           })}
           <div className="w-px h-6 bg-gray-700 mx-1 flex-shrink-0" />
           <button
-            onClick={() => setActiveTab('promedios')}
+            onClick={() => setActiveTab("promedios")}
             className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg transition-all ${
-              isPromedios ? 'bg-blue-600 text-white' : 'text-gray-400 hover:bg-gray-700 hover:text-white'
+              isPromedios
+                ? "bg-blue-600 text-white"
+                : "text-gray-400 hover:bg-gray-700 hover:text-white"
             }`}
           >
             <TrendingUp className="w-3.5 h-3.5" />
@@ -208,22 +246,22 @@ export default function Landing() {
         <div className="bg-gray-900/50 border-b border-gray-800/50 px-6">
           <div className="max-w-screen-2xl mx-auto flex gap-1">
             <button
-              onClick={() => setActiveTab('tabla')}
+              onClick={() => setActiveTab("tabla")}
               className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
-                activeTab === 'tabla'
-                  ? 'border-green-500 text-green-400'
-                  : 'border-transparent text-gray-500 hover:text-white'
+                activeTab === "tabla"
+                  ? "border-green-500 text-green-400"
+                  : "border-transparent text-gray-500 hover:text-white"
               }`}
             >
               <Table2 className="w-4 h-4" />
               Tabla
             </button>
             <button
-              onClick={() => setActiveTab('charts')}
+              onClick={() => setActiveTab("charts")}
               className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
-                activeTab === 'charts'
-                  ? 'border-green-500 text-green-400'
-                  : 'border-transparent text-gray-500 hover:text-white'
+                activeTab === "charts"
+                  ? "border-green-500 text-green-400"
+                  : "border-transparent text-gray-500 hover:text-white"
               }`}
             >
               <BarChart2 className="w-4 h-4" />
@@ -236,22 +274,37 @@ export default function Landing() {
       <main className="flex-1 overflow-hidden">
         <div className="max-w-screen-2xl mx-auto h-full p-6">
           {isPromedios ? (
-            <div className="overflow-y-auto scrollbar-thin" style={{ maxHeight: 'calc(100vh - 280px)' }}>
-              <Promedios gastos={gastos} selectedYear={selectedYear} usdRates={usdRates} />
+            <div
+              className="overflow-y-auto scrollbar-thin"
+              style={{ maxHeight: "calc(100vh - 280px)" }}
+            >
+              <Promedios
+                gastos={gastos}
+                selectedYear={selectedYear}
+                usdRates={usdRates}
+                prevYearGastos={prevYearGastos}
+                prevYear={selectedYear - 1}
+                activeTab={promediosTab}
+                onTabChange={setPromediosTab}
+              />
             </div>
-          ) : activeTab === 'tabla' ? (
-            <div className="flex flex-col" style={{ minHeight: 'calc(100vh - 320px)' }}>
+          ) : activeTab === "tabla" ? (
+            <div
+              className="flex flex-col"
+              style={{ minHeight: "calc(100vh - 320px)" }}
+            >
               <GastosTable
                 gastos={gastosDelMes}
-                setGastos={() => {}}
-                allGastos={gastos}
                 selectedYear={selectedYear}
                 selectedMonth={selectedMonth}
                 demo
               />
             </div>
           ) : (
-            <div className="overflow-y-auto scrollbar-thin" style={{ maxHeight: 'calc(100vh - 320px)' }}>
+            <div
+              className="overflow-y-auto scrollbar-thin"
+              style={{ maxHeight: "calc(100vh - 320px)" }}
+            >
               <Charts
                 gastos={gastosDelMes}
                 prevGastos={gastosDelMesAnterior}
@@ -263,5 +316,5 @@ export default function Landing() {
         </div>
       </main>
     </div>
-  )
+  );
 }

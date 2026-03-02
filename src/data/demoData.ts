@@ -150,3 +150,100 @@ export const demoUsdRates: UsdRates = {
   '2026-11': 1550,
   '2026-12': 1575,
 }
+
+// ── Datos demo año anterior (2025) para la tab Comparación ─────────────────
+
+export const demoPrevYearGastos: Gasto[] = [
+  // Enero
+  { id: 'p-ene-1', fecha: '2025-01-03', cantidad: 19500,  forma: 'Lemon',   concepto: 'Casa',       nota: 'Tender',            createdAt: '2025-01-03T00:00:00.000Z' },
+  { id: 'p-ene-2', fecha: '2025-01-04', cantidad: 42800,  forma: 'Lemon',   concepto: 'Casa',       nota: 'Cuota de la Luz',   createdAt: '2025-01-04T00:00:00.000Z' },
+  { id: 'p-ene-3', fecha: '2025-01-05', cantidad: 221000, forma: 'Credito', concepto: 'Creditos',   nota: 'Tarjeta',           createdAt: '2025-01-05T00:00:00.000Z' },
+  { id: 'p-ene-4', fecha: '2025-01-08', cantidad: 15900,  forma: 'Lemon',   concepto: 'Comida',     nota: 'Super',             createdAt: '2025-01-08T00:00:00.000Z' },
+  { id: 'p-ene-5', fecha: '2025-01-10', cantidad: 54000,  forma: 'Lemon',   concepto: 'Fijos',      nota: 'Gym',               createdAt: '2025-01-10T00:00:00.000Z' },
+  { id: 'p-ene-6', fecha: '2025-01-15', cantidad: 14200,  forma: 'Lemon',   concepto: 'Salidas',    nota: 'Salida',            createdAt: '2025-01-15T00:00:00.000Z' },
+  { id: 'p-ene-7', fecha: '2025-01-20', cantidad: 22000,  forma: 'Lemon',   concepto: 'Transporte', nota: 'Nafta',             createdAt: '2025-01-20T00:00:00.000Z' },
+  { id: 'p-ene-8', fecha: '2025-01-28', cantidad: 150000, forma: 'Uala',    concepto: 'Inversiones',nota: 'Inversión',         createdAt: '2025-01-28T00:00:00.000Z' },
+  // Febrero
+  { id: 'p-feb-1', fecha: '2025-02-02', cantidad: 43200,  forma: 'Lemon',   concepto: 'Casa',       nota: 'Luz',               createdAt: '2025-02-02T00:00:00.000Z' },
+  { id: 'p-feb-2', fecha: '2025-02-05', cantidad: 178000, forma: 'Credito', concepto: 'Creditos',   nota: 'Tarjeta',           createdAt: '2025-02-05T00:00:00.000Z' },
+  { id: 'p-feb-3', fecha: '2025-02-08', cantidad: 18000,  forma: 'Lemon',   concepto: 'Salidas',    nota: 'Salida',            createdAt: '2025-02-08T00:00:00.000Z' },
+  { id: 'p-feb-4', fecha: '2025-02-12', cantidad: 14000,  forma: 'Lemon',   concepto: 'Comida',     nota: 'Super',             createdAt: '2025-02-12T00:00:00.000Z' },
+  { id: 'p-feb-5', fecha: '2025-02-14', cantidad: 54000,  forma: 'Lemon',   concepto: 'Fijos',      nota: 'Gym',               createdAt: '2025-02-14T00:00:00.000Z' },
+  { id: 'p-feb-6', fecha: '2025-02-18', cantidad: 22000,  forma: 'Lemon',   concepto: 'Transporte', nota: 'Nafta',             createdAt: '2025-02-18T00:00:00.000Z' },
+  { id: 'p-feb-7', fecha: '2025-02-24', cantidad: 9500,   forma: 'Wise',    concepto: 'Fijos',      nota: 'Software',          createdAt: '2025-02-24T00:00:00.000Z' },
+  // Marzo
+  { id: 'p-mar-1', fecha: '2025-03-03', cantidad: 48000,  forma: 'Lemon',   concepto: 'Casa',       nota: 'Alquiler',          createdAt: '2025-03-03T00:00:00.000Z' },
+  { id: 'p-mar-2', fecha: '2025-03-05', cantidad: 14200,  forma: 'Lemon',   concepto: 'Comida',     nota: 'Supermercado',      createdAt: '2025-03-05T00:00:00.000Z' },
+  { id: 'p-mar-3', fecha: '2025-03-07', cantidad: 24000,  forma: 'Credito', concepto: 'Fijos',      nota: 'Servicios',         createdAt: '2025-03-07T00:00:00.000Z' },
+  { id: 'p-mar-4', fecha: '2025-03-12', cantidad: 16500,  forma: 'Lemon',   concepto: 'Salidas',    nota: 'Cena',              createdAt: '2025-03-12T00:00:00.000Z' },
+  { id: 'p-mar-5', fecha: '2025-03-20', cantidad: 8000,   forma: 'Efectivo',concepto: 'Transporte', nota: 'Colectivo',         createdAt: '2025-03-20T00:00:00.000Z' },
+  // Abril
+  { id: 'p-abr-1', fecha: '2025-04-02', cantidad: 50000,  forma: 'Lemon',   concepto: 'Casa',       nota: 'Alquiler',          createdAt: '2025-04-02T00:00:00.000Z' },
+  { id: 'p-abr-2', fecha: '2025-04-06', cantidad: 15500,  forma: 'Lemon',   concepto: 'Comida',     nota: 'Super',             createdAt: '2025-04-06T00:00:00.000Z' },
+  { id: 'p-abr-3', fecha: '2025-04-08', cantidad: 24500,  forma: 'Credito', concepto: 'Fijos',      nota: 'Servicios',         createdAt: '2025-04-08T00:00:00.000Z' },
+  { id: 'p-abr-4', fecha: '2025-04-15', cantidad: 19000,  forma: 'Lemon',   concepto: 'Salidas',    nota: 'Salida',            createdAt: '2025-04-15T00:00:00.000Z' },
+  { id: 'p-abr-5', fecha: '2025-04-22', cantidad: 9000,   forma: 'Efectivo',concepto: 'Otros',      nota: 'Varios',            createdAt: '2025-04-22T00:00:00.000Z' },
+  // Mayo
+  { id: 'p-may-1', fecha: '2025-05-02', cantidad: 52000,  forma: 'Lemon',   concepto: 'Casa',       nota: 'Alquiler',          createdAt: '2025-05-02T00:00:00.000Z' },
+  { id: 'p-may-2', fecha: '2025-05-06', cantidad: 17000,  forma: 'Lemon',   concepto: 'Comida',     nota: 'Verdulería + super', createdAt: '2025-05-06T00:00:00.000Z' },
+  { id: 'p-may-3', fecha: '2025-05-09', cantidad: 25000,  forma: 'Credito', concepto: 'Fijos',      nota: 'Servicios',         createdAt: '2025-05-09T00:00:00.000Z' },
+  { id: 'p-may-4', fecha: '2025-05-16', cantidad: 14000,  forma: 'Lemon',   concepto: 'Salidas',    nota: 'Cine + cena',       createdAt: '2025-05-16T00:00:00.000Z' },
+  { id: 'p-may-5', fecha: '2025-05-24', cantidad: 6500,   forma: 'Efectivo',concepto: 'Transporte', nota: 'Nafta',             createdAt: '2025-05-24T00:00:00.000Z' },
+  // Junio
+  { id: 'p-jun-1', fecha: '2025-06-02', cantidad: 54000,  forma: 'Lemon',   concepto: 'Casa',       nota: 'Alquiler',          createdAt: '2025-06-02T00:00:00.000Z' },
+  { id: 'p-jun-2', fecha: '2025-06-04', cantidad: 16500,  forma: 'Lemon',   concepto: 'Comida',     nota: 'Super',             createdAt: '2025-06-04T00:00:00.000Z' },
+  { id: 'p-jun-3', fecha: '2025-06-08', cantidad: 25500,  forma: 'Credito', concepto: 'Fijos',      nota: 'Servicios',         createdAt: '2025-06-08T00:00:00.000Z' },
+  { id: 'p-jun-4', fecha: '2025-06-16', cantidad: 12000,  forma: 'Lemon',   concepto: 'Salidas',    nota: 'Cervezas',          createdAt: '2025-06-16T00:00:00.000Z' },
+  { id: 'p-jun-5', fecha: '2025-06-26', cantidad: 7500,   forma: 'Efectivo',concepto: 'Comida',     nota: 'Almuerzo',          createdAt: '2025-06-26T00:00:00.000Z' },
+  // Julio
+  { id: 'p-jul-1', fecha: '2025-07-02', cantidad: 56000,  forma: 'Lemon',   concepto: 'Casa',       nota: 'Alquiler',          createdAt: '2025-07-02T00:00:00.000Z' },
+  { id: 'p-jul-2', fecha: '2025-07-05', cantidad: 18000,  forma: 'Lemon',   concepto: 'Comida',     nota: 'Super + pedidos',   createdAt: '2025-07-05T00:00:00.000Z' },
+  { id: 'p-jul-3', fecha: '2025-07-10', cantidad: 27000,  forma: 'Credito', concepto: 'Fijos',      nota: 'Servicios',         createdAt: '2025-07-10T00:00:00.000Z' },
+  { id: 'p-jul-4', fecha: '2025-07-18', cantidad: 20000,  forma: 'Lemon',   concepto: 'Salidas',    nota: 'Fin de semana',     createdAt: '2025-07-18T00:00:00.000Z' },
+  { id: 'p-jul-5', fecha: '2025-07-25', cantidad: 8000,   forma: 'Wise',    concepto: 'Educacion',  nota: 'Curso',             createdAt: '2025-07-25T00:00:00.000Z' },
+  // Agosto
+  { id: 'p-ago-1', fecha: '2025-08-01', cantidad: 58000,  forma: 'Lemon',   concepto: 'Casa',       nota: 'Alquiler',          createdAt: '2025-08-01T00:00:00.000Z' },
+  { id: 'p-ago-2', fecha: '2025-08-04', cantidad: 17500,  forma: 'Lemon',   concepto: 'Comida',     nota: 'Super',             createdAt: '2025-08-04T00:00:00.000Z' },
+  { id: 'p-ago-3', fecha: '2025-08-09', cantidad: 26500,  forma: 'Credito', concepto: 'Fijos',      nota: 'Servicios',         createdAt: '2025-08-09T00:00:00.000Z' },
+  { id: 'p-ago-4', fecha: '2025-08-17', cantidad: 17000,  forma: 'Lemon',   concepto: 'Salidas',    nota: 'Cumpleaños',        createdAt: '2025-08-17T00:00:00.000Z' },
+  { id: 'p-ago-5', fecha: '2025-08-28', cantidad: 7800,   forma: 'Efectivo',concepto: 'Transporte', nota: 'Nafta',             createdAt: '2025-08-28T00:00:00.000Z' },
+  // Septiembre
+  { id: 'p-sep-1', fecha: '2025-09-02', cantidad: 60000,  forma: 'Lemon',   concepto: 'Casa',       nota: 'Alquiler',          createdAt: '2025-09-02T00:00:00.000Z' },
+  { id: 'p-sep-2', fecha: '2025-09-06', cantidad: 18500,  forma: 'Lemon',   concepto: 'Comida',     nota: 'Super',             createdAt: '2025-09-06T00:00:00.000Z' },
+  { id: 'p-sep-3', fecha: '2025-09-10', cantidad: 28000,  forma: 'Credito', concepto: 'Fijos',      nota: 'Servicios',         createdAt: '2025-09-10T00:00:00.000Z' },
+  { id: 'p-sep-4', fecha: '2025-09-19', cantidad: 14500,  forma: 'Lemon',   concepto: 'Salidas',    nota: 'Cena',              createdAt: '2025-09-19T00:00:00.000Z' },
+  { id: 'p-sep-5', fecha: '2025-09-29', cantidad: 9000,   forma: 'Efectivo',concepto: 'Comida',     nota: 'Almuerzo',          createdAt: '2025-09-29T00:00:00.000Z' },
+  // Octubre
+  { id: 'p-oct-1', fecha: '2025-10-02', cantidad: 62000,  forma: 'Lemon',   concepto: 'Casa',       nota: 'Alquiler',          createdAt: '2025-10-02T00:00:00.000Z' },
+  { id: 'p-oct-2', fecha: '2025-10-05', cantidad: 19000,  forma: 'Lemon',   concepto: 'Comida',     nota: 'Super',             createdAt: '2025-10-05T00:00:00.000Z' },
+  { id: 'p-oct-3', fecha: '2025-10-08', cantidad: 29000,  forma: 'Credito', concepto: 'Fijos',      nota: 'Servicios',         createdAt: '2025-10-08T00:00:00.000Z' },
+  { id: 'p-oct-4', fecha: '2025-10-16', cantidad: 17000,  forma: 'Lemon',   concepto: 'Salidas',    nota: 'Salida',            createdAt: '2025-10-16T00:00:00.000Z' },
+  { id: 'p-oct-5', fecha: '2025-10-27', cantidad: 7500,   forma: 'Wise',    concepto: 'Otros',      nota: 'Software',          createdAt: '2025-10-27T00:00:00.000Z' },
+  // Noviembre
+  { id: 'p-nov-1', fecha: '2025-11-03', cantidad: 64000,  forma: 'Lemon',   concepto: 'Casa',       nota: 'Alquiler',          createdAt: '2025-11-03T00:00:00.000Z' },
+  { id: 'p-nov-2', fecha: '2025-11-07', cantidad: 20500,  forma: 'Lemon',   concepto: 'Comida',     nota: 'Super',             createdAt: '2025-11-07T00:00:00.000Z' },
+  { id: 'p-nov-3', fecha: '2025-11-10', cantidad: 30000,  forma: 'Credito', concepto: 'Fijos',      nota: 'Servicios',         createdAt: '2025-11-10T00:00:00.000Z' },
+  { id: 'p-nov-4', fecha: '2025-11-20', cantidad: 19000,  forma: 'Lemon',   concepto: 'Salidas',    nota: 'Salidas varias',    createdAt: '2025-11-20T00:00:00.000Z' },
+  { id: 'p-nov-5', fecha: '2025-11-28', cantidad: 12000,  forma: 'Efectivo',concepto: 'Regalos',    nota: 'Cumpleaños',        createdAt: '2025-11-28T00:00:00.000Z' },
+  // Diciembre
+  { id: 'p-dic-1', fecha: '2025-12-02', cantidad: 66000,  forma: 'Lemon',   concepto: 'Casa',       nota: 'Alquiler',          createdAt: '2025-12-02T00:00:00.000Z' },
+  { id: 'p-dic-2', fecha: '2025-12-06', cantidad: 24000,  forma: 'Lemon',   concepto: 'Comida',     nota: 'Fiestas',           createdAt: '2025-12-06T00:00:00.000Z' },
+  { id: 'p-dic-3', fecha: '2025-12-12', cantidad: 33000,  forma: 'Credito', concepto: 'Fijos',      nota: 'Servicios',         createdAt: '2025-12-12T00:00:00.000Z' },
+  { id: 'p-dic-4', fecha: '2025-12-22', cantidad: 28000,  forma: 'Lemon',   concepto: 'Salidas',    nota: 'Navidad',           createdAt: '2025-12-22T00:00:00.000Z' },
+  { id: 'p-dic-5', fecha: '2025-12-28', cantidad: 16000,  forma: 'Efectivo',concepto: 'Regalos',    nota: 'Navidad',           createdAt: '2025-12-28T00:00:00.000Z' },
+]
+
+export const demoPrevUsdRates: UsdRates = {
+  '2025-01': 1050,
+  '2025-02': 1100,
+  '2025-03': 1150,
+  '2025-04': 1180,
+  '2025-05': 1200,
+  '2025-06': 1220,
+  '2025-07': 1240,
+  '2025-08': 1270,
+  '2025-09': 1300,
+  '2025-10': 1350,
+  '2025-11': 1400,
+  '2025-12': 1460,
+}

@@ -1,1 +1,1 @@
-export { demoGastos, demoUsdRates } from './demoData'
+export { demoGastos, demoUsdRates, demoPrevYearGastos, demoPrevUsdRates } from './demoData'
