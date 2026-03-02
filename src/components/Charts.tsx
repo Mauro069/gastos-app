@@ -305,7 +305,7 @@ export default function Charts({
         total: sum,
         pct: total > 0 ? ((sum / total) * 100).toFixed(1) : '0.0',
       }
-    }).filter(d => d.total > 0)
+    }).filter(d => d.total > 0).sort((a, b) => b.total - a.total)
   }, [gastos, settings.formas])
 
   const byConcepto = useMemo(() => {
@@ -319,7 +319,7 @@ export default function Charts({
         total: sum,
         pct: total > 0 ? ((sum / total) * 100).toFixed(1) : '0.0',
       }
-    }).filter(d => d.total > 0)
+    }).filter(d => d.total > 0).sort((a, b) => b.total - a.total)
   }, [gastos, settings.conceptos])
 
   if (gastos.length === 0) {

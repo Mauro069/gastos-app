@@ -22,6 +22,7 @@ export interface GastosTableProps {
   selectedYear: number;
   selectedMonth: number;
   demo?: boolean;
+  onImport?: () => void;
 }
 
 export interface GastoModalProps {

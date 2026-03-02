@@ -277,15 +277,6 @@ export default function App() {
           </button>
 
           <div className="flex-1" />
-
-          {/* Importar */}
-          <button
-            onClick={() => setShowImport(true)}
-            className="flex-shrink-0 flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold rounded-lg text-gray-400 hover:bg-gray-700 hover:text-white transition-all"
-          >
-            <Upload className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Importar</span>
-          </button>
         </div>
       </div>
 
@@ -330,6 +321,7 @@ export default function App() {
             gastos={gastosDelMes}
             selectedYear={selectedYear}
             selectedMonth={selectedMonth}
+            onImport={() => setShowImport(true)}
           />
         </div>
 

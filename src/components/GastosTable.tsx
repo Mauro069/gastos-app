@@ -2,7 +2,7 @@ import { useState, useMemo, useRef, useEffect } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   Plus, Pencil, Trash2, Search, ChevronUp, ChevronDown,
-  ChevronsUpDown, X, ChevronDown as ChevronDownIcon,
+  ChevronsUpDown, X, ChevronDown as ChevronDownIcon, Upload,
 } from 'lucide-react'
 import { FORMA_BG, CONCEPTO_BG } from '@/constants'
 import GastoModal from './GastoModal'
@@ -124,7 +124,7 @@ function IndeterminateCheckbox({
 
 // ── Main component ─────────────────────────────────────────────────────────
 
-export default function GastosTable({ gastos, selectedYear, selectedMonth, demo }: GastosTableProps) {
+export default function GastosTable({ gastos, selectedYear, selectedMonth, demo, onImport }: GastosTableProps) {
   const { user } = useAuth()
   const { settings } = useUserSettings()
   const queryClient = useQueryClient()
@@ -335,15 +335,26 @@ export default function GastosTable({ gastos, selectedYear, selectedMonth, demo 
           onChange={setFilterConceptos}
         />
 
-        {/* Botón Agregar — desktop; en mobile lo cubre el FAB */}
+        {/* Botones acción — desktop; en mobile lo cubre el FAB */}
         {!demo && (
-          <button
-            onClick={() => setModal('new')}
-            className="hidden sm:flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium bg-green-600 hover:bg-green-500 text-white transition-colors flex-shrink-0"
-          >
-            <Plus className="w-4 h-4" />
-            Nuevo gasto
-          </button>
+          <div className="hidden sm:flex items-center gap-2 flex-shrink-0">
+            {onImport && (
+              <button
+                onClick={onImport}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium bg-amber-600 hover:bg-amber-500 text-white transition-colors"
+              >
+                <Upload className="w-4 h-4" />
+                Importar
+              </button>
+            )}
+            <button
+              onClick={() => setModal('new')}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium bg-green-600 hover:bg-green-500 text-white transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              Nuevo gasto
+            </button>
+          </div>
         )}
       </div>
 
