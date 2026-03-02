@@ -235,6 +235,51 @@ export default function GastosTable({ gastos, selectedYear, selectedMonth, demo,
 
   // ── Row renderer ───────────────────────────────────────────────────────────
 
+  // Selecciona/deselecciona todas las filas de un grupo de fecha
+  const toggleGroup = (ids: string[]) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev)
+      const allIn = ids.every(id => next.has(id))
+      allIn ? ids.forEach(id => next.delete(id)) : ids.forEach(id => next.add(id))
+      return next
+    })
+  }
+
+  // Fila cabecera de grupo (fecha + count + total del día)
+  const renderGroupHeader = (date: string, group: Gasto[]) => {
+    const ids = group.map(g => g.id)
+    const allSel = ids.every(id => selectedIds.has(id))
+    const someSel = ids.some(id => selectedIds.has(id)) && !allSel
+    const dayTotal = group.reduce((a, g) => a + Number(g.cantidad), 0)
+    const d = new Date(date + 'T12:00:00')
+    const label = `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`
+    return (
+      <tr key={`grp-${date}`} className="bg-gray-800/50 border-t border-gray-700/40 first:border-t-0">
+        {!demo && (
+          <td className="pl-4 pr-2 py-1 w-8" onClick={e => e.stopPropagation()}>
+            <IndeterminateCheckbox
+              checked={allSel}
+              indeterminate={someSel}
+              onChange={() => toggleGroup(ids)}
+            />
+          </td>
+        )}
+        <td className={`${demo ? 'pl-4' : 'pl-3'} pr-3 py-1`}>
+          <div className="flex items-center gap-2">
+            <span className="text-gray-300 text-xs font-semibold tabular-nums">{label}</span>
+            <span className="text-gray-600 text-xs">·</span>
+            <span className="text-gray-500 text-xs whitespace-nowrap">{group.length} {group.length === 1 ? 'gasto' : 'gastos'}</span>
+          </div>
+        </td>
+        {/* Total alineado con columna CANTIDAD */}
+        <td className="px-4 py-1 text-right whitespace-nowrap">
+          <span className="text-gray-500 text-xs font-medium tabular-nums">{fmt(dayTotal)}</span>
+        </td>
+        <td colSpan={demo ? 3 : 4} />
+      </tr>
+    )
+  }
+
   const renderRow = (g: Gasto, i: number) => {
     const isSelected = selectedIds.has(g.id)
 
@@ -242,12 +287,10 @@ export default function GastosTable({ gastos, selectedYear, selectedMonth, demo,
       <tr
         key={g.id}
         onClick={!demo ? () => toggleRow(g.id) : undefined}
-        className={`transition-colors group ${!demo ? 'cursor-pointer' : ''} ${
+        className={`transition-colors group border-t border-gray-800/40 ${!demo ? 'cursor-pointer' : ''} ${
           isSelected
             ? 'bg-green-900/20 hover:bg-green-900/30'
-            : i % 2 === 0
-              ? 'bg-gray-900 hover:bg-gray-800/60'
-              : 'bg-gray-900/50 hover:bg-gray-800/60'
+            : 'bg-gray-900 hover:bg-gray-800/60'
         }`}
       >
         {!demo && (
@@ -255,9 +298,9 @@ export default function GastosTable({ gastos, selectedYear, selectedMonth, demo,
             <IndeterminateCheckbox checked={isSelected} onChange={() => toggleRow(g.id)} />
           </td>
         )}
-        {/* Fecha */}
+        {/* Fecha — vacía dentro del grupo, visible en modo plano */}
         <td className="pl-4 pr-3 py-2.5 whitespace-nowrap text-gray-400 text-xs tabular-nums w-16">
-          {(() => {
+          {sortField !== 'fecha' && (() => {
             const d = new Date(g.fecha + 'T12:00:00')
             return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`
           })()}
@@ -420,7 +463,7 @@ export default function GastosTable({ gastos, selectedYear, selectedMonth, demo,
               {!demo && <th className="px-3 py-2.5 text-center w-16">Acciones</th>}
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-800/40">
+          <tbody>
             {filtered.length === 0 ? (
               <tr>
                 <td colSpan={colSpan} className="text-center py-16 text-gray-600">
@@ -430,7 +473,22 @@ export default function GastosTable({ gastos, selectedYear, selectedMonth, demo,
                   </p>
                 </td>
               </tr>
+            ) : sortField === 'fecha' ? (
+              // Agrupado por fecha con cabecera de grupo
+              (() => {
+                const groups: [string, Gasto[]][] = []
+                const map: Record<string, Gasto[]> = {}
+                for (const g of filtered) {
+                  if (!map[g.fecha]) { map[g.fecha] = []; groups.push([g.fecha, map[g.fecha]]) }
+                  map[g.fecha].push(g)
+                }
+                return groups.flatMap(([date, group]) => [
+                  renderGroupHeader(date, group),
+                  ...group.map((g, i) => renderRow(g, i)),
+                ])
+              })()
             ) : (
+              // Plano cuando se ordena por otro campo
               filtered.map((g, i) => renderRow(g, i))
             )}
           </tbody>
