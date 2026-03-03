@@ -554,7 +554,10 @@ export default function ActivosPage() {
       const deltaUsd = prev ? totalUsd - prevTotalUsd : 0;
       const deltaPct = prev && prevTotalUsd > 0 ? (deltaUsd / prevTotalUsd) * 100 : 0;
 
-      return { ...snap, dispUsd, invUsd, totalUsd, totalArs, deltaUsd, deltaPct };
+      const dispArs = dispUsd * snap.usd_rate;
+      const invArs = invUsd * snap.usd_rate;
+
+      return { ...snap, dispUsd, invUsd, totalUsd, totalArs, dispArs, invArs, deltaUsd, deltaPct };
     });
   }, [snapshots, disponibles, inversiones]);
 
@@ -664,10 +667,12 @@ export default function ActivosPage() {
                   <div className="bg-gray-900 ring-1 ring-blue-800/40 rounded-2xl p-4">
                     <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Disponible</p>
                     <p className="text-2xl font-bold tabular-nums text-blue-300">{fmtUsd(latestSnapshot.dispUsd)}</p>
+                    <p className="text-xs text-gray-600 mt-1 tabular-nums">{fmtArs(latestSnapshot.dispArs)}</p>
                   </div>
                   <div className="bg-gray-900 ring-1 ring-purple-800/40 rounded-2xl p-4">
                     <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Inversiones</p>
                     <p className="text-2xl font-bold tabular-nums text-purple-300">{fmtUsd(latestSnapshot.invUsd)}</p>
+                    <p className="text-xs text-gray-600 mt-1 tabular-nums">{fmtArs(latestSnapshot.invArs)}</p>
                   </div>
                   <div className={`bg-gray-900 ring-1 rounded-2xl p-4 ${latestSnapshot.deltaUsd >= 0 ? "ring-emerald-800/40" : "ring-red-800/40"}`}>
                     <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Variación (vs anterior)</p>
