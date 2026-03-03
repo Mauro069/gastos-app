@@ -4,7 +4,7 @@ import {
   Plus, Pencil, Trash2, Search, ChevronUp, ChevronDown,
   ChevronsUpDown, X, ChevronDown as ChevronDownIcon, Upload,
 } from 'lucide-react'
-import { FORMA_BG, CONCEPTO_BG } from '@/constants'
+import { getChipStyle } from '@/utils/chipColor'
 import GastoModal from './GastoModal'
 import { createGasto, updateGasto, deleteGasto, deleteManyGastos } from '@/api'
 import type { GastosTableProps, Gasto } from '@/types'
@@ -310,12 +310,12 @@ export default function GastosTable({ gastos, selectedYear, selectedMonth, demo,
           <span className="font-semibold text-white tabular-nums">{fmt(g.cantidad)}</span>
         </td>
         <td className="px-3 py-2.5">
-          <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-semibold ${FORMA_BG[g.forma] || 'bg-gray-600 text-white'}`}>
+          <span className="inline-block px-2 py-0.5 rounded-full text-xs font-semibold" style={getChipStyle(g.forma, 'forma', settings)}>
             {g.forma}
           </span>
         </td>
         <td className="px-3 py-2.5">
-          <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-semibold ${CONCEPTO_BG[g.concepto] || 'bg-gray-600 text-white'}`}>
+          <span className="inline-block px-2 py-0.5 rounded-full text-xs font-semibold" style={getChipStyle(g.concepto, 'concepto', settings)}>
             {g.concepto}
           </span>
         </td>

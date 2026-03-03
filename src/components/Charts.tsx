@@ -12,9 +12,9 @@ import {
   CartesianGrid,
 } from 'recharts'
 import { TrendingUp, TrendingDown, Minus, Trophy } from 'lucide-react'
-import { CONCEPTO_COLORS, FORMA_COLORS } from '@/constants'
 import type { ChartsProps, Gasto } from '@/types'
 import { useUserSettings } from '@/contexts'
+import { getChipHex } from '@/utils/chipColor'
 
 const fmt = (n: number) =>
   new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(n)
@@ -99,12 +99,14 @@ function ComparacionMes({
   monthLabel,
   prevMonthLabel,
   conceptos,
+  conceptoColorMap,
 }: {
   gastos: Gasto[]
   prevGastos: Gasto[]
   monthLabel: string
   prevMonthLabel: string
   conceptos: string[]
+  conceptoColorMap: Record<string, string>
 }) {
   const data = useMemo(() => {
     return conceptos.map(c => {
@@ -192,7 +194,7 @@ function ComparacionMes({
           >
             <div
               className="w-2 h-2 rounded-full flex-shrink-0"
-              style={{ backgroundColor: CONCEPTO_COLORS[d.name] || '#6B7280' }}
+              style={{ backgroundColor: conceptoColorMap[d.name] || '#6B7280' }}
             />
             <span className="text-gray-300 text-xs flex-1 truncate">{d.name}</span>
             <span className={`text-xs font-semibold tabular-nums ${d.curr > 0 ? 'text-gray-200' : 'text-gray-700'}`}>
@@ -212,7 +214,7 @@ function ComparacionMes({
   )
 }
 
-function TopGastos({ gastos, monthLabel }: { gastos: Gasto[]; monthLabel: string }) {
+function TopGastos({ gastos, monthLabel, conceptoColorMap }: { gastos: Gasto[]; monthLabel: string; conceptoColorMap: Record<string, string> }) {
   const top = useMemo(
     () => [...gastos].sort((a, b) => Number(b.cantidad) - Number(a.cantidad)).slice(0, 10),
     [gastos]
@@ -250,7 +252,7 @@ function TopGastos({ gastos, monthLabel }: { gastos: Gasto[]; monthLabel: string
                 <div className="flex items-center gap-1.5 mt-0.5">
                   <span
                     className="text-[10px]"
-                    style={{ color: CONCEPTO_COLORS[g.concepto] || '#6B7280' }}
+                    style={{ color: conceptoColorMap[g.concepto] || '#6B7280' }}
                   >
                     {g.concepto}
                   </span>
@@ -271,7 +273,7 @@ function TopGastos({ gastos, monthLabel }: { gastos: Gasto[]; monthLabel: string
                       className="h-full rounded-full"
                       style={{
                         width: `${Math.min(pct, 100)}%`,
-                        backgroundColor: CONCEPTO_COLORS[g.concepto] || '#6B7280',
+                        backgroundColor: conceptoColorMap[g.concepto] || '#6B7280',
                       }}
                     />
                   </div>
@@ -293,6 +295,16 @@ export default function Charts({
   prevMonthLabel = '',
 }: ChartsProps) {
   const { settings } = useUserSettings()
+
+  // Build color maps from user-defined colors (fallback to constants via getChipHex)
+  const formaColorMap = useMemo(() =>
+    Object.fromEntries(settings.formas.map(f => [f, getChipHex(f, 'forma', settings)])),
+    [settings]
+  )
+  const conceptoColorMap = useMemo(() =>
+    Object.fromEntries(settings.conceptos.map(c => [c, getChipHex(c, 'concepto', settings)])),
+    [settings]
+  )
 
   const byForma = useMemo(() => {
     const total = gastos.reduce((a, g) => a + Number(g.cantidad), 0)
@@ -352,14 +364,14 @@ export default function Charts({
                     paddingAngle={2}
                   >
                     {byForma.map(d => (
-                      <Cell key={d.name} fill={FORMA_COLORS[d.name] || '#6B7280'} />
+                      <Cell key={d.name} fill={formaColorMap[d.name] || '#6B7280'} />
                     ))}
                   </Pie>
                   <Tooltip content={<CustomTooltip />} />
                 </PieChart>
               </ResponsiveContainer>
             </div>
-            <SummaryTable title="" data={byForma} colorMap={FORMA_COLORS} />
+            <SummaryTable title="" data={byForma} colorMap={formaColorMap} />
           </div>
         </div>
 
@@ -382,14 +394,14 @@ export default function Charts({
                     paddingAngle={2}
                   >
                     {byConcepto.map(d => (
-                      <Cell key={d.name} fill={CONCEPTO_COLORS[d.name] || '#6B7280'} />
+                      <Cell key={d.name} fill={conceptoColorMap[d.name] || '#6B7280'} />
                     ))}
                   </Pie>
                   <Tooltip content={<CustomTooltip />} />
                 </PieChart>
               </ResponsiveContainer>
             </div>
-            <SummaryTable title="" data={byConcepto} colorMap={CONCEPTO_COLORS} />
+            <SummaryTable title="" data={byConcepto} colorMap={conceptoColorMap} />
           </div>
         </div>
       </div>
@@ -414,7 +426,7 @@ export default function Charts({
               <Tooltip content={<BarTooltip />} />
               <Bar dataKey="total" radius={[4, 4, 0, 0]}>
                 {byConcepto.map(d => (
-                  <Cell key={d.name} fill={CONCEPTO_COLORS[d.name] || '#6B7280'} />
+                  <Cell key={d.name} fill={conceptoColorMap[d.name] || '#6B7280'} />
                 ))}
               </Bar>
             </BarChart>
@@ -428,8 +440,9 @@ export default function Charts({
         monthLabel={monthLabel}
         prevMonthLabel={prevMonthLabel}
         conceptos={settings.conceptos}
+        conceptoColorMap={conceptoColorMap}
       />
-      <TopGastos gastos={gastos} monthLabel={monthLabel} />
+      <TopGastos gastos={gastos} monthLabel={monthLabel} conceptoColorMap={conceptoColorMap} />
     </div>
   )
 }

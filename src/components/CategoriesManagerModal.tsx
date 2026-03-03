@@ -1,27 +1,129 @@
-import { useState } from "react";
-import { X, Pencil, Check, Plus, Loader2, CreditCard, Tag } from "lucide-react";
-import { FORMA_BG, CONCEPTO_BG } from "@/constants";
-import type { Forma, Concepto } from "@/types";
+import { useState, useRef, useEffect } from "react";
+import { X, Pencil, Check, Plus, Loader2, CreditCard, Tag, Palette } from "lucide-react";
 import { useUserSettings } from "@/contexts";
+import { getChipHex, getChipStyle } from "@/utils/chipColor";
+
+// ── Preset colour palette ─────────────────────────────────────────────────────
+
+const PRESET_COLORS = [
+  "#EF4444", "#F97316", "#F59E0B", "#EAB308",
+  "#22C55E", "#10B981", "#14B8A6", "#06B6D4",
+  "#3B82F6", "#6366F1", "#8B5CF6", "#A855F7",
+  "#EC4899", "#6B7280", "#FFD700", "#009EE3",
+];
+
+// ── Color picker popover ──────────────────────────────────────────────────────
+
+const PICKER_WIDTH = 194;
+
+function ColorPicker({
+  currentHex,
+  onSelect,
+  onClose,
+  anchorRect,
+}: {
+  currentHex: string;
+  onSelect: (hex: string) => void;
+  onClose: () => void;
+  anchorRect: DOMRect;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [custom, setCustom] = useState(currentHex);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) onClose();
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [onClose]);
+
+  // Position fixed relative to the viewport so overflow-hidden parents don't clip it
+  const top = anchorRect.bottom + 6;
+  const left = Math.min(anchorRect.left, window.innerWidth - PICKER_WIDTH - 8);
+
+  return (
+    <div
+      ref={ref}
+      style={{ position: "fixed", top, left, width: PICKER_WIDTH, zIndex: 9999 }}
+      className="bg-gray-800 border border-gray-700 rounded-xl p-3 shadow-2xl"
+    >
+      {/* Preset grid */}
+      <div className="grid grid-cols-4 gap-1.5 mb-3">
+        {PRESET_COLORS.map((hex) => (
+          <button
+            key={hex}
+            type="button"
+            onClick={() => { onSelect(hex); onClose(); }}
+            className="w-9 h-9 rounded-lg transition-transform hover:scale-110 focus:outline-none focus:ring-2 focus:ring-white/40"
+            style={{ backgroundColor: hex }}
+            title={hex}
+          >
+            {currentHex === hex && (
+              <span className="flex items-center justify-center w-full h-full">
+                <Check className="w-4 h-4 text-white drop-shadow" />
+              </span>
+            )}
+          </button>
+        ))}
+      </div>
+
+      {/* Custom color input */}
+      <div className="flex items-center gap-2 border-t border-gray-700 pt-2.5">
+        <div
+          className="w-7 h-7 rounded-md border border-gray-600 flex-shrink-0 overflow-hidden cursor-pointer relative"
+          style={{ backgroundColor: custom }}
+          title="Color personalizado"
+        >
+          <input
+            type="color"
+            value={custom}
+            onChange={(e) => setCustom(e.target.value)}
+            onBlur={(e) => { onSelect(e.target.value); onClose(); }}
+            className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
+          />
+        </div>
+        <input
+          type="text"
+          value={custom}
+          onChange={(e) => {
+            const val = e.target.value;
+            setCustom(val);
+            if (/^#[0-9a-fA-F]{6}$/.test(val)) onSelect(val);
+          }}
+          className="flex-1 bg-gray-700 border border-gray-600 rounded-md px-2 py-1 text-xs text-white font-mono focus:outline-none focus:ring-1 focus:ring-blue-500 uppercase"
+          maxLength={7}
+          placeholder="#RRGGBB"
+        />
+      </div>
+    </div>
+  );
+}
 
 // ── Single editable chip ──────────────────────────────────────────────────────
 
 function Chip({
   value,
-  colorClass,
+  chipStyle,
+  currentHex,
   onRename,
   onDelete,
+  onColorChange,
   existing,
 }: {
   value: string;
-  colorClass?: string;
+  chipStyle: { backgroundColor: string; color: string };
+  currentHex: string;
   onRename: (newName: string) => Promise<void>;
   onDelete: () => Promise<void>;
+  onColorChange: (hex: string) => Promise<void>;
   existing: string[];
 }) {
   const [mode, setMode] = useState<"view" | "rename" | "delete">("view");
   const [renameVal, setRenameVal] = useState(value);
   const [loading, setLoading] = useState(false);
+  const [colorPickerAnchor, setColorPickerAnchor] = useState<DOMRect | null>(null);
+  const paletteButtonRef = useRef<HTMLButtonElement>(null);
 
   const isDuplicate =
     renameVal.trim().toLowerCase() !== value.toLowerCase() &&
@@ -52,9 +154,17 @@ function Chip({
     }
   };
 
+  const handleColorSelect = async (hex: string) => {
+    await onColorChange(hex);
+    setColorPickerAnchor(null);
+  };
+
   if (mode === "rename") {
     return (
-      <div className="flex items-center gap-1 bg-gray-700 rounded-full px-2 py-1.5 ring-2 ring-blue-500/50">
+      <div
+        className="flex items-center gap-1 rounded-full px-2 py-1.5 ring-2 ring-blue-500/50"
+        style={chipStyle}
+      >
         <input
           autoFocus
           value={renameVal}
@@ -66,7 +176,8 @@ function Chip({
               setMode("view");
             }
           }}
-          className="bg-transparent text-white text-xs outline-none w-24"
+          className="bg-transparent text-inherit text-xs outline-none w-24"
+          style={{ color: chipStyle.color }}
           maxLength={30}
         />
         {isDuplicate && (
@@ -75,7 +186,8 @@ function Chip({
         <button
           onClick={handleRename}
           disabled={loading || isDuplicate}
-          className="text-green-400 hover:text-green-300 disabled:text-gray-600 transition-colors"
+          className="opacity-80 hover:opacity-100 disabled:opacity-30 transition-opacity"
+          style={{ color: chipStyle.color }}
         >
           {loading ? (
             <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -84,11 +196,9 @@ function Chip({
           )}
         </button>
         <button
-          onClick={() => {
-            setRenameVal(value);
-            setMode("view");
-          }}
-          className="text-gray-500 hover:text-gray-300 transition-colors"
+          onClick={() => { setRenameVal(value); setMode("view"); }}
+          className="opacity-60 hover:opacity-100 transition-opacity"
+          style={{ color: chipStyle.color }}
         >
           <X className="w-3.5 h-3.5" />
         </button>
@@ -124,27 +234,60 @@ function Chip({
   }
 
   return (
-    <div
-      className={`group flex items-center gap-0.5 rounded-full px-2.5 py-1.5 ${colorClass ?? "bg-gray-700 text-gray-300"}`}
-    >
-      <span className="text-xs font-semibold">{value}</span>
-      <button
-        onClick={() => {
-          setRenameVal(value);
-          setMode("rename");
-        }}
-        className="opacity-0 group-hover:opacity-70 hover:!opacity-100 ml-1 text-current transition-all"
-        title="Renombrar"
+    <div className="relative">
+      <div
+        className="group flex items-center gap-0.5 rounded-full px-2.5 py-1.5"
+        style={chipStyle}
       >
-        <Pencil className="w-3 h-3" />
-      </button>
-      <button
-        onClick={() => setMode("delete")}
-        className="opacity-0 group-hover:opacity-70 hover:!opacity-100 text-current transition-all"
-        title="Eliminar"
-      >
-        <X className="w-3 h-3" />
-      </button>
+        <span className="text-xs font-semibold">{value}</span>
+
+        {/* Color picker button */}
+        <button
+          ref={paletteButtonRef}
+          type="button"
+          onClick={() =>
+            setColorPickerAnchor((prev) =>
+              prev ? null : paletteButtonRef.current?.getBoundingClientRect() ?? null
+            )
+          }
+          className="opacity-0 group-hover:opacity-70 hover:!opacity-100 ml-1 transition-all"
+          style={{ color: chipStyle.color }}
+          title="Cambiar color"
+        >
+          <Palette className="w-3 h-3" />
+        </button>
+
+        {/* Rename button */}
+        <button
+          type="button"
+          onClick={() => { setRenameVal(value); setMode("rename"); }}
+          className="opacity-0 group-hover:opacity-70 hover:!opacity-100 transition-all"
+          style={{ color: chipStyle.color }}
+          title="Renombrar"
+        >
+          <Pencil className="w-3 h-3" />
+        </button>
+
+        {/* Delete button */}
+        <button
+          type="button"
+          onClick={() => setMode("delete")}
+          className="opacity-0 group-hover:opacity-70 hover:!opacity-100 transition-all"
+          style={{ color: chipStyle.color }}
+          title="Eliminar"
+        >
+          <X className="w-3 h-3" />
+        </button>
+      </div>
+
+      {colorPickerAnchor && (
+        <ColorPicker
+          currentHex={currentHex}
+          onSelect={handleColorSelect}
+          onClose={() => setColorPickerAnchor(null)}
+          anchorRect={colorPickerAnchor}
+        />
+      )}
     </div>
   );
 }
@@ -232,6 +375,8 @@ export default function CategoriesManagerModal({
     deleteConcepto,
     updateFormas,
     updateConceptos,
+    updateFormaColor,
+    updateConceptoColor,
   } = useUserSettings();
 
   const [addingForma, setAddingForma] = useState(false);
@@ -282,10 +427,12 @@ export default function CategoriesManagerModal({
                 <Chip
                   key={f}
                   value={f}
-                  colorClass={FORMA_BG[f as Forma] ?? "bg-gray-600 text-white"}
+                  chipStyle={getChipStyle(f, "forma", settings)}
+                  currentHex={getChipHex(f, "forma", settings)}
                   existing={settings.formas}
                   onRename={(newName) => renameForma(f, newName)}
                   onDelete={() => deleteForma(f)}
+                  onColorChange={(hex) => updateFormaColor(f, hex)}
                 />
               ))}
               {addingForma ? (
@@ -323,12 +470,12 @@ export default function CategoriesManagerModal({
                 <Chip
                   key={c}
                   value={c}
-                  colorClass={
-                    CONCEPTO_BG[c as Concepto] ?? "bg-gray-600 text-white"
-                  }
+                  chipStyle={getChipStyle(c, "concepto", settings)}
+                  currentHex={getChipHex(c, "concepto", settings)}
                   existing={settings.conceptos}
                   onRename={(newName) => renameConcepto(c, newName)}
                   onDelete={() => deleteConcepto(c)}
+                  onColorChange={(hex) => updateConceptoColor(c, hex)}
                 />
               ))}
               {addingConcepto ? (

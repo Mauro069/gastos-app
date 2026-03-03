@@ -7,6 +7,7 @@ import App from "./App";
 import PromediosPage from "./pages/PromediosPage";
 import IngresosPage from "./pages/IngresosPage";
 import ActivosPage from "./pages/ActivosPage";
+import RangePage from "./pages/RangePage";
 import { AuthProvider, UserSettingsProvider } from "@/contexts";
 import { SpeedInsights } from "@vercel/speed-insights/react";
 import { Analytics } from "@vercel/analytics/react";
@@ -33,6 +34,7 @@ createRoot(document.getElementById("root")!).render(
               <Route path="/promedios/:tab" element={<PromediosPage />} />
               <Route path="/ingresos" element={<IngresosPage />} />
               <Route path="/activos" element={<ActivosPage />} />
+              <Route path="/historial" element={<RangePage />} />
             </Routes>
           </BrowserRouter>
         </UserSettingsProvider>

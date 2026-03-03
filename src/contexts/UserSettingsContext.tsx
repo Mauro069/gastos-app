@@ -72,8 +72,20 @@ export function UserSettingsProvider({ children }: { children: React.ReactNode }
     // gastos with this concepto become orphaned — intentional
   }
 
+  const updateFormaColor = async (name: string, color: string) => {
+    const next = { ...settings, formaColors: { ...settings.formaColors, [name]: color } }
+    setSettings(next)
+    await saveUserSettings(next)
+  }
+
+  const updateConceptoColor = async (name: string, color: string) => {
+    const next = { ...settings, conceptoColors: { ...settings.conceptoColors, [name]: color } }
+    setSettings(next)
+    await saveUserSettings(next)
+  }
+
   return (
-    <UserSettingsContext.Provider value={{ settings, updateFormas, updateConceptos, renameForma, renameConcepto, deleteForma, deleteConcepto, loading }}>
+    <UserSettingsContext.Provider value={{ settings, updateFormas, updateConceptos, renameForma, renameConcepto, deleteForma, deleteConcepto, updateFormaColor, updateConceptoColor, loading }}>
       {children}
     </UserSettingsContext.Provider>
   )

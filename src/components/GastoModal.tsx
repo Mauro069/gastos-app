@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { X, Save, Plus, Check, Settings2, AlertTriangle } from "lucide-react";
-import { FORMA_BG, CONCEPTO_BG } from "@/constants";
+import { getChipStyle } from "@/utils/chipColor";
 import type { GastoModalProps, GastoFormState, Forma, Concepto } from "@/types";
 import { useUserSettings } from "@/contexts";
 import { useNumericInput } from "@/hooks";
@@ -252,15 +252,15 @@ export default function GastoModal({
                       setForm((prev) => ({ ...prev, forma: f as Forma }))
                     }
                     className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all flex items-center gap-1 ${
-                      isSelected
-                        ? isOrphaned
+                      isOrphaned
+                        ? isSelected
                           ? "bg-orange-900/50 border border-orange-500/70 text-orange-200 ring-2 ring-orange-400/30 scale-105"
-                          : (FORMA_BG[f as Forma] ?? "bg-gray-600 text-white") +
-                            " ring-2 ring-white/30 scale-105"
-                        : isOrphaned
-                          ? "bg-orange-900/20 border border-dashed border-orange-700/50 text-orange-500 hover:bg-orange-900/30"
-                          : "bg-gray-700 text-gray-300 hover:bg-gray-600"
+                          : "bg-orange-900/20 border border-dashed border-orange-700/50 text-orange-500 hover:bg-orange-900/30"
+                        : isSelected
+                          ? "ring-2 ring-white/30 scale-105"
+                          : "opacity-60 hover:opacity-100"
                     }`}
+                    style={isOrphaned ? undefined : getChipStyle(f, "forma", settings)}
                     title={isOrphaned ? "Este valor fue eliminado de la lista" : undefined}
                   >
                     {isOrphaned && <AlertTriangle className="w-3 h-3" />}
@@ -315,16 +315,15 @@ export default function GastoModal({
                       setForm((prev) => ({ ...prev, concepto: c as Concepto }))
                     }
                     className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all flex items-center gap-1 ${
-                      isSelected
-                        ? isOrphaned
+                      isOrphaned
+                        ? isSelected
                           ? "bg-orange-900/50 border border-orange-500/70 text-orange-200 ring-2 ring-orange-400/30 scale-105"
-                          : (CONCEPTO_BG[c as Concepto] ??
-                              "bg-gray-600 text-white") +
-                            " ring-2 ring-white/30 scale-105"
-                        : isOrphaned
-                          ? "bg-orange-900/20 border border-dashed border-orange-700/50 text-orange-500 hover:bg-orange-900/30"
-                          : "bg-gray-700 text-gray-300 hover:bg-gray-600"
+                          : "bg-orange-900/20 border border-dashed border-orange-700/50 text-orange-500 hover:bg-orange-900/30"
+                        : isSelected
+                          ? "ring-2 ring-white/30 scale-105"
+                          : "opacity-60 hover:opacity-100"
                     }`}
+                    style={isOrphaned ? undefined : getChipStyle(c, "concepto", settings)}
                     title={isOrphaned ? "Este valor fue eliminado de la lista" : undefined}
                   >
                     {isOrphaned && <AlertTriangle className="w-3 h-3" />}

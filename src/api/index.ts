@@ -14,6 +14,18 @@ const DEFAULT_SETTINGS: UserSettings = {
   conceptos: [...CONCEPTOS],
 };
 
+export async function fetchGastosByRange(from: string, to: string): Promise<Gasto[]> {
+  const { data, error } = await supabase
+    .from("gastos")
+    .select("*")
+    .gte("fecha", from)
+    .lte("fecha", to)
+    .order("fecha", { ascending: false });
+
+  if (error) throw error;
+  return (data || []) as Gasto[];
+}
+
 export async function fetchGastosByYear(year: number): Promise<Gasto[]> {
   const { data, error } = await supabase
     .from("gastos")

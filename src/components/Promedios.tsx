@@ -16,7 +16,7 @@ import {
   Legend,
 } from "recharts";
 import { RefreshCw } from "lucide-react";
-import { CONCEPTO_COLORS } from "@/constants";
+import { getChipHex } from "@/utils/chipColor";
 import type { PromediosProps, PromediosTab, Gasto, UsdRates } from "@/types";
 import { useUserSettings } from "@/contexts";
 
@@ -230,6 +230,7 @@ function GastosRecurrentes({
   allGastos: Gasto[];
   selectedYear: number;
 }) {
+  const { settings: recSettings } = useUserSettings();
   const recurrentes = useMemo(() => {
     const map: Record<
       string,
@@ -318,7 +319,7 @@ function GastosRecurrentes({
               </p>
               <p
                 className="text-xs mt-0.5"
-                style={{ color: CONCEPTO_COLORS[r.concepto] || "#6B7280" }}
+                style={{ color: getChipHex(r.concepto, "concepto", recSettings) }}
               >
                 {r.concepto}
               </p>
@@ -856,7 +857,7 @@ export default function Promedios({
                       <div
                         className="w-2.5 h-2.5 rounded-full flex-shrink-0"
                         style={{
-                          backgroundColor: CONCEPTO_COLORS[d.name] || "#6B7280",
+                          backgroundColor: getChipHex(d.name, "concepto", settings),
                         }}
                       />
                       <span className="text-gray-300 flex-1 truncate">
@@ -911,7 +912,7 @@ export default function Promedios({
                         {catData.map((d) => (
                           <Cell
                             key={d.name}
-                            fill={CONCEPTO_COLORS[d.name] || "#6B7280"}
+                            fill={getChipHex(d.name, "concepto", settings)}
                           />
                         ))}
                       </Bar>
