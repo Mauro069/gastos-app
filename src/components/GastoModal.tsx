@@ -1,9 +1,10 @@
-import { useState, useEffect, useRef } from "react";
-import { X, Save, Plus, Check } from "lucide-react";
+import { useState, useEffect, useRef, useMemo } from "react";
+import { X, Save, Plus, Check, Settings2, AlertTriangle } from "lucide-react";
 import { FORMA_BG, CONCEPTO_BG } from "@/constants";
 import type { GastoModalProps, GastoFormState, Forma, Concepto } from "@/types";
 import { useUserSettings } from "@/contexts";
 import { useNumericInput } from "@/hooks";
+import CategoriesManagerModal from "./CategoriesManagerModal";
 
 const today = (): string => new Date().toISOString().split("T")[0];
 
@@ -100,6 +101,25 @@ export default function GastoModal({
   const [addingForma, setAddingForma] = useState(false);
   const [addingConcepto, setAddingConcepto] = useState(false);
 
+  // Categories manager modal
+  const [catManager, setCatManager] = useState<"formas" | "conceptos" | null>(null);
+
+  // Include orphaned current values in displayed lists
+  const formasToShow = useMemo(
+    () =>
+      form.forma && !settings.formas.includes(form.forma)
+        ? [...settings.formas, form.forma]
+        : settings.formas,
+    [settings.formas, form.forma],
+  );
+  const conceptosToShow = useMemo(
+    () =>
+      form.concepto && !settings.conceptos.includes(form.concepto)
+        ? [...settings.conceptos, form.concepto]
+        : settings.conceptos,
+    [settings.conceptos, form.concepto],
+  );
+
   const {
     inputRef,
     display,
@@ -153,6 +173,7 @@ export default function GastoModal({
   };
 
   return (
+    <>
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <div className="bg-gray-900 border border-gray-700 rounded-2xl w-full max-w-md shadow-2xl">
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-800">
@@ -206,27 +227,47 @@ export default function GastoModal({
 
           {/* Forma de pago */}
           <div>
-            <label className="text-xs text-gray-400 uppercase tracking-wider block mb-2">
-              Forma de pago *
-            </label>
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-xs text-gray-400 uppercase tracking-wider">
+                Forma de pago *
+              </label>
+              <button
+                type="button"
+                onClick={() => setCatManager("formas")}
+                className="text-gray-600 hover:text-gray-300 transition-colors"
+                title="Gestionar formas de pago"
+              >
+                <Settings2 className="w-3.5 h-3.5" />
+              </button>
+            </div>
             <div className="flex flex-wrap gap-2">
-              {settings.formas.map((f) => (
-                <button
-                  key={f}
-                  type="button"
-                  onClick={() =>
-                    setForm((prev) => ({ ...prev, forma: f as Forma }))
-                  }
-                  className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
-                    form.forma === f
-                      ? (FORMA_BG[f as Forma] ?? "bg-gray-600 text-white") +
-                        " ring-2 ring-white/30 scale-105"
-                      : "bg-gray-700 text-gray-300 hover:bg-gray-600"
-                  }`}
-                >
-                  {f}
-                </button>
-              ))}
+              {formasToShow.map((f) => {
+                const isOrphaned = !settings.formas.includes(f);
+                const isSelected = form.forma === f;
+                return (
+                  <button
+                    key={f}
+                    type="button"
+                    onClick={() =>
+                      setForm((prev) => ({ ...prev, forma: f as Forma }))
+                    }
+                    className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all flex items-center gap-1 ${
+                      isSelected
+                        ? isOrphaned
+                          ? "bg-orange-900/50 border border-orange-500/70 text-orange-200 ring-2 ring-orange-400/30 scale-105"
+                          : (FORMA_BG[f as Forma] ?? "bg-gray-600 text-white") +
+                            " ring-2 ring-white/30 scale-105"
+                        : isOrphaned
+                          ? "bg-orange-900/20 border border-dashed border-orange-700/50 text-orange-500 hover:bg-orange-900/30"
+                          : "bg-gray-700 text-gray-300 hover:bg-gray-600"
+                    }`}
+                    title={isOrphaned ? "Este valor fue eliminado de la lista" : undefined}
+                  >
+                    {isOrphaned && <AlertTriangle className="w-3 h-3" />}
+                    {f}
+                  </button>
+                );
+              })}
 
               {addingForma ? (
                 <AddChipInput
@@ -249,28 +290,48 @@ export default function GastoModal({
 
           {/* Concepto */}
           <div>
-            <label className="text-xs text-gray-400 uppercase tracking-wider block mb-2">
-              Concepto *
-            </label>
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-xs text-gray-400 uppercase tracking-wider">
+                Concepto *
+              </label>
+              <button
+                type="button"
+                onClick={() => setCatManager("conceptos")}
+                className="text-gray-600 hover:text-gray-300 transition-colors"
+                title="Gestionar conceptos"
+              >
+                <Settings2 className="w-3.5 h-3.5" />
+              </button>
+            </div>
             <div className="flex flex-wrap gap-2">
-              {settings.conceptos.map((c) => (
-                <button
-                  key={c}
-                  type="button"
-                  onClick={() =>
-                    setForm((prev) => ({ ...prev, concepto: c as Concepto }))
-                  }
-                  className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
-                    form.concepto === c
-                      ? (CONCEPTO_BG[c as Concepto] ??
-                          "bg-gray-600 text-white") +
-                        " ring-2 ring-white/30 scale-105"
-                      : "bg-gray-700 text-gray-300 hover:bg-gray-600"
-                  }`}
-                >
-                  {c}
-                </button>
-              ))}
+              {conceptosToShow.map((c) => {
+                const isOrphaned = !settings.conceptos.includes(c);
+                const isSelected = form.concepto === c;
+                return (
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() =>
+                      setForm((prev) => ({ ...prev, concepto: c as Concepto }))
+                    }
+                    className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all flex items-center gap-1 ${
+                      isSelected
+                        ? isOrphaned
+                          ? "bg-orange-900/50 border border-orange-500/70 text-orange-200 ring-2 ring-orange-400/30 scale-105"
+                          : (CONCEPTO_BG[c as Concepto] ??
+                              "bg-gray-600 text-white") +
+                            " ring-2 ring-white/30 scale-105"
+                        : isOrphaned
+                          ? "bg-orange-900/20 border border-dashed border-orange-700/50 text-orange-500 hover:bg-orange-900/30"
+                          : "bg-gray-700 text-gray-300 hover:bg-gray-600"
+                    }`}
+                    title={isOrphaned ? "Este valor fue eliminado de la lista" : undefined}
+                  >
+                    {isOrphaned && <AlertTriangle className="w-3 h-3" />}
+                    {c}
+                  </button>
+                );
+              })}
 
               {addingConcepto ? (
                 <AddChipInput
@@ -332,5 +393,13 @@ export default function GastoModal({
         </form>
       </div>
     </div>
+
+    {catManager && (
+      <CategoriesManagerModal
+        initialSection={catManager}
+        onClose={() => setCatManager(null)}
+      />
+    )}
+    </>
   );
 }

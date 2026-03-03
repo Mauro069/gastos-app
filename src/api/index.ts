@@ -132,6 +132,23 @@ export async function saveUserSettings(settings: UserSettings): Promise<void> {
   if (error) throw error;
 }
 
+export async function bulkRenameGastoField(
+  field: "concepto" | "forma",
+  oldValue: string,
+  newValue: string,
+): Promise<void> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not authenticated");
+  const { error } = await supabase
+    .from("gastos")
+    .update({ [field]: newValue })
+    .eq(field, oldValue)
+    .eq("user_id", user.id);
+  if (error) throw error;
+}
+
 export async function deleteAccount(): Promise<void> {
   const { error } = await supabase.rpc("delete_user_account");
   if (error) throw error;
