@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { DollarSign, Edit2, Check, X, TrendingUp, TrendingDown, Minus } from 'lucide-react'
 import { updateMonthRate } from '@/api'
 import type { HeaderProps } from '@/types'
-import ProfileModal from './ProfileModal'
 
 const fmt = (n: number) =>
   new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(n)
@@ -19,9 +19,9 @@ export default function Header({
   demo,
   onSignIn,
 }: HeaderProps) {
+  const navigate = useNavigate()
   const [editing, setEditing] = useState(false)
   const [tempRate, setTempRate] = useState(usdRate)
-  const [showProfile, setShowProfile] = useState(false)
 
   useEffect(() => {
     setTempRate(usdRate)
@@ -144,7 +144,7 @@ export default function Header({
         )}
         {user && !demo && (
           <button
-            onClick={() => setShowProfile(true)}
+            onClick={() => navigate('/perfil')}
             className="flex-shrink-0 rounded-full ring-2 ring-gray-700 hover:ring-green-500 transition-all"
             title="Ver perfil"
           >
@@ -162,7 +162,6 @@ export default function Header({
           </button>
         )}
 
-        {showProfile && <ProfileModal onClose={() => setShowProfile(false)} />}
       </div>
     </header>
   )
