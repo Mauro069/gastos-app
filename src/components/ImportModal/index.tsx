@@ -1,177 +1,18 @@
 import { useState, useRef } from 'react'
-import { X, Download, Upload, CheckCircle, AlertCircle, FileSpreadsheet, Loader2, Plus, Check } from 'lucide-react'
+import { X, Download, Upload, CheckCircle, AlertCircle, FileSpreadsheet, Loader2, Plus } from 'lucide-react'
 import * as XLSX from 'xlsx'
 import { FORMAS, CONCEPTOS } from '@/constants'
 import { createGasto } from '@/api'
 import type { Forma, Concepto, CreateGastoData } from '@/types'
 import { useUserSettings } from '@/contexts'
-
-// ── Types ──────────────────────────────────────────────────────────────────
-
-interface ParsedRow {
-  row: number
-  fecha: string | null
-  cantidad: number
-  forma: string
-  concepto: string
-  nota: string
-  errors: string[]
-  valid: boolean
-}
-
-interface ImportResult {
-  ok: number
-  fail: number
-}
+import { parseDate, validateRow, revalidateRow } from './parseHelpers'
+import type { ParsedRow, ImportResult, RawRow } from './parseHelpers'
+import FixableCell from './FixableCell'
 
 interface Props {
   onClose: () => void
   onImported: () => void
 }
-
-// ── Helpers ────────────────────────────────────────────────────────────────
-
-function parseDate(val: unknown): string | null {
-  if (val === null || val === undefined || val === '') return null
-  if (typeof val === 'number') {
-    const date = XLSX.SSF.parse_date_code(val)
-    if (date) return `${date.y}-${String(date.m).padStart(2, '0')}-${String(date.d).padStart(2, '0')}`
-  }
-  const str = String(val).trim()
-  const dmy = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/)
-  if (dmy) return `${dmy[3]}-${dmy[2].padStart(2, '0')}-${dmy[1].padStart(2, '0')}`
-  if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str
-  const dmyDash = str.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/)
-  if (dmyDash) return `${dmyDash[3]}-${dmyDash[2].padStart(2, '0')}-${dmyDash[1].padStart(2, '0')}`
-  return null
-}
-
-type RawRow = Record<string, unknown>
-
-function validateRow(row: RawRow, idx: number, formas: string[], conceptos: string[]): ParsedRow {
-  const errors: string[] = []
-
-  const fecha = parseDate(row['Fecha'] ?? row['fecha'])
-  if (!fecha) errors.push('Fecha inválida')
-
-  const cantidad = Number(row['Cantidad'] ?? row['cantidad'])
-  if (isNaN(cantidad) || cantidad <= 0) errors.push('Cantidad inválida')
-
-  const forma = String(row['Forma'] ?? row['forma'] ?? '').trim()
-  if (!formas.includes(forma)) errors.push('Forma inválida')
-
-  const concepto = String(row['Concepto'] ?? row['concepto'] ?? '').trim()
-  if (!conceptos.includes(concepto)) errors.push('Concepto inválido')
-
-  const nota = String(row['Nota'] ?? row['nota'] ?? '').trim()
-
-  return { row: idx + 1, fecha, cantidad, forma, concepto, nota, errors, valid: errors.length === 0 }
-}
-
-function revalidateRow(r: ParsedRow, formas: string[], conceptos: string[]): ParsedRow {
-  const errors: string[] = []
-  if (!r.fecha) errors.push('Fecha inválida')
-  if (isNaN(r.cantidad) || r.cantidad <= 0) errors.push('Cantidad inválida')
-  if (!formas.includes(r.forma)) errors.push('Forma inválida')
-  if (!conceptos.includes(r.concepto)) errors.push('Concepto inválido')
-  return { ...r, errors, valid: errors.length === 0 }
-}
-
-// ── FixableCell ────────────────────────────────────────────────────────────
-// Muestra el valor normal si es válido, o un select + opción de crear si es inválido.
-
-function FixableCell({
-  value,
-  field,
-  options,
-  isInvalid,
-  onFix,
-  onCreateAndFix,
-}: {
-  value: string
-  field: 'forma' | 'concepto'
-  options: string[]
-  isInvalid: boolean
-  onFix: (val: string) => void
-  onCreateAndFix: (val: string) => Promise<void>
-}) {
-  const [creating, setCreating] = useState(false)
-  const [newVal, setNewVal] = useState('')
-  const [saving, setSaving] = useState(false)
-
-  if (!isInvalid) {
-    return <span className="text-gray-300">{value || '—'}</span>
-  }
-
-  if (creating) {
-    const handleConfirm = async () => {
-      const trimmed = newVal.trim()
-      if (!trimmed) return
-      setSaving(true)
-      try {
-        await onCreateAndFix(trimmed)
-        setCreating(false)
-        setNewVal('')
-      } finally {
-        setSaving(false)
-      }
-    }
-
-    return (
-      <div className="flex items-center gap-1">
-        <input
-          type="text"
-          value={newVal}
-          autoFocus
-          onChange={e => setNewVal(e.target.value)}
-          onKeyDown={e => {
-            if (e.key === 'Enter') handleConfirm()
-            if (e.key === 'Escape') { setCreating(false); setNewVal('') }
-          }}
-          placeholder={field === 'forma' ? 'Nueva forma...' : 'Nuevo concepto...'}
-          maxLength={30}
-          className="bg-gray-700 text-white text-xs rounded px-2 py-1 w-28 outline-none focus:ring-1 focus:ring-green-500"
-        />
-        <button
-          onClick={handleConfirm}
-          disabled={!newVal.trim() || saving}
-          className="text-green-400 hover:text-green-300 disabled:text-gray-600"
-        >
-          {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
-        </button>
-        <button
-          onClick={() => { setCreating(false); setNewVal('') }}
-          className="text-gray-500 hover:text-gray-300"
-        >
-          <X className="w-3.5 h-3.5" />
-        </button>
-      </div>
-    )
-  }
-
-  return (
-    <select
-      defaultValue=""
-      onChange={e => {
-        if (e.target.value === '__new__') {
-          setCreating(true)
-        } else if (e.target.value) {
-          onFix(e.target.value)
-        }
-      }}
-      className="bg-gray-800 border border-red-500/60 text-red-300 text-xs rounded px-2 py-1 outline-none focus:ring-1 focus:ring-green-500 cursor-pointer max-w-[140px]"
-    >
-      <option value="" disabled>{value || 'Seleccionar...'}</option>
-      {options.map(o => (
-        <option key={o} value={o}>{o}</option>
-      ))}
-      <option disabled>──────────</option>
-      <option value="__new__">+ Crear nuevo...</option>
-    </select>
-  )
-}
-
-// ── Component ──────────────────────────────────────────────────────────────
 
 export default function ImportModal({ onClose, onImported }: Props) {
   const { settings, updateFormas, updateConceptos } = useUserSettings()
@@ -352,7 +193,6 @@ export default function ImportModal({ onClose, onImported }: Props) {
           {/* Preview */}
           {parsedRows && !done && (
             <div className="space-y-3">
-              {/* Counts */}
               <div className="flex items-center gap-3">
                 <div className="flex items-center gap-1.5 bg-green-900/30 border border-green-800 rounded-lg px-3 py-1.5">
                   <CheckCircle className="w-4 h-4 text-green-400" />
@@ -367,7 +207,6 @@ export default function ImportModal({ onClose, onImported }: Props) {
                 <span className="text-gray-500 text-xs ml-auto">{parsedRows.length} filas leídas</span>
               </div>
 
-              {/* Table */}
               <div className="rounded-xl border border-gray-800 overflow-hidden">
                 <div className="overflow-x-auto max-h-72">
                   <table className="w-full text-xs">
@@ -427,7 +266,6 @@ export default function ImportModal({ onClose, onImported }: Props) {
                 </div>
               </div>
 
-              {/* Remaining errors (non-fixable: fecha, cantidad) */}
               {parsedRows.some(r => r.errors.some(e => !e.includes('Forma') && !e.includes('Concepto'))) && (
                 <div className="bg-red-950/30 border border-red-900 rounded-xl p-3 space-y-1">
                   <p className="text-red-400 text-xs font-semibold mb-2">Errores no corregibles:</p>
@@ -442,7 +280,6 @@ export default function ImportModal({ onClose, onImported }: Props) {
                 </div>
               )}
 
-              {/* Fixable errors hint */}
               {parsedRows.some(r => r.errors.some(e => e.includes('Forma') || e.includes('Concepto'))) && (
                 <div className="flex items-start gap-2 bg-amber-950/30 border border-amber-800/50 rounded-xl px-3 py-2.5">
                   <Plus className="w-3.5 h-3.5 text-amber-400 mt-0.5 shrink-0" />
@@ -467,7 +304,6 @@ export default function ImportModal({ onClose, onImported }: Props) {
 
         {/* Footer */}
         <div className="p-6 border-t border-gray-800 space-y-3">
-          {/* Progress bar — solo visible mientras importa */}
           {importing && progress.total > 0 && (
             <div className="space-y-1.5">
               <div className="flex items-center justify-between text-xs text-gray-400">

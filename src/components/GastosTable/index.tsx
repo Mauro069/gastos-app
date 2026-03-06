@@ -1,128 +1,19 @@
 import { useState, useMemo, useRef, useEffect } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import {
-  Plus, Pencil, Trash2, Search, ChevronUp, ChevronDown,
-  ChevronsUpDown, X, ChevronDown as ChevronDownIcon, Upload,
-} from 'lucide-react'
+import { Plus, Pencil, Trash2, Search, X, Upload } from 'lucide-react'
 import { getChipStyle } from '@/utils/chipColor'
-import GastoModal from './GastoModal'
+import GastoModal from '../GastoModal'
 import { createGasto, updateGasto, deleteGasto, deleteManyGastos } from '@/api'
 import type { GastosTableProps, Gasto } from '@/types'
 import { useAuth } from '@/contexts'
 import { useUserSettings } from '@/contexts'
 import { useSetQueryParam } from '@/hooks'
+import MultiSelectFilter from './MultiSelectFilter'
+import SortIcon from './SortIcon'
+import IndeterminateCheckbox from './IndeterminateCheckbox'
 
 const fmt = (n: number) =>
   new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 2 }).format(n)
-
-// ── MultiSelectFilter ──────────────────────────────────────────────────────
-
-function MultiSelectFilter({
-  placeholder, options, selected, onChange,
-}: {
-  placeholder: string
-  options: string[]
-  selected: Set<string>
-  onChange: (next: Set<string>) => void
-}) {
-  const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    if (!open) return
-    const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
-    }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
-  }, [open])
-
-  const toggle = (opt: string) => {
-    const next = new Set(selected)
-    next.has(opt) ? next.delete(opt) : next.add(opt)
-    onChange(next)
-  }
-
-  const label =
-    selected.size === 0
-      ? placeholder
-      : selected.size === 1
-        ? [...selected][0]
-        : `${selected.size} selec.`
-
-  const isActive = selected.size > 0
-
-  return (
-    <div ref={ref} className="relative">
-      <button
-        type="button"
-        onClick={() => setOpen(o => !o)}
-        className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm transition-colors whitespace-nowrap ${
-          isActive
-            ? 'bg-green-900/40 border border-green-600 text-green-300'
-            : 'bg-gray-800 border border-gray-700 text-white hover:border-gray-600'
-        }`}
-      >
-        <span>{label}</span>
-        {isActive && (
-          <button
-            type="button"
-            onClick={e => { e.stopPropagation(); onChange(new Set()) }}
-            className="text-green-400 hover:text-white transition-colors"
-          >
-            <X className="w-3.5 h-3.5" />
-          </button>
-        )}
-        <ChevronDownIcon className={`w-3.5 h-3.5 text-gray-400 transition-transform ${open ? 'rotate-180' : ''}`} />
-      </button>
-
-      {open && (
-        <div className="absolute top-full mt-1 left-0 bg-gray-800 border border-gray-700 rounded-xl shadow-2xl z-20 min-w-[180px] py-1 max-h-64 overflow-y-auto">
-          {options.map(opt => (
-            <label key={opt} className="flex items-center gap-2.5 px-3 py-2 hover:bg-gray-700 cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={selected.has(opt)}
-                onChange={() => toggle(opt)}
-                className="w-3.5 h-3.5 rounded accent-green-500 cursor-pointer"
-              />
-              <span className="text-sm text-gray-200">{opt}</span>
-            </label>
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
-
-// ── SortIcon ───────────────────────────────────────────────────────────────
-
-function SortIcon({ field, sortField, sortDir }: { field: string; sortField: string; sortDir: 'asc' | 'desc' }) {
-  if (sortField !== field) return <ChevronsUpDown className="w-3.5 h-3.5 text-gray-600" />
-  return sortDir === 'asc'
-    ? <ChevronUp className="w-3.5 h-3.5 text-green-400" />
-    : <ChevronDown className="w-3.5 h-3.5 text-green-400" />
-}
-
-// ── IndeterminateCheckbox ──────────────────────────────────────────────────
-
-function IndeterminateCheckbox({
-  checked, indeterminate, onChange, className = '',
-}: {
-  checked: boolean; indeterminate?: boolean
-  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void; className?: string
-}) {
-  const ref = useRef<HTMLInputElement>(null)
-  useEffect(() => { if (ref.current) ref.current.indeterminate = !!indeterminate }, [indeterminate])
-  return (
-    <input
-      ref={ref} type="checkbox" checked={checked} onChange={onChange}
-      className={`w-4 h-4 rounded border-gray-600 bg-gray-700 text-green-500 focus:ring-green-500 focus:ring-offset-gray-900 cursor-pointer accent-green-500 ${className}`}
-    />
-  )
-}
-
-// ── Main component ─────────────────────────────────────────────────────────
 
 export default function GastosTable({ gastos, selectedYear, selectedMonth, demo, onImport }: GastosTableProps) {
   const { user } = useAuth()
@@ -235,7 +126,6 @@ export default function GastosTable({ gastos, selectedYear, selectedMonth, demo,
 
   // ── Row renderer ───────────────────────────────────────────────────────────
 
-  // Selecciona/deselecciona todas las filas de un grupo de fecha
   const toggleGroup = (ids: string[]) => {
     setSelectedIds(prev => {
       const next = new Set(prev)
@@ -245,7 +135,6 @@ export default function GastosTable({ gastos, selectedYear, selectedMonth, demo,
     })
   }
 
-  // Fila cabecera de grupo (fecha + count + total del día)
   const renderGroupHeader = (date: string, group: Gasto[]) => {
     const ids = group.map(g => g.id)
     const allSel = ids.every(id => selectedIds.has(id))
@@ -271,7 +160,6 @@ export default function GastosTable({ gastos, selectedYear, selectedMonth, demo,
             <span className="text-gray-500 text-xs whitespace-nowrap">{group.length} {group.length === 1 ? 'gasto' : 'gastos'}</span>
           </div>
         </td>
-        {/* Total alineado con columna CANTIDAD */}
         <td className="px-4 py-1 text-right whitespace-nowrap">
           <span className="text-gray-500 text-xs font-medium tabular-nums">{fmt(dayTotal)}</span>
         </td>
@@ -298,14 +186,12 @@ export default function GastosTable({ gastos, selectedYear, selectedMonth, demo,
             <IndeterminateCheckbox checked={isSelected} onChange={() => toggleRow(g.id)} />
           </td>
         )}
-        {/* Fecha — vacía dentro del grupo, visible en modo plano */}
         <td className="pl-4 pr-3 py-2.5 whitespace-nowrap text-gray-400 text-xs tabular-nums w-16">
           {sortField !== 'fecha' && (() => {
             const d = new Date(g.fecha + 'T12:00:00')
             return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`
           })()}
         </td>
-        {/* Cantidad */}
         <td className="px-4 py-2.5 text-right whitespace-nowrap">
           <span className="font-semibold text-white tabular-nums">{fmt(g.cantidad)}</span>
         </td>
@@ -378,7 +264,6 @@ export default function GastosTable({ gastos, selectedYear, selectedMonth, demo,
           onChange={setFilterConceptos}
         />
 
-        {/* Botones acción — desktop; en mobile lo cubre el FAB */}
         {!demo && (
           <div className="hidden sm:flex items-center gap-2 flex-shrink-0">
             {onImport && (
@@ -474,7 +359,6 @@ export default function GastosTable({ gastos, selectedYear, selectedMonth, demo,
                 </td>
               </tr>
             ) : sortField === 'fecha' ? (
-              // Agrupado por fecha con cabecera de grupo
               (() => {
                 const groups: [string, Gasto[]][] = []
                 const map: Record<string, Gasto[]> = {}
@@ -488,14 +372,13 @@ export default function GastosTable({ gastos, selectedYear, selectedMonth, demo,
                 ])
               })()
             ) : (
-              // Plano cuando se ordena por otro campo
               filtered.map((g, i) => renderRow(g, i))
             )}
           </tbody>
         </table>
       </div>
 
-      {/* ── FAB — Nuevo gasto ── */}
+      {/* ── FAB ── */}
       {!demo && (
         <button
           onClick={() => setModal('new')}
