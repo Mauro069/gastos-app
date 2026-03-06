@@ -1,14 +1,8 @@
 import type { UsdRates } from '@/types'
+import { MONTH_FULL, MONTH_NAMES } from '@/constants'
 
-export const MONTH_FULL = [
-  'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-  'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
-]
-
-export const MONTH_SHORT = [
-  'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun',
-  'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic',
-]
+export { MONTH_FULL }
+export const MONTH_SHORT = MONTH_NAMES
 
 export const fmt = (n: number) =>
   new Intl.NumberFormat('es-AR', {

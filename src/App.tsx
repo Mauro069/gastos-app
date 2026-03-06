@@ -21,40 +21,12 @@ import {
 } from "@/components";
 import { fetchGastosByYear, fetchUsdRates } from "@/api";
 import { useAuth } from "@/contexts";
+import { useMonthlyGastos } from "@/hooks";
+import { MONTH_NAMES, MONTH_FULL, monthKey } from "@/constants";
 import type { UsdRates } from "@/types";
 
-export function monthKey(year: number, month: number): string {
-  return `${year}-${String(month + 1).padStart(2, "0")}`;
-}
+export { monthKey };
 
-const MONTH_NAMES = [
-  "Ene",
-  "Feb",
-  "Mar",
-  "Abr",
-  "May",
-  "Jun",
-  "Jul",
-  "Ago",
-  "Sep",
-  "Oct",
-  "Nov",
-  "Dic",
-];
-const MONTH_FULL = [
-  "Enero",
-  "Febrero",
-  "Marzo",
-  "Abril",
-  "Mayo",
-  "Junio",
-  "Julio",
-  "Agosto",
-  "Septiembre",
-  "Octubre",
-  "Noviembre",
-  "Diciembre",
-];
 const DEFAULT_RATE = 1000;
 
 export default function App() {
@@ -124,46 +96,29 @@ export default function App() {
     return prior ? usdRates[prior] : DEFAULT_RATE;
   }, [usdRates, currentMonthKey]);
 
-  const gastosDelMes = useMemo(
+  const {
+    gastosDelMes,
+    gastosDelMesAnterior,
+    prevMonthLabel,
+    currMonthLabel,
+    totalMes,
+  } = useMonthlyGastos(gastos, selectedYear, selectedMonth);
+
+  const prevTotalMes = useMemo(
     () =>
-      gastos.filter((g) => {
-        const d = new Date(g.fecha + "T12:00:00");
-        return (
-          d.getFullYear() === selectedYear && d.getMonth() === selectedMonth
-        );
-      }),
-    [gastos, selectedYear, selectedMonth],
+      gastosDelMesAnterior
+        .filter((g) => g.concepto !== "Inversiones")
+        .reduce((acc, g) => acc + Number(g.cantidad), 0),
+    [gastosDelMesAnterior],
   );
 
-  const { prevYear, prevMonth: prevMonthIdx } = useMemo(() => {
-    if (selectedMonth === 0)
-      return { prevYear: selectedYear - 1, prevMonth: 11 };
-    return { prevYear: selectedYear, prevMonth: selectedMonth - 1 };
-  }, [selectedYear, selectedMonth]);
-
-  const gastosDelMesAnterior = useMemo(
+  const inversionesMes = useMemo(
     () =>
-      gastos.filter((g) => {
-        const d = new Date(g.fecha + "T12:00:00");
-        return d.getFullYear() === prevYear && d.getMonth() === prevMonthIdx;
-      }),
-    [gastos, prevYear, prevMonthIdx],
+      gastosDelMes
+        .filter((g) => g.concepto === "Inversiones")
+        .reduce((acc, g) => acc + Number(g.cantidad), 0),
+    [gastosDelMes],
   );
-
-  const prevMonthLabel = `${MONTH_NAMES[prevMonthIdx]}${String(prevYear).slice(2)}`;
-  const currMonthLabel = `${MONTH_NAMES[selectedMonth]}${String(selectedYear).slice(2)}`;
-
-  const totalMes = gastosDelMes
-    .filter((g) => g.concepto !== "Inversiones")
-    .reduce((acc, g) => acc + Number(g.cantidad), 0);
-
-  const prevTotalMes = gastosDelMesAnterior
-    .filter((g) => g.concepto !== "Inversiones")
-    .reduce((acc, g) => acc + Number(g.cantidad), 0);
-
-  const inversionesMes = gastosDelMes
-    .filter((g) => g.concepto === "Inversiones")
-    .reduce((acc, g) => acc + Number(g.cantidad), 0);
 
   // ── Handlers ──────────────────────────────────────────────────────────────
 

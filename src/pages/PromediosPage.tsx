@@ -1,10 +1,10 @@
-import { useMemo } from "react";
 import { useNavigate, useSearchParams, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronLeft, ChevronRight, ArrowLeft, Loader2 } from "lucide-react";
 import { Promedios } from "@/components";
 import { fetchGastosByYear, fetchUsdRates } from "@/api";
 import { useAuth } from "@/contexts";
+import { useYearParam } from "@/hooks";
 import type { UsdRates, PromediosTab } from "@/types";
 
 const VALID_TABS: PromediosTab[] = ['resumen', 'meses', 'categorias', 'comparacion'];
@@ -25,14 +25,7 @@ export default function PromediosPage() {
 
   // ── Año desde la URL, default al año actual ──────────────────────────────
 
-  const selectedYear = useMemo(() => {
-    const y = parseInt(searchParams.get("year") ?? "");
-    return isNaN(y) ? new Date().getFullYear() : y;
-  }, [searchParams]);
-
-  const setYear = (year: number) => {
-    setSearchParams({ year: String(year) }, { replace: true });
-  };
+  const { selectedYear, setYear } = useYearParam();
 
   // ── Queries (comparten cache con App via mismo queryKey) ─────────────────
 

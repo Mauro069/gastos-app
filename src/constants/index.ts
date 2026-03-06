@@ -1,5 +1,19 @@
 import type { Forma, Concepto } from '@/types'
 
+export const MONTH_NAMES = [
+  'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun',
+  'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic',
+]
+
+export const MONTH_FULL = [
+  'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+  'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
+]
+
+export function monthKey(year: number, month: number): string {
+  return `${year}-${String(month + 1).padStart(2, '0')}`
+}
+
 export const FORMAS = ['Lemon', 'Credito', 'Wise', 'Uala', 'Mercado Pago', 'Efectivo'] as const satisfies readonly Forma[]
 
 export const CONCEPTOS = [

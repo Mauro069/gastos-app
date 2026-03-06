@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { X, Save, TrendingUp } from "lucide-react";
-import { useNumericInput } from "@/hooks";
+import { useNumericInput, useAsyncSubmit } from "@/hooks";
 import type { Ingreso } from "@/types";
 
 const today = (): string => new Date().toISOString().split("T")[0];
@@ -22,8 +22,7 @@ export default function IngresoModal({
 }: IngresoModalProps) {
   const [fecha, setFecha] = useState(defaultDate || today());
   const [descripcion, setDescripcion] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const { loading, error, setError, execute } = useAsyncSubmit();
 
   const usd = useNumericInput();
   const rate = useNumericInput();
@@ -71,9 +70,7 @@ export default function IngresoModal({
       return;
     }
 
-    setLoading(true);
-    setError("");
-    try {
+    await execute(async () => {
       await onSave({
         fecha,
         descripcion: descripcion.trim(),
@@ -82,11 +79,7 @@ export default function IngresoModal({
         monto_ars: usd.numericValue * rate.numericValue,
       });
       onClose();
-    } catch {
-      setError("Error al guardar");
-    } finally {
-      setLoading(false);
-    }
+    });
   };
 
   return (

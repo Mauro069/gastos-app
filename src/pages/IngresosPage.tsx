@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft,
@@ -35,18 +35,11 @@ import {
 } from "@/api";
 import IngresoModal from "@/components/IngresoModal";
 import { useAuth } from "@/contexts";
+import { useYearParam } from "@/hooks";
+import { MONTH_NAMES, MONTH_FULL } from "@/constants";
 import type { Ingreso, UsdRates } from "@/types";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-
-const MONTH_NAMES = [
-  "Ene", "Feb", "Mar", "Abr", "May", "Jun",
-  "Jul", "Ago", "Sep", "Oct", "Nov", "Dic",
-];
-const MONTH_FULL = [
-  "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
-  "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
-];
 
 const fmtUsd = (n: number) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n);
@@ -143,18 +136,10 @@ function StatCard({ label, value, sub, color = "blue", icon }: {
 export default function IngresosPage() {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
   const queryClient = useQueryClient();
+  const { selectedYear, setYear } = useYearParam();
 
   const now = new Date();
-
-  const selectedYear = useMemo(() => {
-    const y = parseInt(searchParams.get("year") ?? "");
-    return isNaN(y) ? now.getFullYear() : y;
-  }, [searchParams]);
-
-  const setYear = (y: number) =>
-    setSearchParams({ year: String(y) }, { replace: true });
 
   // ── Currency toggle ───────────────────────────────────────────────────────
   const [currency, setCurrency] = useState<Currency>("USD");

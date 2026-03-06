@@ -17,21 +17,12 @@ import Promedios from "./Promedios";
 import Login from "./Login";
 import { demoGastos, demoUsdRates, demoPrevYearGastos } from "@/data";
 import { useAuth } from "@/contexts";
+import { useMonthlyGastos } from "@/hooks";
+import { MONTH_NAMES, MONTH_FULL, monthKey } from "@/constants";
 import { parseCsv, parseXlsx } from "@/utils/csvImport";
 import type { Gasto } from "@/types/gasto";
 
-const MONTH_NAMES = [
-  "Ene", "Feb", "Mar", "Abr", "May", "Jun",
-  "Jul", "Ago", "Sep", "Oct", "Nov", "Dic",
-];
-const MONTH_FULL = [
-  "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
-  "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
-];
-
 const DEFAULT_RATE = 1000;
-const monthKey = (year: number, month: number) =>
-  `${year}-${String(month + 1).padStart(2, "0")}`;
 
 interface ImportedData {
   gastos: Gasto[];
@@ -95,32 +86,13 @@ export default function Landing() {
     [allGastos, selectedYear]
   );
 
-  const gastosDelMes = useMemo(() => {
-    return gastos.filter((g) => {
-      const d = new Date(g.fecha + "T12:00:00");
-      return d.getMonth() === selectedMonth;
-    });
-  }, [gastos, selectedMonth]);
-
-  const { prevYear, prevMonth: prevMonthIdx } = useMemo(() => {
-    if (selectedMonth === 0)
-      return { prevYear: selectedYear - 1, prevMonth: 11 };
-    return { prevYear: selectedYear, prevMonth: selectedMonth - 1 };
-  }, [selectedYear, selectedMonth]);
-
-  const gastosDelMesAnterior = useMemo(() => {
-    return allGastos.filter((g) => {
-      const d = new Date(g.fecha + "T12:00:00");
-      return d.getFullYear() === prevYear && d.getMonth() === prevMonthIdx;
-    });
-  }, [allGastos, prevYear, prevMonthIdx]);
-
-  const prevMonthLabel = `${MONTH_NAMES[prevMonthIdx]}${String(prevYear).slice(2)}`;
-  const currMonthLabel = `${MONTH_NAMES[selectedMonth]}${String(selectedYear).slice(2)}`;
-
-  const totalMes = gastosDelMes
-    .filter((g) => g.concepto !== "Inversiones")
-    .reduce((acc, g) => acc + Number(g.cantidad), 0);
+  const {
+    gastosDelMes,
+    gastosDelMesAnterior,
+    prevMonthLabel,
+    currMonthLabel,
+    totalMes,
+  } = useMonthlyGastos(allGastos, selectedYear, selectedMonth);
 
   const totalAno = useMemo(
     () =>

@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { X, Save, Plus } from "lucide-react";
 import type { GastoModalProps, GastoFormState, Forma, Concepto } from "@/types";
 import { useUserSettings } from "@/contexts";
-import { useNumericInput } from "@/hooks";
+import { useNumericInput, useAsyncSubmit } from "@/hooks";
 import CategoriesManagerModal from "../CategoriesManagerModal";
 import ChipSelectorField from "./ChipSelectorField";
 
@@ -24,8 +24,7 @@ export default function GastoModal({
 }: GastoModalProps) {
   const { settings, updateFormas, updateConceptos } = useUserSettings();
   const [form, setForm] = useState<GastoFormState>(emptyForm());
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const { loading, error, setError, execute } = useAsyncSubmit();
 
   const [addingForma, setAddingForma] = useState(false);
   const [addingConcepto, setAddingConcepto] = useState(false);
@@ -74,16 +73,10 @@ export default function GastoModal({
       setError("La cantidad debe ser un número positivo");
       return;
     }
-    setLoading(true);
-    setError("");
-    try {
+    await execute(async () => {
       await onSave({ ...form, cantidad: numericValue });
       onClose();
-    } catch {
-      setError("Error al guardar");
-    } finally {
-      setLoading(false);
-    }
+    });
   };
 
   const handleAddForma = async (newForma: string) => {
