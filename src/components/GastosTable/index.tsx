@@ -1,151 +1,204 @@
-import { useState, useMemo, useRef, useEffect } from 'react'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, Pencil, Trash2, Search, X, Upload } from 'lucide-react'
-import { getChipStyle } from '@/utils/chipColor'
-import GastoModal from '../GastoModal'
-import { createGasto, updateGasto, deleteGasto, deleteManyGastos } from '@/api'
-import type { GastosTableProps, Gasto } from '@/types'
-import { useAuth } from '@/contexts'
-import { useUserSettings } from '@/contexts'
-import { useSetQueryParam } from '@/hooks'
-import MultiSelectFilter from './MultiSelectFilter'
-import SortIcon from './SortIcon'
-import IndeterminateCheckbox from './IndeterminateCheckbox'
+import { useState, useMemo } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { Plus, Pencil, Trash2, Search, X, Upload } from "lucide-react";
+import { getChipStyle } from "@/utils/chipColor";
+import GastoModal from "../GastoModal";
+import { createGasto, updateGasto, deleteGasto, deleteManyGastos } from "@/api";
+import type { GastosTableProps, Gasto } from "@/types";
+import { useAuth } from "@/contexts";
+import { useUserSettings } from "@/contexts";
+import { useSetQueryParam } from "@/hooks";
+import MultiSelectFilter from "./MultiSelectFilter";
+import SortIcon from "./SortIcon";
+import IndeterminateCheckbox from "./IndeterminateCheckbox";
 
 const fmt = (n: number) =>
-  new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 2 }).format(n)
+  new Intl.NumberFormat("es-AR", {
+    style: "currency",
+    currency: "ARS",
+    maximumFractionDigits: 2,
+  }).format(n);
 
-export default function GastosTable({ gastos, selectedYear, selectedMonth, demo, onImport }: GastosTableProps) {
-  const { user } = useAuth()
-  const { settings } = useUserSettings()
-  const queryClient = useQueryClient()
+export default function GastosTable({
+  gastos,
+  selectedYear,
+  selectedMonth,
+  demo,
+  onImport,
+}: GastosTableProps) {
+  const { user } = useAuth();
+  const { settings } = useUserSettings();
+  const queryClient = useQueryClient();
 
-  const [modal, setModal] = useState<null | 'new' | Gasto>(null)
-  const [deleteConfirm, setDeleteConfirm] = useState<Gasto | null>(null)
-  const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(false)
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
-  const [search, setSearch] = useState('')
-  const [filterFormas, setFilterFormas] = useSetQueryParam('formas')
-  const [filterConceptos, setFilterConceptos] = useSetQueryParam('conceptos')
-  const [sortField, setSortField] = useState('fecha')
-  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
+  const [modal, setModal] = useState<null | "new" | Gasto>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<Gasto | null>(null);
+  const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [search, setSearch] = useState("");
+  const [filterFormas, setFilterFormas] = useSetQueryParam("formas");
+  const [filterConceptos, setFilterConceptos] = useSetQueryParam("conceptos");
+  const [sortField, setSortField] = useState("fecha");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
 
-  const queryKey = ['gastos', user?.id, selectedYear]
+  const queryKey = ["gastos", user?.id, selectedYear];
 
   // ── Mutations ──────────────────────────────────────────────────────────────
 
   const createMutation = useMutation({
     mutationFn: createGasto,
     onSuccess: () => queryClient.invalidateQueries({ queryKey }),
-  })
+  });
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: Gasto }) => updateGasto(id, data),
+    mutationFn: ({ id, data }: { id: string; data: Gasto }) =>
+      updateGasto(id, data),
     onSuccess: () => queryClient.invalidateQueries({ queryKey }),
-  })
+  });
   const deleteMutation = useMutation({
     mutationFn: deleteGasto,
     onSuccess: () => queryClient.invalidateQueries({ queryKey }),
-  })
+  });
   const bulkDeleteMutation = useMutation({
     mutationFn: deleteManyGastos,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey })
-      setSelectedIds(new Set())
-      setBulkDeleteConfirm(false)
+      queryClient.invalidateQueries({ queryKey });
+      setSelectedIds(new Set());
+      setBulkDeleteConfirm(false);
     },
-  })
+  });
 
   // ── Handlers ───────────────────────────────────────────────────────────────
 
   const handleSort = (field: string) => {
-    if (sortField === field) setSortDir(d => (d === 'asc' ? 'desc' : 'asc'))
-    else { setSortField(field); setSortDir('desc') }
-  }
+    if (sortField === field) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    else {
+      setSortField(field);
+      setSortDir("desc");
+    }
+  };
 
   const handleSave = async (
-    data: Partial<Gasto> & { fecha: string; cantidad: number; forma: string; concepto: string; nota?: string }
+    data: Partial<Gasto> & {
+      fecha: string;
+      cantidad: number;
+      forma: string;
+      concepto: string;
+      nota?: string;
+    },
   ) => {
-    if (modal && modal !== 'new') {
-      await updateMutation.mutateAsync({ id: modal.id, data: { ...modal, ...data } as Gasto })
+    if (modal && modal !== "new") {
+      await updateMutation.mutateAsync({
+        id: modal.id,
+        data: { ...modal, ...data } as Gasto,
+      });
     } else {
-      await createMutation.mutateAsync(data)
+      await createMutation.mutateAsync(data);
     }
-    setModal(null)
-  }
+    setModal(null);
+  };
 
   const handleDelete = async (id: string) => {
-    await deleteMutation.mutateAsync(id)
-    setDeleteConfirm(null)
-  }
+    await deleteMutation.mutateAsync(id);
+    setDeleteConfirm(null);
+  };
 
   const handleBulkDelete = async () => {
-    await bulkDeleteMutation.mutateAsync([...selectedIds])
-  }
+    await bulkDeleteMutation.mutateAsync([...selectedIds]);
+  };
 
-  const defaultDate = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}-01`
+  const defaultDate = new Date().toISOString().split("T")[0];
 
   // ── Selection helpers ──────────────────────────────────────────────────────
 
   const toggleRow = (id: string) =>
-    setSelectedIds(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n })
+    setSelectedIds((prev) => {
+      const n = new Set(prev);
+      n.has(id) ? n.delete(id) : n.add(id);
+      return n;
+    });
 
   const toggleAll = () =>
-    setSelectedIds(allSelected ? new Set() : new Set(filtered.map(g => g.id)))
+    setSelectedIds(
+      allSelected ? new Set() : new Set(filtered.map((g) => g.id)),
+    );
 
-  const clearSelection = () => setSelectedIds(new Set())
+  const clearSelection = () => setSelectedIds(new Set());
 
   // ── Derived data ───────────────────────────────────────────────────────────
 
   const filtered = useMemo(() => {
-    let result = [...gastos]
+    let result = [...gastos];
     if (search) {
-      const s = search.toLowerCase()
+      const s = search.toLowerCase();
       result = result.filter(
-        g => g.nota?.toLowerCase().includes(s) || g.concepto?.toLowerCase().includes(s) || g.forma?.toLowerCase().includes(s)
-      )
+        (g) =>
+          g.nota?.toLowerCase().includes(s) ||
+          g.concepto?.toLowerCase().includes(s) ||
+          g.forma?.toLowerCase().includes(s),
+      );
     }
-    if (filterFormas.size > 0) result = result.filter(g => filterFormas.has(g.forma))
-    if (filterConceptos.size > 0) result = result.filter(g => filterConceptos.has(g.concepto))
+    if (filterFormas.size > 0)
+      result = result.filter((g) => filterFormas.has(g.forma));
+    if (filterConceptos.size > 0)
+      result = result.filter((g) => filterConceptos.has(g.concepto));
     result.sort((a, b) => {
-      let va: string | number = a[sortField as keyof Gasto] as string | number
-      let vb: string | number = b[sortField as keyof Gasto] as string | number
-      if (sortField === 'cantidad') { va = Number(va); vb = Number(vb) }
-      if (va < vb) return sortDir === 'asc' ? -1 : 1
-      if (va > vb) return sortDir === 'asc' ? 1 : -1
-      return 0
-    })
-    return result
-  }, [gastos, search, filterFormas, filterConceptos, sortField, sortDir])
+      let va: string | number = a[sortField as keyof Gasto] as string | number;
+      let vb: string | number = b[sortField as keyof Gasto] as string | number;
+      if (sortField === "cantidad") {
+        va = Number(va);
+        vb = Number(vb);
+      }
+      if (va < vb) return sortDir === "asc" ? -1 : 1;
+      if (va > vb) return sortDir === "asc" ? 1 : -1;
+      return 0;
+    });
+    return result;
+  }, [gastos, search, filterFormas, filterConceptos, sortField, sortDir]);
 
-  const totalFiltered = filtered.reduce((acc, g) => acc + Number(g.cantidad), 0)
-  const allSelected = filtered.length > 0 && filtered.every(g => selectedIds.has(g.id))
-  const someSelected = filtered.some(g => selectedIds.has(g.id)) && !allSelected
-  const selectedTotal = filtered.filter(g => selectedIds.has(g.id)).reduce((acc, g) => acc + Number(g.cantidad), 0)
-  const hasFilters = search || filterFormas.size > 0 || filterConceptos.size > 0
-  const colSpan = demo ? 5 : 7
+  const totalFiltered = filtered.reduce(
+    (acc, g) => acc + Number(g.cantidad),
+    0,
+  );
+  const allSelected =
+    filtered.length > 0 && filtered.every((g) => selectedIds.has(g.id));
+  const someSelected =
+    filtered.some((g) => selectedIds.has(g.id)) && !allSelected;
+  const selectedTotal = filtered
+    .filter((g) => selectedIds.has(g.id))
+    .reduce((acc, g) => acc + Number(g.cantidad), 0);
+  const hasFilters =
+    search || filterFormas.size > 0 || filterConceptos.size > 0;
+  const colSpan = demo ? 5 : 7;
 
   // ── Row renderer ───────────────────────────────────────────────────────────
 
   const toggleGroup = (ids: string[]) => {
-    setSelectedIds(prev => {
-      const next = new Set(prev)
-      const allIn = ids.every(id => next.has(id))
-      allIn ? ids.forEach(id => next.delete(id)) : ids.forEach(id => next.add(id))
-      return next
-    })
-  }
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      const allIn = ids.every((id) => next.has(id));
+      allIn
+        ? ids.forEach((id) => next.delete(id))
+        : ids.forEach((id) => next.add(id));
+      return next;
+    });
+  };
 
   const renderGroupHeader = (date: string, group: Gasto[]) => {
-    const ids = group.map(g => g.id)
-    const allSel = ids.every(id => selectedIds.has(id))
-    const someSel = ids.some(id => selectedIds.has(id)) && !allSel
-    const dayTotal = group.reduce((a, g) => a + Number(g.cantidad), 0)
-    const d = new Date(date + 'T12:00:00')
-    const label = `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`
+    const ids = group.map((g) => g.id);
+    const allSel = ids.every((id) => selectedIds.has(id));
+    const someSel = ids.some((id) => selectedIds.has(id)) && !allSel;
+    const dayTotal = group.reduce((a, g) => a + Number(g.cantidad), 0);
+    const d = new Date(date + "T12:00:00");
+    const label = `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}`;
     return (
-      <tr key={`grp-${date}`} className="bg-gray-800/50 border-t border-gray-700/40 first:border-t-0">
+      <tr
+        key={`grp-${date}`}
+        className="bg-gray-800/50 border-t border-gray-700/40 first:border-t-0"
+      >
         {!demo && (
-          <td className="pl-4 pr-2 py-1 w-8" onClick={e => e.stopPropagation()}>
+          <td
+            className="pl-4 pr-2 py-1 w-8"
+            onClick={(e) => e.stopPropagation()}
+          >
             <IndeterminateCheckbox
               checked={allSel}
               indeterminate={someSel}
@@ -153,63 +206,87 @@ export default function GastosTable({ gastos, selectedYear, selectedMonth, demo,
             />
           </td>
         )}
-        <td className={`${demo ? 'pl-4' : 'pl-3'} pr-3 py-1`}>
+        <td className={`${demo ? "pl-4" : "pl-3"} pr-3 py-1`}>
           <div className="flex items-center gap-2">
-            <span className="text-gray-300 text-xs font-semibold tabular-nums">{label}</span>
+            <span className="text-gray-300 text-xs font-semibold tabular-nums">
+              {label}
+            </span>
             <span className="text-gray-600 text-xs">·</span>
-            <span className="text-gray-500 text-xs whitespace-nowrap">{group.length} {group.length === 1 ? 'gasto' : 'gastos'}</span>
+            <span className="text-gray-500 text-xs whitespace-nowrap">
+              {group.length} {group.length === 1 ? "gasto" : "gastos"}
+            </span>
           </div>
         </td>
         <td className="px-4 py-1 text-right whitespace-nowrap">
-          <span className="text-gray-500 text-xs font-medium tabular-nums">{fmt(dayTotal)}</span>
+          <span className="text-gray-500 text-xs font-medium tabular-nums">
+            {fmt(dayTotal)}
+          </span>
         </td>
         <td colSpan={demo ? 3 : 4} />
       </tr>
-    )
-  }
+    );
+  };
 
   const renderRow = (g: Gasto, i: number) => {
-    const isSelected = selectedIds.has(g.id)
+    const isSelected = selectedIds.has(g.id);
 
     return (
       <tr
         key={g.id}
         onClick={!demo ? () => toggleRow(g.id) : undefined}
-        className={`transition-colors group border-t border-gray-800/40 ${!demo ? 'cursor-pointer' : ''} ${
+        className={`transition-colors group border-t border-gray-800/40 ${!demo ? "cursor-pointer" : ""} ${
           isSelected
-            ? 'bg-green-900/20 hover:bg-green-900/30'
-            : 'bg-gray-900 hover:bg-gray-800/60'
+            ? "bg-green-900/20 hover:bg-green-900/30"
+            : "bg-gray-900 hover:bg-gray-800/60"
         }`}
       >
         {!demo && (
-          <td className="pl-4 pr-2 py-2.5 w-8" onClick={e => e.stopPropagation()}>
-            <IndeterminateCheckbox checked={isSelected} onChange={() => toggleRow(g.id)} />
+          <td
+            className="pl-4 pr-2 py-2.5 w-8"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <IndeterminateCheckbox
+              checked={isSelected}
+              onChange={() => toggleRow(g.id)}
+            />
           </td>
         )}
         <td className="pl-4 pr-3 py-2.5 whitespace-nowrap text-gray-400 text-xs tabular-nums w-16">
-          {sortField !== 'fecha' && (() => {
-            const d = new Date(g.fecha + 'T12:00:00')
-            return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`
-          })()}
+          {sortField !== "fecha" &&
+            (() => {
+              const d = new Date(g.fecha + "T12:00:00");
+              return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}`;
+            })()}
         </td>
         <td className="px-4 py-2.5 text-right whitespace-nowrap">
-          <span className="font-semibold text-white tabular-nums">{fmt(g.cantidad)}</span>
+          <span className="font-semibold text-white tabular-nums">
+            {fmt(g.cantidad)}
+          </span>
         </td>
         <td className="px-3 py-2.5">
-          <span className="inline-block px-2 py-0.5 rounded-full text-xs font-semibold" style={getChipStyle(g.forma, 'forma', settings)}>
+          <span
+            className="inline-block px-2 py-0.5 rounded-full text-xs font-semibold"
+            style={getChipStyle(g.forma, "forma", settings)}
+          >
             {g.forma}
           </span>
         </td>
         <td className="px-3 py-2.5">
-          <span className="inline-block px-2 py-0.5 rounded-full text-xs font-semibold" style={getChipStyle(g.concepto, 'concepto', settings)}>
+          <span
+            className="inline-block px-2 py-0.5 rounded-full text-xs font-semibold"
+            style={getChipStyle(g.concepto, "concepto", settings)}
+          >
             {g.concepto}
           </span>
         </td>
-        <td className="px-3 py-2.5 text-gray-400 max-w-[220px] truncate" title={g.nota}>
+        <td
+          className="px-3 py-2.5 text-gray-400 max-w-[220px] truncate"
+          title={g.nota}
+        >
           {g.nota || <span className="text-gray-700 italic text-xs">—</span>}
         </td>
         {!demo && (
-          <td className="px-3 py-2.5" onClick={e => e.stopPropagation()}>
+          <td className="px-3 py-2.5" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
               <button
                 onClick={() => setModal(g)}
@@ -229,14 +306,13 @@ export default function GastosTable({ gastos, selectedYear, selectedMonth, demo,
           </td>
         )}
       </tr>
-    )
-  }
+    );
+  };
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
     <div className="flex flex-col h-full">
-
       {/* ── Toolbar ── */}
       <div className="flex flex-wrap gap-2 mb-3">
         <div className="relative flex-1 min-w-[160px]">
@@ -244,7 +320,7 @@ export default function GastosTable({ gastos, selectedYear, selectedMonth, demo,
           <input
             type="text"
             value={search}
-            onChange={e => setSearch(e.target.value)}
+            onChange={(e) => setSearch(e.target.value)}
             placeholder="Buscar..."
             className="w-full bg-gray-800 border border-gray-700 rounded-xl pl-9 pr-4 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
           />
@@ -276,7 +352,7 @@ export default function GastosTable({ gastos, selectedYear, selectedMonth, demo,
               </button>
             )}
             <button
-              onClick={() => setModal('new')}
+              onClick={() => setModal("new")}
               className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium bg-green-600 hover:bg-green-500 text-white transition-colors"
             >
               <Plus className="w-4 h-4" />
@@ -290,14 +366,21 @@ export default function GastosTable({ gastos, selectedYear, selectedMonth, demo,
       {!demo && selectedIds.size > 0 ? (
         <div className="flex items-center justify-between mb-3 px-3 py-2 bg-green-900/30 border border-green-700/50 rounded-xl text-sm">
           <div className="flex items-center gap-3">
-            <button onClick={clearSelection} className="text-gray-400 hover:text-white transition-colors" title="Limpiar selección">
+            <button
+              onClick={clearSelection}
+              className="text-gray-400 hover:text-white transition-colors"
+              title="Limpiar selección"
+            >
               <X className="w-4 h-4" />
             </button>
             <span className="text-green-400 font-medium">
-              {selectedIds.size} {selectedIds.size === 1 ? 'seleccionado' : 'seleccionados'}
+              {selectedIds.size}{" "}
+              {selectedIds.size === 1 ? "seleccionado" : "seleccionados"}
             </span>
             <span className="text-gray-500 hidden sm:inline">·</span>
-            <span className="text-white font-semibold hidden sm:inline">{fmt(selectedTotal)}</span>
+            <span className="text-white font-semibold hidden sm:inline">
+              {fmt(selectedTotal)}
+            </span>
           </div>
           <button
             onClick={() => setBulkDeleteConfirm(true)}
@@ -310,9 +393,11 @@ export default function GastosTable({ gastos, selectedYear, selectedMonth, demo,
       ) : (
         <div className="flex items-center justify-between mb-3 text-sm text-gray-500">
           <span>
-            {filtered.length} gastos{hasFilters ? ' (filtrado)' : ''}
+            {filtered.length} gastos{hasFilters ? " (filtrado)" : ""}
           </span>
-          <span className="font-semibold text-white tabular-nums">{fmt(totalFiltered)}</span>
+          <span className="font-semibold text-white tabular-nums">
+            {fmt(totalFiltered)}
+          </span>
         </div>
       )}
 
@@ -323,53 +408,77 @@ export default function GastosTable({ gastos, selectedYear, selectedMonth, demo,
             <tr className="bg-gray-800/90 backdrop-blur-sm text-gray-400 text-xs uppercase tracking-wider">
               {!demo && (
                 <th className="pl-4 pr-2 py-2.5 w-8">
-                  <IndeterminateCheckbox checked={allSelected} indeterminate={someSelected} onChange={toggleAll} />
+                  <IndeterminateCheckbox
+                    checked={allSelected}
+                    indeterminate={someSelected}
+                    onChange={toggleAll}
+                  />
                 </th>
               )}
               <th
                 className="pl-4 pr-3 py-2.5 text-left cursor-pointer hover:text-white select-none whitespace-nowrap w-16"
-                onClick={() => handleSort('fecha')}
+                onClick={() => handleSort("fecha")}
               >
                 <div className="flex items-center gap-1">
-                  Fecha <SortIcon field="fecha" sortField={sortField} sortDir={sortDir} />
+                  Fecha{" "}
+                  <SortIcon
+                    field="fecha"
+                    sortField={sortField}
+                    sortDir={sortDir}
+                  />
                 </div>
               </th>
               <th
                 className="px-4 py-2.5 text-right cursor-pointer hover:text-white select-none"
-                onClick={() => handleSort('cantidad')}
+                onClick={() => handleSort("cantidad")}
               >
                 <div className="flex items-center justify-end gap-1">
-                  Cantidad <SortIcon field="cantidad" sortField={sortField} sortDir={sortDir} />
+                  Cantidad{" "}
+                  <SortIcon
+                    field="cantidad"
+                    sortField={sortField}
+                    sortDir={sortDir}
+                  />
                 </div>
               </th>
               <th className="px-3 py-2.5 text-left">Forma</th>
               <th className="px-3 py-2.5 text-left">Concepto</th>
               <th className="px-3 py-2.5 text-left">Nota</th>
-              {!demo && <th className="px-3 py-2.5 text-center w-16">Acciones</th>}
+              {!demo && (
+                <th className="px-3 py-2.5 text-center w-16">Acciones</th>
+              )}
             </tr>
           </thead>
           <tbody>
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={colSpan} className="text-center py-16 text-gray-600">
+                <td
+                  colSpan={colSpan}
+                  className="text-center py-16 text-gray-600"
+                >
                   <p className="text-base mb-1">Sin gastos</p>
                   <p className="text-xs">
-                    {hasFilters ? 'Ningún gasto coincide con los filtros.' : 'Este mes no tiene gastos registrados.'}
+                    {hasFilters
+                      ? "Ningún gasto coincide con los filtros."
+                      : "Este mes no tiene gastos registrados."}
                   </p>
                 </td>
               </tr>
-            ) : sortField === 'fecha' ? (
+            ) : sortField === "fecha" ? (
               (() => {
-                const groups: [string, Gasto[]][] = []
-                const map: Record<string, Gasto[]> = {}
+                const groups: [string, Gasto[]][] = [];
+                const map: Record<string, Gasto[]> = {};
                 for (const g of filtered) {
-                  if (!map[g.fecha]) { map[g.fecha] = []; groups.push([g.fecha, map[g.fecha]]) }
-                  map[g.fecha].push(g)
+                  if (!map[g.fecha]) {
+                    map[g.fecha] = [];
+                    groups.push([g.fecha, map[g.fecha]]);
+                  }
+                  map[g.fecha].push(g);
                 }
                 return groups.flatMap(([date, group]) => [
                   renderGroupHeader(date, group),
                   ...group.map((g, i) => renderRow(g, i)),
-                ])
+                ]);
               })()
             ) : (
               filtered.map((g, i) => renderRow(g, i))
@@ -381,7 +490,7 @@ export default function GastosTable({ gastos, selectedYear, selectedMonth, demo,
       {/* ── FAB ── */}
       {!demo && (
         <button
-          onClick={() => setModal('new')}
+          onClick={() => setModal("new")}
           className="fixed bottom-6 right-6 z-40 w-14 h-14 bg-green-500 hover:bg-green-400 active:scale-95 rounded-full shadow-xl shadow-green-900/40 flex items-center justify-center transition-all hover:scale-110 focus:outline-none focus:ring-2 focus:ring-green-400 focus:ring-offset-2 focus:ring-offset-gray-950"
           title="Nuevo gasto (N)"
           aria-label="Nuevo gasto"
@@ -393,8 +502,8 @@ export default function GastosTable({ gastos, selectedYear, selectedMonth, demo,
       {/* ── Edit / Create modal ── */}
       {modal && !demo && (
         <GastoModal
-          gasto={modal === 'new' ? null : modal}
-          defaultDate={modal === 'new' ? defaultDate : undefined}
+          gasto={modal === "new" ? null : modal}
+          defaultDate={modal === "new" ? defaultDate : undefined}
           onClose={() => setModal(null)}
           onSave={handleSave}
         />
@@ -404,14 +513,34 @@ export default function GastosTable({ gastos, selectedYear, selectedMonth, demo,
       {deleteConfirm && !demo && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-gray-900 border border-gray-700 rounded-2xl p-6 max-w-sm w-full shadow-2xl">
-            <h3 className="text-lg font-semibold text-white mb-2">Eliminar gasto</h3>
-            <p className="text-gray-400 text-sm mb-1">¿Seguro que querés eliminar este gasto?</p>
-            <p className="text-white font-semibold text-sm mb-1">{fmt(deleteConfirm.cantidad)} — {deleteConfirm.concepto}</p>
-            {deleteConfirm.nota && <p className="text-gray-500 text-xs mb-4 italic">&quot;{deleteConfirm.nota}&quot;</p>}
+            <h3 className="text-lg font-semibold text-white mb-2">
+              Eliminar gasto
+            </h3>
+            <p className="text-gray-400 text-sm mb-1">
+              ¿Seguro que querés eliminar este gasto?
+            </p>
+            <p className="text-white font-semibold text-sm mb-1">
+              {fmt(deleteConfirm.cantidad)} — {deleteConfirm.concepto}
+            </p>
+            {deleteConfirm.nota && (
+              <p className="text-gray-500 text-xs mb-4 italic">
+                &quot;{deleteConfirm.nota}&quot;
+              </p>
+            )}
             <div className="flex gap-3 mt-4">
-              <button onClick={() => setDeleteConfirm(null)} disabled={deleteMutation.isPending} className="flex-1 bg-gray-800 hover:bg-gray-700 disabled:opacity-50 text-gray-300 rounded-xl py-2.5 font-medium text-sm transition-colors">Cancelar</button>
-              <button onClick={() => handleDelete(deleteConfirm.id)} disabled={deleteMutation.isPending} className="flex-1 bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white rounded-xl py-2.5 font-medium text-sm transition-colors">
-                {deleteMutation.isPending ? 'Eliminando...' : 'Eliminar'}
+              <button
+                onClick={() => setDeleteConfirm(null)}
+                disabled={deleteMutation.isPending}
+                className="flex-1 bg-gray-800 hover:bg-gray-700 disabled:opacity-50 text-gray-300 rounded-xl py-2.5 font-medium text-sm transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => handleDelete(deleteConfirm.id)}
+                disabled={deleteMutation.isPending}
+                className="flex-1 bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white rounded-xl py-2.5 font-medium text-sm transition-colors"
+              >
+                {deleteMutation.isPending ? "Eliminando..." : "Eliminar"}
               </button>
             </div>
           </div>
@@ -422,22 +551,46 @@ export default function GastosTable({ gastos, selectedYear, selectedMonth, demo,
       {bulkDeleteConfirm && !demo && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-gray-900 border border-gray-700 rounded-2xl p-6 max-w-sm w-full shadow-2xl">
-            <h3 className="text-lg font-semibold text-white mb-2">Eliminar gastos</h3>
-            <p className="text-gray-400 text-sm mb-3">¿Seguro que querés eliminar <span className="text-white font-semibold">{selectedIds.size} gastos</span>?</p>
+            <h3 className="text-lg font-semibold text-white mb-2">
+              Eliminar gastos
+            </h3>
+            <p className="text-gray-400 text-sm mb-3">
+              ¿Seguro que querés eliminar{" "}
+              <span className="text-white font-semibold">
+                {selectedIds.size} gastos
+              </span>
+              ?
+            </p>
             <div className="bg-gray-800 rounded-xl px-4 py-3 mb-4">
               <p className="text-xs text-gray-500 mb-0.5">Total a eliminar</p>
-              <p className="text-white font-bold text-lg tabular-nums">{fmt(selectedTotal)}</p>
+              <p className="text-white font-bold text-lg tabular-nums">
+                {fmt(selectedTotal)}
+              </p>
             </div>
-            <p className="text-red-400/80 text-xs mb-4">Esta acción no se puede deshacer.</p>
+            <p className="text-red-400/80 text-xs mb-4">
+              Esta acción no se puede deshacer.
+            </p>
             <div className="flex gap-3">
-              <button onClick={() => setBulkDeleteConfirm(false)} disabled={bulkDeleteMutation.isPending} className="flex-1 bg-gray-800 hover:bg-gray-700 disabled:opacity-50 text-gray-300 rounded-xl py-2.5 font-medium text-sm transition-colors">Cancelar</button>
-              <button onClick={handleBulkDelete} disabled={bulkDeleteMutation.isPending} className="flex-1 bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white rounded-xl py-2.5 font-medium text-sm transition-colors">
-                {bulkDeleteMutation.isPending ? 'Eliminando...' : `Eliminar ${selectedIds.size}`}
+              <button
+                onClick={() => setBulkDeleteConfirm(false)}
+                disabled={bulkDeleteMutation.isPending}
+                className="flex-1 bg-gray-800 hover:bg-gray-700 disabled:opacity-50 text-gray-300 rounded-xl py-2.5 font-medium text-sm transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleBulkDelete}
+                disabled={bulkDeleteMutation.isPending}
+                className="flex-1 bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white rounded-xl py-2.5 font-medium text-sm transition-colors"
+              >
+                {bulkDeleteMutation.isPending
+                  ? "Eliminando..."
+                  : `Eliminar ${selectedIds.size}`}
               </button>
             </div>
           </div>
         </div>
       )}
     </div>
-  )
+  );
 }
