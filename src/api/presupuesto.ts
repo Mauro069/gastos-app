@@ -1,88 +1,22 @@
 import { supabase } from "@/lib";
-import type { ConversionUsdc, PresupuestoMensual, CategoriaBudget } from "@/types";
+import type { Presupuesto, PresupuestoItem } from "@/types";
 
-// ── Conversiones USDC → ARS ───────────────────────────────────────────────────
-
-export async function fetchConversionesByMonth(monthKey: string): Promise<ConversionUsdc[]> {
-  const [year, month] = monthKey.split("-");
-  const from = `${year}-${month}-01`;
-  const lastDay = new Date(Number(year), Number(month), 0).getDate();
-  const to = `${year}-${month}-${String(lastDay).padStart(2, "0")}`;
-
-  const { data, error } = await supabase
-    .from("conversiones_usdc")
-    .select("*")
-    .gte("fecha", from)
-    .lte("fecha", to)
-    .order("fecha", { ascending: false });
-
-  if (error) throw error;
-  return (data || []) as ConversionUsdc[];
-}
-
-export async function fetchConversionesByYear(year: number): Promise<ConversionUsdc[]> {
-  const { data, error } = await supabase
-    .from("conversiones_usdc")
-    .select("*")
-    .gte("fecha", `${year}-01-01`)
-    .lte("fecha", `${year}-12-31`)
-    .order("fecha", { ascending: false });
-
-  if (error) throw error;
-  return (data || []) as ConversionUsdc[];
-}
-
-export async function createConversion(
-  payload: Omit<ConversionUsdc, "id" | "user_id" | "created_at">,
-): Promise<ConversionUsdc> {
+/** Fetch the presupuesto for a given year+month, or null if none exists. */
+export async function fetchPresupuesto(
+  year: number,
+  month: number,
+): Promise<Presupuesto | null> {
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) throw new Error("Not authenticated");
 
   const { data, error } = await supabase
-    .from("conversiones_usdc")
-    .insert({ ...payload, user_id: user.id })
-    .select()
-    .single();
-
-  if (error) throw error;
-  return data as ConversionUsdc;
-}
-
-export async function updateConversion(
-  id: string,
-  payload: Partial<Omit<ConversionUsdc, "id" | "user_id" | "created_at">>,
-): Promise<ConversionUsdc> {
-  const { data, error } = await supabase
-    .from("conversiones_usdc")
-    .update(payload)
-    .eq("id", id)
-    .select()
-    .single();
-
-  if (error) throw error;
-  return data as ConversionUsdc;
-}
-
-export async function deleteConversion(id: string): Promise<void> {
-  const { error } = await supabase.from("conversiones_usdc").delete().eq("id", id);
-  if (error) throw error;
-}
-
-// ── Presupuesto mensual ───────────────────────────────────────────────────────
-
-export async function fetchPresupuesto(monthKey: string): Promise<PresupuestoMensual | null> {
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) throw new Error("Not authenticated");
-
-  const { data, error } = await supabase
-    .from("presupuesto_mensual")
-    .select("*")
+    .from("presupuestos")
+    .select("*, presupuesto_items(*)")
     .eq("user_id", user.id)
-    .eq("month_key", monthKey)
+    .eq("year", year)
+    .eq("month", month)
     .maybeSingle();
 
   if (error) throw error;
@@ -90,46 +24,94 @@ export async function fetchPresupuesto(monthKey: string): Promise<PresupuestoMen
 
   return {
     ...data,
-    categorias_budget: (data.categorias_budget || []) as CategoriaBudget[],
-  } as PresupuestoMensual;
+    presupuesto_items: (data.presupuesto_items || []) as PresupuestoItem[],
+  } as Presupuesto;
 }
 
-export async function upsertPresupuesto(
-  monthKey: string,
-  payload: {
-    ingreso_usd: number;
-    ahorro_usd: number;
-    inversion_usd: number;
-    categorias_budget: CategoriaBudget[];
-    notas?: string;
-  },
-): Promise<PresupuestoMensual> {
+/** Create a new presupuesto with its items. */
+export async function createPresupuesto(payload: {
+  year: number;
+  month: number;
+  total_usd: number;
+  usd_rate: number;
+  items: Omit<PresupuestoItem, "id" | "presupuesto_id">[];
+}): Promise<Presupuesto> {
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) throw new Error("Not authenticated");
 
-  const { data, error } = await supabase
-    .from("presupuesto_mensual")
-    .upsert(
-      {
-        user_id: user.id,
-        month_key: monthKey,
-        ...payload,
-      },
-      { onConflict: "user_id,month_key" },
-    )
+  const { data: pres, error: presErr } = await supabase
+    .from("presupuestos")
+    .insert({
+      user_id: user.id,
+      year: payload.year,
+      month: payload.month,
+      total_usd: payload.total_usd,
+      usd_rate: payload.usd_rate,
+    })
     .select()
     .single();
 
-  if (error) throw error;
-  return {
-    ...data,
-    categorias_budget: (data.categorias_budget || []) as CategoriaBudget[],
-  } as PresupuestoMensual;
+  if (presErr) throw presErr;
+
+  let items: PresupuestoItem[] = [];
+  if (payload.items.length > 0) {
+    const { data: itemsData, error: itemsErr } = await supabase
+      .from("presupuesto_items")
+      .insert(payload.items.map((i) => ({ ...i, presupuesto_id: pres.id })))
+      .select();
+    if (itemsErr) throw itemsErr;
+    items = (itemsData || []) as PresupuestoItem[];
+  }
+
+  return { ...pres, presupuesto_items: items } as Presupuesto;
 }
 
+/** Update an existing presupuesto and replace all its items. */
+export async function updatePresupuesto(
+  id: string,
+  payload: {
+    total_usd?: number;
+    usd_rate?: number;
+    items: Omit<PresupuestoItem, "id" | "presupuesto_id">[];
+  },
+): Promise<Presupuesto> {
+  // Update header fields
+  const { data: pres, error: presErr } = await supabase
+    .from("presupuestos")
+    .update({
+      ...(payload.total_usd !== undefined && { total_usd: payload.total_usd }),
+      ...(payload.usd_rate !== undefined && { usd_rate: payload.usd_rate }),
+    })
+    .eq("id", id)
+    .select()
+    .single();
+
+  if (presErr) throw presErr;
+
+  // Replace all items
+  const { error: delErr } = await supabase
+    .from("presupuesto_items")
+    .delete()
+    .eq("presupuesto_id", id);
+  if (delErr) throw delErr;
+
+  let items: PresupuestoItem[] = [];
+  if (payload.items.length > 0) {
+    const { data: itemsData, error: itemsErr } = await supabase
+      .from("presupuesto_items")
+      .insert(payload.items.map((i) => ({ ...i, presupuesto_id: id })))
+      .select();
+    if (itemsErr) throw itemsErr;
+    items = (itemsData || []) as PresupuestoItem[];
+  }
+
+  return { ...pres, presupuesto_items: items } as Presupuesto;
+}
+
+/** Delete a presupuesto (items cascade via FK). */
 export async function deletePresupuesto(id: string): Promise<void> {
-  const { error } = await supabase.from("presupuesto_mensual").delete().eq("id", id);
+  const { error } = await supabase.from("presupuestos").delete().eq("id", id);
   if (error) throw error;
 }

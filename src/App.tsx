@@ -1,4 +1,5 @@
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ResponsiveContainer,
@@ -13,18 +14,15 @@ import {
 } from "recharts";
 import {
   Loader2,
-  ChevronLeft,
-  ChevronRight,
   Plus,
   ArrowUpRight,
-  Calendar,
   Search,
 } from "lucide-react";
-import { GastosTable, Landing, ImportModal, AppShell } from "@/components";
-import { fetchGastosByYear, fetchUsdRates } from "@/api";
+import { GastosTable, Landing, ImportModal, AppShell, MonthPicker } from "@/components";
+import { fetchGastosByYear, fetchUsdRates, fetchPresupuesto } from "@/api";
 import { useAuth, useUserSettings } from "@/contexts";
 import { useMonthlyGastos } from "@/hooks";
-import { MONTH_NAMES, MONTH_FULL, monthKey } from "@/constants";
+import { MONTH_FULL, monthKey } from "@/constants";
 import { getChipHex } from "@/utils/chipColor";
 import type { UsdRates } from "@/types";
 
@@ -120,167 +118,6 @@ function KPICard({
 }
 
 // ── Month picker popover ───────────────────────────────────────────────────
-function MonthPicker({
-  year,
-  month,
-  onChange,
-}: {
-  year: number;
-  month: number;
-  onChange: (y: number, m: number) => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const [pickerYear, setPickerYear] = useState(year);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    setPickerYear(year);
-  }, [year]);
-
-  // Close on outside click
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node))
-        setOpen(false);
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [open]);
-
-  const select = (m: number) => {
-    onChange(pickerYear, m);
-    setOpen(false);
-  };
-
-  const prevMonth = () => {
-    const pm = month === 0 ? 11 : month - 1;
-    const py = month === 0 ? year - 1 : year;
-    onChange(py, pm);
-  };
-  const nextMonth = () => {
-    const nm = month === 11 ? 0 : month + 1;
-    const ny = month === 11 ? year + 1 : year;
-    onChange(ny, nm);
-  };
-
-  return (
-    <div ref={ref} className="flex items-center gap-0.5 relative">
-      {/* Prev arrow */}
-      <button
-        onClick={prevMonth}
-        className="p-1.5 rounded-md transition-opacity hover:opacity-70"
-        style={{
-          background: "none",
-          border: "none",
-          cursor: "pointer",
-          color: "var(--ink-3)",
-        }}
-      >
-        <ChevronLeft size={15} strokeWidth={2} />
-      </button>
-
-      {/* Date label button (opens picker) */}
-      <button
-        onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium"
-        style={{
-          background: open ? "var(--surface-alt)" : "var(--surface)",
-          color: "var(--ink)",
-          border: "1px solid var(--line)",
-          cursor: "pointer",
-        }}
-      >
-        <Calendar size={12} style={{ color: "var(--ink-3)" }} />
-        <span style={{ minWidth: 110, textAlign: "center" }}>
-          {MONTH_FULL[month]} {year}
-        </span>
-      </button>
-
-      {/* Next arrow */}
-      <button
-        onClick={nextMonth}
-        className="p-1.5 rounded-md transition-opacity hover:opacity-70"
-        style={{
-          background: "none",
-          border: "none",
-          cursor: "pointer",
-          color: "var(--ink-3)",
-        }}
-      >
-        <ChevronRight size={15} strokeWidth={2} />
-      </button>
-
-      {open && (
-        <div
-          className="absolute top-full mt-1 rounded-xl shadow-xl z-50 p-3"
-          style={{
-            background: "var(--surface)",
-            border: "1px solid var(--line)",
-            width: 220,
-            left: "50%",
-            transform: "translateX(-50%)",
-          }}
-        >
-          {/* Year nav */}
-          <div className="flex items-center justify-between mb-2.5 px-1">
-            <button
-              onClick={() => setPickerYear((y) => y - 1)}
-              style={{
-                background: "none",
-                border: "none",
-                cursor: "pointer",
-                color: "var(--ink-3)",
-                padding: "2px 6px",
-              }}
-            >
-              <ChevronLeft size={14} />
-            </button>
-            <span
-              className="num text-sm font-semibold"
-              style={{ color: "var(--ink)" }}
-            >
-              {pickerYear}
-            </span>
-            <button
-              onClick={() => setPickerYear((y) => y + 1)}
-              style={{
-                background: "none",
-                border: "none",
-                cursor: "pointer",
-                color: "var(--ink-3)",
-                padding: "2px 6px",
-              }}
-            >
-              <ChevronRight size={14} />
-            </button>
-          </div>
-          {/* Month grid */}
-          <div className="grid grid-cols-3 gap-1">
-            {MONTH_NAMES.map((name, idx) => {
-              const isActive = idx === month && pickerYear === year;
-              return (
-                <button
-                  key={idx}
-                  onClick={() => select(idx)}
-                  className="py-1.5 text-xs font-medium rounded-lg transition-colors"
-                  style={{
-                    background: isActive ? "var(--accent)" : "transparent",
-                    color: isActive ? "var(--accent-ink)" : "var(--ink-2)",
-                    border: "none",
-                    cursor: "pointer",
-                  }}
-                >
-                  {name}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
 
 // ── USD Rate pill ──────────────────────────────────────────────────────────
 function RatePill({
@@ -450,6 +287,7 @@ export default function App() {
   const { user, loading: authLoading } = useAuth();
   const { settings } = useUserSettings();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   const [showImport, setShowImport] = useState(false);
   const [showAddGasto, setShowAddGasto] = useState(false);
@@ -535,6 +373,13 @@ export default function App() {
   }, [usdRates, currentMonthKey]);
 
   const hasCustomRate = !!usdRates[currentMonthKey];
+
+  // selectedMonth is 0-indexed → presupuesto uses 1-indexed
+  const { data: presupuestoMes } = useQuery({
+    queryKey: ["presupuesto", selectedYear, selectedMonth + 1],
+    queryFn: () => fetchPresupuesto(selectedYear, selectedMonth + 1),
+    enabled: !!user?.id,
+  });
 
   const { gastosDelMes, gastosDelMesAnterior, prevMonthLabel, totalMes } =
     useMonthlyGastos(gastos, selectedYear, selectedMonth);
@@ -883,6 +728,48 @@ export default function App() {
           </div>
         ) : (
           <div className="p-4 lg:p-5 space-y-4">
+            {/* ── Budget widget ── */}
+            {presupuestoMes && (() => {
+              const rate = presupuestoMes.usd_rate || currentRate || 1;
+              const totalGastadoArs = gastosDelMes.reduce((s, g) => s + g.cantidad, 0);
+              const totalGastadoUsd = totalGastadoArs / rate;
+              const pct = presupuestoMes.total_usd > 0 ? Math.min((totalGastadoUsd / presupuestoMes.total_usd) * 100, 100) : 0;
+              const barColor = pct >= 100 ? "var(--negative)" : pct >= 80 ? "var(--warn)" : "var(--positive)";
+              return (
+                <button
+                  onClick={() => navigate("/presupuesto")}
+                  style={{
+                    width: "100%",
+                    background: "var(--surface)",
+                    border: "1px solid var(--line)",
+                    borderRadius: 12,
+                    padding: "12px 16px",
+                    cursor: "pointer",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 8,
+                    textAlign: "left",
+                  }}
+                >
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span style={{ fontSize: 11, color: "var(--ink-3)", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+                      Presupuesto {MONTH_FULL[selectedMonth]}
+                    </span>
+                    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                      <span className="num" style={{ fontSize: 12, color: "var(--ink-2)" }}>
+                        {fmtUsd(totalGastadoUsd)} / {fmtUsd(presupuestoMes.total_usd)}
+                      </span>
+                      <span style={{ fontSize: 11, color: "var(--ink-3)" }}>
+                        {Math.round(pct)}%
+                      </span>
+                    </div>
+                  </div>
+                  <div style={{ height: 4, background: "var(--surface-alt)", borderRadius: 99, overflow: "hidden" }}>
+                    <div style={{ width: `${pct}%`, height: "100%", background: barColor, borderRadius: 99, transition: "width 0.3s" }} />
+                  </div>
+                </button>
+              );
+            })()}
             {/* ── Charts row ── */}
             <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-4">
               {/* Daily evolution bar chart */}

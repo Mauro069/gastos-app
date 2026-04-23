@@ -1,39 +1,27 @@
-import { useState, useEffect, useMemo } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useState, useMemo } from "react"
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import {
   Plus,
   Pencil,
   Trash2,
-  ChevronLeft,
-  ChevronRight,
-  DollarSign,
-  PiggyBank,
-  TrendingUp,
-  Wallet,
-  ArrowRightLeft,
-  Settings,
-  Save,
   X,
   Loader2,
-} from "lucide-react";
+  AlertCircle,
+} from "lucide-react"
+import { AppShell, MonthPicker } from "@/components"
+import { useUserSettings } from "@/contexts"
 import {
-  fetchConversionesByMonth,
   fetchPresupuesto,
-  fetchGastosByYear,
-  createConversion,
-  updateConversion,
-  deleteConversion,
-  upsertPresupuesto,
-} from "@/api";
-import { useAuth } from "@/contexts";
-import { AppShell } from "@/components";
-import { useNumericInput, useAsyncSubmit } from "@/hooks";
-import { MONTH_FULL, monthKey, CONCEPTOS } from "@/constants";
-import type {
-  ConversionUsdc,
-  PresupuestoMensual,
-  CategoriaBudget,
-} from "@/types";
+  createPresupuesto,
+  updatePresupuesto,
+  deletePresupuesto,
+  fetchGastosByRange,
+  fetchUsdRates,
+} from "@/api"
+import { getChipHex } from "@/utils/chipColor"
+import { MONTH_FULL } from "@/constants"
+
+import type { Presupuesto } from "@/types"
 
 // ── Formatters ────────────────────────────────────────────────────────────────
 
@@ -42,1158 +30,1280 @@ const fmtUsd = (n: number) =>
     style: "currency",
     currency: "USD",
     maximumFractionDigits: 0,
-  }).format(n);
+  }).format(n)
 
 const fmtArs = (n: number) =>
   new Intl.NumberFormat("es-AR", {
     style: "currency",
     currency: "ARS",
     maximumFractionDigits: 0,
-  }).format(n);
+  }).format(n)
 
-const fmtDate = (iso: string) =>
-  new Date(iso + "T12:00:00").toLocaleDateString("es-AR", {
-    day: "2-digit",
-    month: "2-digit",
-  });
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
-const today = () => new Date().toISOString().split("T")[0];
+function pad(n: number) {
+  return String(n).padStart(2, "0")
+}
 
-// ── Shared input style ────────────────────────────────────────────────────────
+function monthRange(year: number, month: number) {
+  const from = `${year}-${pad(month)}-01`
+  const lastDay = new Date(year, month, 0).getDate()
+  const to = `${year}-${pad(month)}-${pad(lastDay)}`
+  return { from, to }
+}
 
-const inputBase: React.CSSProperties = {
-  background: 'var(--surface-alt)',
-  border: '1px solid var(--line)',
+// ── Shared styles ─────────────────────────────────────────────────────────────
+
+const inputStyle: React.CSSProperties = {
+  background: "var(--surface-alt)",
+  border: "1px solid var(--line)",
   borderRadius: 8,
-  padding: '8px 12px',
-  color: 'var(--ink)',
+  padding: "8px 12px",
+  color: "var(--ink)",
   fontSize: 14,
-  outline: 'none',
-  width: '100%',
-};
-
-// ── Conversion Modal ──────────────────────────────────────────────────────────
-
-interface ConversionModalProps {
-  conversion: ConversionUsdc | null;
-  defaultDate?: string;
-  onClose: () => void;
-  onSave: (
-    data: Omit<ConversionUsdc, "id" | "user_id" | "created_at">,
-  ) => Promise<void>;
+  outline: "none",
+  width: "100%",
+  boxSizing: "border-box",
 }
 
-function ConversionModal({
-  conversion,
-  defaultDate,
-  onClose,
-  onSave,
-}: ConversionModalProps) {
-  const [fecha, setFecha] = useState(defaultDate || today());
-  const [nota, setNota] = useState("");
-  const { loading, error, setError, execute } = useAsyncSubmit();
+const card: React.CSSProperties = {
+  background: "var(--surface)",
+  border: "1px solid var(--line)",
+  borderRadius: 16,
+  overflow: "hidden",
+}
 
-  const usdc = useNumericInput();
-  const tc = useNumericInput();
+// ── Progress Bar ──────────────────────────────────────────────────────────────
 
-  useEffect(() => {
-    if (conversion) {
-      setFecha(conversion.fecha);
-      setNota(conversion.nota || "");
-      usdc.reset(conversion.monto_usdc);
-      tc.reset(conversion.tipo_cambio);
-    } else {
-      setFecha(defaultDate || today());
-      setNota("");
-      usdc.reset("");
-      tc.reset("");
-    }
-  }, [conversion, defaultDate]);
-
-  const montoArs =
-    usdc.numericValue !== "" &&
-    tc.numericValue !== "" &&
-    usdc.numericValue > 0 &&
-    tc.numericValue > 0
-      ? usdc.numericValue * tc.numericValue
-      : null;
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (
-      usdc.numericValue === "" ||
-      isNaN(usdc.numericValue) ||
-      usdc.numericValue <= 0
-    ) {
-      setError("Ingresá un monto USDC válido");
-      return;
-    }
-    if (
-      tc.numericValue === "" ||
-      isNaN(tc.numericValue) ||
-      tc.numericValue <= 0
-    ) {
-      setError("Ingresá un tipo de cambio válido");
-      return;
-    }
-    await execute(async () => {
-      const usdcVal = usdc.numericValue as number;
-      const tcVal = tc.numericValue as number;
-      await onSave({
-        fecha,
-        monto_usdc: usdcVal,
-        tipo_cambio: tcVal,
-        monto_ars: usdcVal * tcVal,
-        nota: nota.trim(),
-      });
-      onClose();
-    });
-  };
-
+function ProgressBar({ pct }: { pct: number }) {
+  const clamped = Math.min(pct, 100)
+  const color =
+    pct >= 100
+      ? "var(--negative)"
+      : pct >= 80
+        ? "var(--warn)"
+        : "var(--positive)"
   return (
-    <div className="fixed inset-0 backdrop-blur-sm z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.7)' }}>
-      <div className="w-full max-w-md shadow-2xl rounded-2xl" style={{ background: 'var(--surface)', border: '1px solid var(--line)' }}>
-        <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: '1px solid var(--line)' }}>
-          <div className="flex items-center gap-2">
-            <ArrowRightLeft className="w-5 h-5" style={{ color: 'var(--accent)' }} />
-            <h2 className="text-lg font-semibold" style={{ color: 'var(--ink)' }}>
-              {conversion ? "Editar conversión" : "Nueva conversión USDC → ARS"}
-            </h2>
-          </div>
-          <button
-            onClick={onClose}
-            className="transition-colors rounded-lg p-1"
-            style={{ color: 'var(--ink-3)', background: 'none', border: 'none', cursor: 'pointer' }}
-            onMouseEnter={e => (e.currentTarget.style.color = 'var(--ink)')}
-            onMouseLeave={e => (e.currentTarget.style.color = 'var(--ink-3)')}
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-
-        <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4">
-          <div>
-            <label className="text-xs uppercase tracking-wider block mb-1.5" style={{ color: 'var(--ink-2)' }}>
-              Fecha *
-            </label>
-            <input
-              type="date"
-              value={fecha}
-              onChange={(e) => setFecha(e.target.value)}
-              style={inputBase}
-              required
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="text-xs uppercase tracking-wider block mb-1.5" style={{ color: 'var(--ink-2)' }}>
-                Monto USDC *
-              </label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm select-none" style={{ color: 'var(--ink-3)' }}>
-                  $
-                </span>
-                <input
-                  ref={usdc.inputRef}
-                  type="text"
-                  inputMode="decimal"
-                  value={usdc.display}
-                  onChange={usdc.onChange}
-                  style={{ ...inputBase, paddingLeft: 28 }}
-                  placeholder="0"
-                  autoFocus={!conversion}
-                  autoComplete="off"
-                />
-              </div>
-            </div>
-            <div>
-              <label className="text-xs uppercase tracking-wider block mb-1.5" style={{ color: 'var(--ink-2)' }}>
-                Tipo de cambio *
-              </label>
-              <input
-                ref={tc.inputRef}
-                type="text"
-                inputMode="decimal"
-                value={tc.display}
-                onChange={tc.onChange}
-                style={inputBase}
-                placeholder="1.200"
-                autoComplete="off"
-              />
-            </div>
-          </div>
-
-          {montoArs !== null && (
-            <div
-              className="rounded-xl px-4 py-3 flex items-center justify-between"
-              style={{ background: 'var(--pos-soft)', border: '1px solid var(--positive)' }}
-            >
-              <span className="text-xs font-medium" style={{ color: 'var(--positive)' }}>
-                Recibís en ARS
-              </span>
-              <span className="font-bold text-lg num" style={{ color: 'var(--ink)' }}>
-                {fmtArs(montoArs)}
-              </span>
-            </div>
-          )}
-
-          <div>
-            <label className="text-xs uppercase tracking-wider block mb-1.5" style={{ color: 'var(--ink-2)' }}>
-              Nota (opcional)
-            </label>
-            <input
-              type="text"
-              value={nota}
-              onChange={(e) => setNota(e.target.value)}
-              style={inputBase}
-              placeholder="Ej: Lemon, Bitso, P2P..."
-              maxLength={200}
-              autoComplete="off"
-            />
-          </div>
-
-          {error && (
-            <div
-              className="rounded-lg px-3 py-2 text-sm"
-              style={{ background: 'var(--neg-soft)', border: '1px solid var(--negative)', color: 'var(--negative)' }}
-            >
-              {error}
-            </div>
-          )}
-
-          <div className="flex gap-3 pt-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 rounded-xl py-2.5 font-medium text-sm transition-colors"
-              style={{ background: 'var(--surface-alt)', color: 'var(--ink-2)', border: '1px solid var(--line)', cursor: 'pointer' }}
-            >
-              Cancelar
-            </button>
-            <button
-              type="submit"
-              disabled={loading}
-              className="flex-1 rounded-xl py-2.5 font-medium text-sm transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
-              style={{ background: 'var(--accent)', color: 'var(--accent-ink)', border: 'none', cursor: 'pointer' }}
-            >
-              <Save className="w-4 h-4" />
-              {loading ? "Guardando..." : conversion ? "Actualizar" : "Guardar"}
-            </button>
-          </div>
-        </form>
-      </div>
+    <div
+      style={{
+        height: 4,
+        background: "var(--surface-alt)",
+        borderRadius: 99,
+        overflow: "hidden",
+      }}
+    >
+      <div
+        style={{
+          width: `${clamped}%`,
+          height: "100%",
+          background: color,
+          borderRadius: 99,
+          transition: "width 0.3s",
+        }}
+      />
     </div>
-  );
+  )
 }
 
-// ── Budget Setup Modal ────────────────────────────────────────────────────────
+// ── Budget Modal ──────────────────────────────────────────────────────────────
+
+interface ModalItem {
+  concepto: string
+  monto_usd: string
+}
 
 interface BudgetModalProps {
-  presupuesto: PresupuestoMensual | null;
-  monthLabel: string;
-  onClose: () => void;
+  year: number
+  month: number
+  existing?: Presupuesto
+  defaultRate: number
+  conceptos: string[]
+  onClose: () => void
   onSave: (data: {
-    ingreso_usd: number;
-    ahorro_usd: number;
-    inversion_usd: number;
-    categorias_budget: CategoriaBudget[];
-    notas: string;
-  }) => Promise<void>;
+    total_usd: number
+    usd_rate: number
+    items: { concepto: string; monto_usd: number }[]
+  }) => Promise<void>
 }
 
 function BudgetModal({
-  presupuesto,
-  monthLabel,
+  year,
+  month,
+  existing,
+  defaultRate,
+  conceptos,
   onClose,
   onSave,
 }: BudgetModalProps) {
-  const ingreso = useNumericInput();
-  const ahorro = useNumericInput();
-  const inversion = useNumericInput();
-  const [notas, setNotas] = useState("");
-  const [categorias, setCategorias] = useState<CategoriaBudget[]>([]);
-  const [newConcepto, setNewConcepto] = useState<string>(CONCEPTOS[0]);
-  const [newMonto, setNewMonto] = useState("");
-  const { loading, error, setError, execute } = useAsyncSubmit();
+  const [totalUsd, setTotalUsd] = useState(
+    existing ? String(existing.total_usd) : "",
+  )
+  const [usdRate, setUsdRate] = useState(
+    existing
+      ? String(existing.usd_rate)
+      : defaultRate > 0
+        ? String(defaultRate)
+        : "",
+  )
+  const [items, setItems] = useState<ModalItem[]>(
+    existing?.presupuesto_items.map((i) => ({
+      concepto: i.concepto,
+      monto_usd: String(i.monto_usd),
+    })) ?? [],
+  )
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState("")
 
-  useEffect(() => {
-    if (presupuesto) {
-      ingreso.reset(presupuesto.ingreso_usd);
-      ahorro.reset(presupuesto.ahorro_usd);
-      inversion.reset(presupuesto.inversion_usd);
-      setNotas(presupuesto.notas || "");
-      setCategorias([...presupuesto.categorias_budget]);
-    } else {
-      ingreso.reset("");
-      ahorro.reset("");
-      inversion.reset("");
-      setNotas("");
-      setCategorias([]);
+  const totalNum = parseFloat(totalUsd) || 0
+  const rateNum = parseFloat(usdRate) || 0
+  const sumItems = items.reduce((s, i) => s + (parseFloat(i.monto_usd) || 0), 0)
+  const resto = totalNum - sumItems
+
+  function addItem() {
+    const used = new Set(items.map((i) => i.concepto))
+    const next = conceptos.find((c) => !used.has(c)) ?? ""
+    setItems((prev) => [...prev, { concepto: next, monto_usd: "" }])
+  }
+
+  function removeItem(idx: number) {
+    setItems((prev) => prev.filter((_, i) => i !== idx))
+  }
+
+  function updateItem(idx: number, field: keyof ModalItem, value: string) {
+    setItems((prev) =>
+      prev.map((it, i) => (i === idx ? { ...it, [field]: value } : it)),
+    )
+  }
+
+  async function handleSave() {
+    setError("")
+    if (!totalNum || totalNum <= 0) {
+      setError("El total debe ser mayor a 0")
+      return
     }
-  }, [presupuesto]);
-
-  const ingresoVal =
-    ingreso.numericValue !== "" && !isNaN(ingreso.numericValue)
-      ? ingreso.numericValue
-      : 0;
-  const ahorroVal =
-    ahorro.numericValue !== "" && !isNaN(ahorro.numericValue)
-      ? ahorro.numericValue
-      : 0;
-  const inversionVal =
-    inversion.numericValue !== "" && !isNaN(inversion.numericValue)
-      ? inversion.numericValue
-      : 0;
-  const disponibleUsd = Math.max(0, ingresoVal - ahorroVal - inversionVal);
-
-  const addCategoria = () => {
-    const monto = parseFloat(newMonto.replace(/\./g, "").replace(",", "."));
-    if (isNaN(monto) || monto <= 0) return;
-    const exists = categorias.findIndex((c) => c.concepto === newConcepto);
-    if (exists >= 0) {
-      setCategorias((prev) =>
-        prev.map((c, i) => (i === exists ? { ...c, monto_ars: monto } : c)),
-      );
-    } else {
-      setCategorias((prev) => [
-        ...prev,
-        { concepto: newConcepto, monto_ars: monto },
-      ]);
+    if (!rateNum || rateNum <= 0) {
+      setError("El tipo de cambio es requerido")
+      return
     }
-    setNewMonto("");
-  };
-
-  const removeCategoria = (concepto: string) => {
-    setCategorias((prev) => prev.filter((c) => c.concepto !== concepto));
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (
-      ingreso.numericValue === "" ||
-      isNaN(ingreso.numericValue) ||
-      ingreso.numericValue <= 0
-    ) {
-      setError("Ingresá tu ingreso mensual en USD");
-      return;
+    if (resto < -0.01) {
+      setError("Los montos por categoría superan el total")
+      return
     }
-    await execute(async () => {
+    setSaving(true)
+    try {
       await onSave({
-        ingreso_usd: ingresoVal,
-        ahorro_usd: ahorroVal,
-        inversion_usd: inversionVal,
-        categorias_budget: categorias,
-        notas: notas.trim(),
-      });
-      onClose();
-    });
-  };
+        total_usd: totalNum,
+        usd_rate: rateNum,
+        items: items
+          .filter((i) => i.concepto && parseFloat(i.monto_usd) > 0)
+          .map((i) => ({
+            concepto: i.concepto,
+            monto_usd: parseFloat(i.monto_usd),
+          })),
+      })
+      onClose()
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Error al guardar")
+      setSaving(false)
+    }
+  }
 
   return (
-    <div className="fixed inset-0 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto" style={{ background: 'rgba(0,0,0,0.7)' }}>
-      <div className="w-full max-w-lg shadow-2xl my-4 rounded-2xl" style={{ background: 'var(--surface)', border: '1px solid var(--line)' }}>
-        <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: '1px solid var(--line)' }}>
-          <div className="flex items-center gap-2">
-            <Settings className="w-5 h-5" style={{ color: 'var(--accent)' }} />
-            <h2 className="text-lg font-semibold" style={{ color: 'var(--ink)' }}>
-              Presupuesto — {monthLabel}
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 50,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        background: "rgba(0,0,0,0.6)",
+        backdropFilter: "blur(4px)",
+      }}
+      onMouseDown={(e) => e.target === e.currentTarget && onClose()}
+    >
+      <div
+        style={{
+          background: "var(--surface)",
+          border: "1px solid var(--line)",
+          borderRadius: 20,
+          width: "min(520px, 95vw)",
+          maxHeight: "90vh",
+          display: "flex",
+          flexDirection: "column",
+          overflow: "hidden",
+        }}
+      >
+        {/* Header */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            padding: "16px 20px",
+            borderBottom: "1px solid var(--line)",
+          }}
+        >
+          <div>
+            <p
+              style={{
+                fontSize: 10,
+                color: "var(--ink-3)",
+                textTransform: "uppercase",
+                letterSpacing: "0.08em",
+                marginBottom: 2,
+              }}
+            >
+              {existing ? "Editar" : "Crear"} presupuesto
+            </p>
+            <h2
+              style={{
+                fontSize: 15,
+                fontWeight: 600,
+                color: "var(--ink)",
+                margin: 0,
+              }}
+            >
+              {MONTH_FULL[month]} {year}
             </h2>
           </div>
           <button
             onClick={onClose}
-            className="transition-colors rounded-lg p-1"
-            style={{ color: 'var(--ink-3)', background: 'none', border: 'none', cursor: 'pointer' }}
-            onMouseEnter={e => (e.currentTarget.style.color = 'var(--ink)')}
-            onMouseLeave={e => (e.currentTarget.style.color = 'var(--ink-3)')}
+            style={{
+              width: 32,
+              height: 32,
+              borderRadius: 8,
+              border: "none",
+              cursor: "pointer",
+              background: "var(--surface-alt)",
+              color: "var(--ink-2)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
           >
-            <X className="w-5 h-5" />
+            <X size={15} />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="px-6 py-5 space-y-5">
-          {/* Distribución USD */}
-          <div>
-            <p className="text-xs uppercase tracking-wider mb-3 font-medium" style={{ color: 'var(--ink-2)' }}>
-              Distribución mensual en USD
-            </p>
-            <div className="grid grid-cols-3 gap-3">
-              <div>
-                <label className="text-xs block mb-1" style={{ color: 'var(--ink-3)' }}>
-                  Ingreso total *
-                </label>
-                <div className="relative">
-                  <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs select-none" style={{ color: 'var(--ink-3)' }}>
-                    $
-                  </span>
-                  <input
-                    ref={ingreso.inputRef}
-                    type="text"
-                    inputMode="decimal"
-                    value={ingreso.display}
-                    onChange={ingreso.onChange}
-                    style={{ ...inputBase, paddingLeft: 24 }}
-                    placeholder="1500"
-                    autoFocus
-                    autoComplete="off"
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="text-xs block mb-1 flex items-center gap-1" style={{ color: 'var(--ink-3)' }}>
-                  <PiggyBank className="w-3 h-3" style={{ color: 'var(--warn)' }} />
-                  Ahorro USD
-                </label>
-                <div className="relative">
-                  <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs select-none" style={{ color: 'var(--ink-3)' }}>
-                    $
-                  </span>
-                  <input
-                    ref={ahorro.inputRef}
-                    type="text"
-                    inputMode="decimal"
-                    value={ahorro.display}
-                    onChange={ahorro.onChange}
-                    style={{ ...inputBase, paddingLeft: 24, color: 'var(--warn)', borderColor: 'var(--warn)' }}
-                    placeholder="300"
-                    autoComplete="off"
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="text-xs block mb-1 flex items-center gap-1" style={{ color: 'var(--ink-3)' }}>
-                  <TrendingUp className="w-3 h-3" style={{ color: 'var(--ink-2)' }} />
-                  Inversión USD
-                </label>
-                <div className="relative">
-                  <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs select-none" style={{ color: 'var(--ink-3)' }}>
-                    $
-                  </span>
-                  <input
-                    ref={inversion.inputRef}
-                    type="text"
-                    inputMode="decimal"
-                    value={inversion.display}
-                    onChange={inversion.onChange}
-                    style={{ ...inputBase, paddingLeft: 24 }}
-                    placeholder="200"
-                    autoComplete="off"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Resumen visual */}
-            {ingresoVal > 0 && (
-              <div
-                className="mt-3 rounded-xl px-4 py-3 flex items-center justify-between"
-                style={{ background: 'var(--surface-alt)', border: '1px solid var(--line)' }}
+        {/* Body */}
+        <div style={{ flex: 1, overflowY: "auto", padding: "20px" }}>
+          {/* Total + Rate */}
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr",
+              gap: 12,
+              marginBottom: 16,
+            }}
+          >
+            <div>
+              <label
+                style={{
+                  fontSize: 10,
+                  color: "var(--ink-3)",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.08em",
+                  display: "block",
+                  marginBottom: 6,
+                }}
               >
-                <span className="text-xs" style={{ color: 'var(--ink-2)' }}>
-                  Disponible para gastos
-                </span>
-                <span className="font-bold num" style={{ color: 'var(--accent)' }}>
-                  {fmtUsd(disponibleUsd)}
-                </span>
-              </div>
-            )}
-          </div>
-
-          {/* Categorías de gasto */}
-          <div>
-            <p className="text-xs uppercase tracking-wider mb-3 font-medium" style={{ color: 'var(--ink-2)' }}>
-              Límites por categoría (en ARS)
-            </p>
-
-            {/* Lista de categorías ya agregadas */}
-            {categorias.length > 0 && (
-              <div className="space-y-1.5 mb-3">
-                {categorias.map((cat) => (
-                  <div
-                    key={cat.concepto}
-                    className="flex items-center justify-between rounded-lg px-3 py-2"
-                    style={{ background: 'var(--surface-alt)', border: '1px solid var(--line)' }}
-                  >
-                    <span className="text-sm" style={{ color: 'var(--ink-2)' }}>{cat.concepto}</span>
-                    <div className="flex items-center gap-3">
-                      <span className="text-sm font-medium num" style={{ color: 'var(--ink)' }}>
-                        {fmtArs(cat.monto_ars)}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => removeCategoria(cat.concepto)}
-                        className="transition-colors"
-                        style={{ color: 'var(--ink-3)', background: 'none', border: 'none', cursor: 'pointer' }}
-                        onMouseEnter={e => (e.currentTarget.style.color = 'var(--negative)')}
-                        onMouseLeave={e => (e.currentTarget.style.color = 'var(--ink-3)')}
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Agregar nueva categoría */}
-            <div className="flex gap-2">
-              <select
-                value={newConcepto}
-                onChange={(e) => setNewConcepto(e.target.value)}
-                style={{ ...inputBase, flex: 1 }}
-              >
-                {CONCEPTOS.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
-                ))}
-              </select>
+                Total (USD)
+              </label>
               <input
-                type="text"
-                inputMode="numeric"
-                value={newMonto}
-                onChange={(e) => setNewMonto(e.target.value)}
-                style={{ ...inputBase, width: 128 }}
-                placeholder="Monto $"
-                onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addCategoria())}
+                type="number"
+                placeholder="1000"
+                value={totalUsd}
+                onChange={(e) => setTotalUsd(e.target.value)}
+                style={inputStyle}
               />
-              <button
-                type="button"
-                onClick={addCategoria}
-                className="rounded-lg px-3 py-2 transition-colors"
-                style={{ background: 'var(--accent)', color: 'var(--accent-ink)', border: 'none', borderRadius: 7, cursor: 'pointer' }}
+            </div>
+            <div>
+              <label
+                style={{
+                  fontSize: 10,
+                  color: "var(--ink-3)",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.08em",
+                  display: "block",
+                  marginBottom: 6,
+                }}
               >
-                <Plus className="w-4 h-4" />
-              </button>
+                Tipo de cambio
+              </label>
+              <input
+                type="number"
+                placeholder="1300"
+                value={usdRate}
+                onChange={(e) => setUsdRate(e.target.value)}
+                style={inputStyle}
+              />
             </div>
           </div>
 
-          {/* Notas */}
-          <div>
-            <label className="text-xs uppercase tracking-wider block mb-1.5" style={{ color: 'var(--ink-2)' }}>
-              Notas (opcional)
-            </label>
-            <input
-              type="text"
-              value={notas}
-              onChange={(e) => setNotas(e.target.value)}
-              style={inputBase}
-              placeholder="Ej: Mes con bono, viaje planeado..."
-              maxLength={300}
-              autoComplete="off"
-            />
-          </div>
-
-          {error && (
+          {/* ARS equivalent preview */}
+          {totalNum > 0 && rateNum > 0 && (
             <div
-              className="rounded-lg px-3 py-2 text-sm"
-              style={{ background: 'var(--neg-soft)', border: '1px solid var(--negative)', color: 'var(--negative)' }}
+              style={{
+                marginBottom: 20,
+                padding: "10px 12px",
+                background: "var(--accent-soft)",
+                borderRadius: 10,
+                fontSize: 13,
+                color: "var(--ink-2)",
+              }}
             >
-              {error}
+              <span style={{ color: "var(--ink-3)" }}>Equivalente: </span>
+              <span
+                className="num"
+                style={{ fontWeight: 600, color: "var(--ink)" }}
+              >
+                {fmtArs(totalNum * rateNum)}
+              </span>
             </div>
           )}
 
-          <div className="flex gap-3 pt-1">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 rounded-xl py-2.5 font-medium text-sm transition-colors"
-              style={{ background: 'var(--surface-alt)', color: 'var(--ink-2)', border: '1px solid var(--line)', cursor: 'pointer' }}
+          {/* Items section */}
+          <div style={{ marginBottom: 16 }}>
+            <p
+              style={{
+                fontSize: 10,
+                color: "var(--ink-3)",
+                textTransform: "uppercase",
+                letterSpacing: "0.08em",
+                marginBottom: 10,
+              }}
             >
-              Cancelar
-            </button>
+              Por categoría
+            </p>
+
+            {items.map((item, idx) => (
+              <div
+                key={idx}
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr 120px 32px",
+                  gap: 8,
+                  marginBottom: 8,
+                  alignItems: "center",
+                }}
+              >
+                <select
+                  value={item.concepto}
+                  onChange={(e) => updateItem(idx, "concepto", e.target.value)}
+                  style={{ ...inputStyle, padding: "8px 10px" }}
+                >
+                  <option value="">Categoría…</option>
+                  {conceptos.map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  type="number"
+                  placeholder="USD"
+                  value={item.monto_usd}
+                  onChange={(e) => updateItem(idx, "monto_usd", e.target.value)}
+                  style={inputStyle}
+                />
+                <button
+                  onClick={() => removeItem(idx)}
+                  style={{
+                    width: 32,
+                    height: 36,
+                    borderRadius: 8,
+                    border: "none",
+                    cursor: "pointer",
+                    background: "var(--neg-soft)",
+                    color: "var(--negative)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexShrink: 0,
+                  }}
+                >
+                  <X size={13} />
+                </button>
+              </div>
+            ))}
+
             <button
-              type="submit"
-              disabled={loading}
-              className="flex-1 rounded-xl py-2.5 font-medium text-sm transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
-              style={{ background: 'var(--accent)', color: 'var(--accent-ink)', border: 'none', cursor: 'pointer' }}
+              onClick={addItem}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                fontSize: 13,
+                color: "var(--accent)",
+                background: "none",
+                border: "none",
+                cursor: "pointer",
+                padding: "4px 0",
+                marginTop: 4,
+              }}
             >
-              <Save className="w-4 h-4" />
-              {loading ? "Guardando..." : "Guardar presupuesto"}
+              <Plus size={14} /> Agregar categoría
             </button>
           </div>
-        </form>
+
+          {/* El resto preview */}
+          {totalNum > 0 && (
+            <div
+              style={{
+                padding: "10px 12px",
+                background: "var(--surface-alt)",
+                borderRadius: 10,
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                fontSize: 13,
+              }}
+            >
+              <span style={{ color: "var(--ink-2)" }}>
+                El resto (otras categorías)
+              </span>
+              <span
+                className="num"
+                style={{
+                  fontWeight: 600,
+                  color: resto < 0 ? "var(--negative)" : "var(--ink)",
+                }}
+              >
+                {fmtUsd(Math.max(0, resto))}
+              </span>
+            </div>
+          )}
+
+          {/* Error */}
+          {error && (
+            <div
+              style={{
+                marginTop: 12,
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                color: "var(--negative)",
+                fontSize: 13,
+              }}
+            >
+              <AlertCircle size={14} />
+              {error}
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div
+          style={{
+            padding: "12px 20px",
+            borderTop: "1px solid var(--line)",
+            display: "flex",
+            gap: 8,
+            justifyContent: "flex-end",
+          }}
+        >
+          <button
+            onClick={onClose}
+            style={{
+              padding: "9px 16px",
+              borderRadius: 10,
+              border: "1px solid var(--line)",
+              background: "var(--surface-alt)",
+              color: "var(--ink-2)",
+              fontSize: 14,
+              cursor: "pointer",
+            }}
+          >
+            Cancelar
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            style={{
+              padding: "9px 20px",
+              borderRadius: 10,
+              border: "none",
+              background: "var(--accent)",
+              color: "var(--accent-ink)",
+              fontSize: 14,
+              fontWeight: 600,
+              cursor: saving ? "default" : "pointer",
+              opacity: saving ? 0.7 : 1,
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+            }}
+          >
+            {saving && (
+              <Loader2
+                size={14}
+                style={{ animation: "spin 1s linear infinite" }}
+              />
+            )}
+            Guardar
+          </button>
+        </div>
       </div>
     </div>
-  );
-}
-
-// ── Progress bar helper ───────────────────────────────────────────────────────
-
-function ProgressBar({
-  value,
-  max,
-}: {
-  value: number;
-  max: number;
-}) {
-  const pct = max > 0 ? Math.min((value / max) * 100, 100) : 0;
-  const over = max > 0 && value > max;
-  const barColor = over
-    ? 'var(--negative)'
-    : pct > 85
-    ? 'var(--warn)'
-    : 'var(--accent)';
-
-  return (
-    <div className="w-full rounded-full h-1.5 mt-1.5" style={{ background: 'var(--surface-alt)' }}>
-      <div
-        className="h-1.5 rounded-full transition-all"
-        style={{ width: `${pct}%`, background: barColor }}
-      />
-    </div>
-  );
+  )
 }
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
 export default function PresupuestoPage() {
-  const { user } = useAuth();
-  const queryClient = useQueryClient();
+  const now = new Date()
+  const [year, setYear] = useState(now.getFullYear())
+  const [month, setMonth] = useState(now.getMonth()) // 0-indexed like JS Date / MonthPicker
+  const [showModal, setShowModal] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
 
-  const now = new Date();
-  const [year, setYear] = useState(now.getFullYear());
-  const [month, setMonth] = useState(now.getMonth());
+  const queryClient = useQueryClient()
+  const { settings } = useUserSettings()
 
-  const mk = monthKey(year, month);
-  const monthLabel = `${MONTH_FULL[month]} ${year}`;
+  // Convert to 1-indexed for API and date math
+  const month1 = month + 1
+  const mk = `${year}-${pad(month1)}`
+  const { from, to } = monthRange(year, month1)
 
-  const [showConvModal, setShowConvModal] = useState(false);
-  const [editConv, setEditConv] = useState<ConversionUsdc | null>(null);
-  const [showBudgetModal, setShowBudgetModal] = useState(false);
+  // ── Data ──────────────────────────────────────────────────────────────────
 
-  // Navegación entre meses
-  const prevMonth = () => {
-    if (month === 0) {
-      setMonth(11);
-      setYear((y) => y - 1);
-    } else {
-      setMonth((m) => m - 1);
+  const { data: presupuesto, isLoading: presLoading } = useQuery({
+    queryKey: ["presupuesto", year, month1],
+    queryFn: () => fetchPresupuesto(year, month1),
+  })
+
+  const { data: gastos = [] } = useQuery({
+    queryKey: ["gastos-range", from, to],
+    queryFn: () => fetchGastosByRange(from, to),
+  })
+
+  const { data: usdRates = {} } = useQuery({
+    queryKey: ["usdRates"],
+    queryFn: fetchUsdRates,
+  })
+
+  const currentRate = (usdRates as Record<string, number>)[mk] ?? 0
+
+  // ── Derived ───────────────────────────────────────────────────────────────
+
+  const rate = presupuesto?.usd_rate ?? currentRate
+
+  const { spendByConcepto, totalGastadoUsd } = useMemo(() => {
+    const divisor = rate || 1
+    const map: Record<string, number> = {}
+    for (const g of gastos) {
+      map[g.concepto] = (map[g.concepto] ?? 0) + g.cantidad / divisor
     }
-  };
-  const nextMonth = () => {
-    if (month === 11) {
-      setMonth(0);
-      setYear((y) => y + 1);
-    } else {
-      setMonth((m) => m + 1);
-    }
-  };
+    const total = Object.values(map).reduce((a, b) => a + b, 0)
+    return { spendByConcepto: map, totalGastadoUsd: total }
+  }, [gastos, rate])
 
-  // Queries
-  const { data: conversiones = [], isLoading: convLoading } = useQuery({
-    queryKey: ["conversiones", user?.id, mk],
-    queryFn: () => fetchConversionesByMonth(mk),
-    enabled: !!user?.id,
-  });
+  const budgetedConceptos = new Set(
+    presupuesto?.presupuesto_items.map((i) => i.concepto) ?? [],
+  )
+  const sumBudgetedUsd =
+    presupuesto?.presupuesto_items.reduce((s, i) => s + i.monto_usd, 0) ?? 0
+  const restoPres = (presupuesto?.total_usd ?? 0) - sumBudgetedUsd
+  const restoGastado = gastos
+    .filter((g) => !budgetedConceptos.has(g.concepto))
+    .reduce((s, g) => s + g.cantidad / (rate || 1), 0)
 
-  const { data: presupuesto, isLoading: budgetLoading } = useQuery({
-    queryKey: ["presupuesto", user?.id, mk],
-    queryFn: () => fetchPresupuesto(mk),
-    enabled: !!user?.id,
-  });
+  // ── Mutations ─────────────────────────────────────────────────────────────
 
-  const { data: gastos = [], isLoading: gastosLoading } = useQuery({
-    queryKey: ["gastos", user?.id, year],
-    queryFn: () => fetchGastosByYear(year),
-    enabled: !!user?.id,
-  });
-
-  // Gastos del mes actual
-  const gastosMes = useMemo(() => {
-    const from = `${year}-${String(month + 1).padStart(2, "0")}-01`;
-    const lastDay = new Date(year, month + 1, 0).getDate();
-    const to = `${year}-${String(month + 1).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
-    return gastos.filter((g) => g.fecha >= from && g.fecha <= to);
-  }, [gastos, year, month]);
-
-  // Totales conversiones
-  const totalUsdcConvertido = conversiones.reduce(
-    (s, c) => s + c.monto_usdc,
-    0,
-  );
-  const totalArsConvertido = conversiones.reduce((s, c) => s + c.monto_ars, 0);
-  const totalArsGastado = gastosMes.reduce((s, g) => s + g.cantidad, 0);
-
-  // USD disponible (ingreso - ahorro - inversión)
-  const disponibleUsd = presupuesto
-    ? Math.max(
-        0,
-        presupuesto.ingreso_usd -
-          presupuesto.ahorro_usd -
-          presupuesto.inversion_usd,
-      )
-    : 0;
-
-  // USDC pendiente de convertir
-  const usdcPendiente = presupuesto
-    ? Math.max(0, disponibleUsd - totalUsdcConvertido)
-    : null;
-
-  // Gastos por categoría del mes
-  const gastosPorCategoria = useMemo(() => {
-    const map: Record<string, number> = {};
-    for (const g of gastosMes) {
-      map[g.concepto] = (map[g.concepto] || 0) + g.cantidad;
-    }
-    return map;
-  }, [gastosMes]);
-
-  // Mutations
-  const convMutation = useMutation({
-    mutationFn: (data: Omit<ConversionUsdc, "id" | "user_id" | "created_at">) =>
-      createConversion(data),
+  const saveMut = useMutation({
+    mutationFn: async (data: {
+      total_usd: number
+      usd_rate: number
+      items: { concepto: string; monto_usd: number }[]
+    }) => {
+      if (presupuesto) {
+        return updatePresupuesto(presupuesto.id, data)
+      } else {
+        return createPresupuesto({ year, month: month1, ...data })
+      }
+    },
     onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: ["conversiones", user?.id, mk] }),
-  });
+      queryClient.invalidateQueries({ queryKey: ["presupuesto", year, month1] }),
+  })
 
-  const convUpdateMutation = useMutation({
-    mutationFn: ({
-      id,
-      data,
-    }: {
-      id: string;
-      data: Partial<Omit<ConversionUsdc, "id" | "user_id" | "created_at">>;
-    }) => updateConversion(id, data),
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: ["conversiones", user?.id, mk] }),
-  });
+  const deleteMut = useMutation({
+    mutationFn: () => deletePresupuesto(presupuesto!.id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["presupuesto", year, month1] })
+      setConfirmDelete(false)
+    },
+  })
 
-  const convDeleteMutation = useMutation({
-    mutationFn: (id: string) => deleteConversion(id),
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: ["conversiones", user?.id, mk] }),
-  });
-
-  const budgetMutation = useMutation({
-    mutationFn: (data: Parameters<typeof upsertPresupuesto>[1]) =>
-      upsertPresupuesto(mk, data),
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: ["presupuesto", user?.id, mk] }),
-  });
-
-  const isLoading = convLoading || budgetLoading || gastosLoading;
+  // ── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <AppShell user={user}>
-      <div className="min-h-screen" style={{ background: 'var(--bg)', color: 'var(--ink)' }}>
-        {/* Top bar */}
+    <AppShell>
+      <div
+        style={{
+          height: "100%",
+          display: "flex",
+          flexDirection: "column",
+          background: "var(--bg)",
+        }}
+      >
+        {/* ── Topbar ──────────────────────────────────────────────────── */}
         <header
-          className="px-4 sm:px-6 py-3 sticky top-0 z-20"
-          style={{ background: 'var(--surface)', borderBottom: '1px solid var(--line)' }}
+          style={{
+            flexShrink: 0,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            padding: "0 20px",
+            height: 56,
+            borderBottom: "1px solid var(--line)",
+          }}
         >
-          <div className="max-w-screen-xl mx-auto flex items-center gap-3">
-            <div className="flex items-center gap-2 flex-1">
-              <div
-                className="rounded-xl p-1.5"
-                style={{ background: 'var(--accent)' }}
-              >
-                <Wallet className="w-4 h-4" style={{ color: 'var(--accent-ink)' }} />
-              </div>
-              <span className="text-base font-bold" style={{ color: 'var(--ink)' }}>Presupuesto</span>
-            </div>
+          {/* Month navigation */}
+          <MonthPicker
+            year={year}
+            month={month}
+            onChange={(y, m) => { setYear(y); setMonth(m) }}
+          />
 
-            {/* Month nav */}
-            <div
-              className="flex items-center gap-1 rounded-xl px-1 py-1"
-              style={{ background: 'var(--surface-alt)', border: '1px solid var(--line)' }}
-            >
+          {/* Actions */}
+          <div style={{ display: "flex", gap: 8 }}>
+            {presupuesto && (
+              <>
+                <button
+                  onClick={() => setConfirmDelete(true)}
+                  style={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: 8,
+                    border: "none",
+                    cursor: "pointer",
+                    background: "var(--neg-soft)",
+                    color: "var(--negative)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <Trash2 size={14} />
+                </button>
+                <button
+                  onClick={() => setShowModal(true)}
+                  style={{
+                    height: 32,
+                    padding: "0 14px",
+                    borderRadius: 8,
+                    border: "none",
+                    cursor: "pointer",
+                    background: "var(--surface-alt)",
+                    color: "var(--ink-2)",
+                    fontSize: 13,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                  }}
+                >
+                  <Pencil size={13} /> Editar
+                </button>
+              </>
+            )}
+            {!presupuesto && !presLoading && (
               <button
-                onClick={prevMonth}
-                className="p-1.5 rounded-lg transition-colors"
-                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--ink-2)' }}
-                onMouseEnter={e => (e.currentTarget.style.color = 'var(--ink)')}
-                onMouseLeave={e => (e.currentTarget.style.color = 'var(--ink-2)')}
+                onClick={() => setShowModal(true)}
+                style={{
+                  height: 32,
+                  padding: "0 14px",
+                  borderRadius: 8,
+                  border: "none",
+                  cursor: "pointer",
+                  background: "var(--accent)",
+                  color: "var(--accent-ink)",
+                  fontSize: 13,
+                  fontWeight: 600,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                }}
               >
-                <ChevronLeft className="w-4 h-4" />
+                <Plus size={14} /> Crear presupuesto
               </button>
-              <span className="text-sm font-medium px-2 min-w-[120px] text-center" style={{ color: 'var(--ink)' }}>
-                {monthLabel}
-              </span>
-              <button
-                onClick={nextMonth}
-                className="p-1.5 rounded-lg transition-colors"
-                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--ink-2)' }}
-                onMouseEnter={e => (e.currentTarget.style.color = 'var(--ink)')}
-                onMouseLeave={e => (e.currentTarget.style.color = 'var(--ink-2)')}
-              >
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            </div>
-
-            {/* Config presupuesto */}
-            <button
-              onClick={() => setShowBudgetModal(true)}
-              className="flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-sm font-medium transition-colors"
-              style={{ background: 'var(--accent)', color: 'var(--accent-ink)', border: 'none', cursor: 'pointer' }}
-            >
-              <Settings className="w-4 h-4" />
-              <span className="hidden sm:inline">
-                {presupuesto ? "Editar" : "Configurar"}
-              </span>
-            </button>
+            )}
           </div>
         </header>
 
-        <main className="max-w-screen-xl mx-auto px-4 sm:px-6 py-6 space-y-6">
-          {isLoading ? (
-            <div className="flex items-center justify-center py-20">
-              <Loader2 className="w-8 h-8 animate-spin" style={{ color: 'var(--ink-3)' }} />
+        {/* ── Body ────────────────────────────────────────────────────── */}
+        <main style={{ flex: 1, overflowY: "auto", padding: "24px 20px" }}>
+          {presLoading ? (
+            <div
+              style={{ display: "flex", justifyContent: "center", paddingTop: 80 }}
+            >
+              <Loader2
+                size={24}
+                style={{
+                  color: "var(--ink-3)",
+                  animation: "spin 1s linear infinite",
+                }}
+              />
+            </div>
+          ) : !presupuesto ? (
+            /* ── Empty state ──────────────────────────────────────────── */
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                paddingTop: 80,
+                gap: 16,
+                textAlign: "center",
+              }}
+            >
+              <div
+                style={{
+                  width: 56,
+                  height: 56,
+                  borderRadius: 16,
+                  background: "var(--surface-alt)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: 24,
+                }}
+              >
+                💰
+              </div>
+              <div>
+                <p
+                  style={{
+                    fontSize: 15,
+                    fontWeight: 600,
+                    color: "var(--ink)",
+                    marginBottom: 6,
+                  }}
+                >
+                  Sin presupuesto
+                </p>
+                <p style={{ fontSize: 13, color: "var(--ink-3)" }}>
+                  No definiste un presupuesto para {MONTH_FULL[month]}{" "}
+                  {year}
+                </p>
+              </div>
+              <button
+                onClick={() => setShowModal(true)}
+                style={{
+                  height: 38,
+                  padding: "0 20px",
+                  borderRadius: 10,
+                  border: "none",
+                  cursor: "pointer",
+                  background: "var(--accent)",
+                  color: "var(--accent-ink)",
+                  fontSize: 14,
+                  fontWeight: 600,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                }}
+              >
+                <Plus size={15} /> Crear presupuesto
+              </button>
             </div>
           ) : (
-            <>
-              {/* ── Sin presupuesto configurado ── */}
-              {!presupuesto && (
-                <div
-                  className="rounded-2xl p-6 text-center"
-                  style={{ background: 'var(--surface)', border: '1px solid var(--line)' }}
-                >
-                  <Wallet className="w-10 h-10 mx-auto mb-3" style={{ color: 'var(--accent)' }} />
-                  <h3 className="font-semibold text-lg mb-1" style={{ color: 'var(--ink)' }}>
-                    Configurá tu presupuesto de {monthLabel}
-                  </h3>
-                  <p className="text-sm mb-4" style={{ color: 'var(--ink-2)' }}>
-                    Definí cuánto ganás en USD, cuánto ahorrar, cuánto invertir y
-                    los límites de gasto por categoría.
-                  </p>
-                  <button
-                    onClick={() => setShowBudgetModal(true)}
-                    className="rounded-xl px-5 py-2.5 font-medium text-sm transition-colors inline-flex items-center gap-2"
-                    style={{ background: 'var(--accent)', color: 'var(--accent-ink)', border: 'none', cursor: 'pointer' }}
+            /* ── Budget view ──────────────────────────────────────────── */
+            <div
+              style={{
+                maxWidth: 640,
+                margin: "0 auto",
+                display: "flex",
+                flexDirection: "column",
+                gap: 16,
+              }}
+            >
+              {/* KPI summary */}
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(3, 1fr)",
+                  gap: 1,
+                  background: "var(--line)",
+                  borderRadius: 16,
+                  overflow: "hidden",
+                }}
+              >
+                {[
+                  {
+                    label: "Presupuesto",
+                    val: fmtUsd(presupuesto.total_usd),
+                    sub: fmtArs(presupuesto.total_usd * rate),
+                    neg: false,
+                  },
+                  {
+                    label: "Gastado",
+                    val: fmtUsd(totalGastadoUsd),
+                    sub: fmtArs(totalGastadoUsd * rate),
+                    neg: false,
+                  },
+                  {
+                    label: "Disponible",
+                    val: fmtUsd(presupuesto.total_usd - totalGastadoUsd),
+                    sub: fmtArs(
+                      (presupuesto.total_usd - totalGastadoUsd) * rate,
+                    ),
+                    neg: totalGastadoUsd > presupuesto.total_usd,
+                  },
+                ].map((k, i) => (
+                  <div
+                    key={i}
+                    style={{ background: "var(--surface)", padding: "16px 20px" }}
                   >
-                    <Settings className="w-4 h-4" />
-                    Configurar presupuesto
-                  </button>
-                </div>
-              )}
-
-              {/* ── Tarjetas USD ── */}
-              {presupuesto && (
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  {/* Ingreso */}
-                  <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 10, padding: 16 }}>
-                    <div className="flex items-center gap-2 mb-2">
-                      <DollarSign className="w-4 h-4" style={{ color: 'var(--accent)' }} />
-                      <span className="text-xs uppercase tracking-wider" style={{ color: 'var(--ink-2)' }}>
-                        Ingreso
-                      </span>
-                    </div>
-                    <p className="text-2xl font-bold num" style={{ color: 'var(--ink)' }}>
-                      {fmtUsd(presupuesto.ingreso_usd)}
+                    <p
+                      style={{
+                        fontSize: 10,
+                        color: "var(--ink-3)",
+                        textTransform: "uppercase",
+                        letterSpacing: "0.08em",
+                        marginBottom: 6,
+                      }}
+                    >
+                      {k.label}
                     </p>
-                    <p className="text-xs mt-0.5" style={{ color: 'var(--ink-3)' }}>total del mes</p>
-                  </div>
-
-                  {/* Ahorro */}
-                  <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 10, padding: 16 }}>
-                    <div className="flex items-center gap-2 mb-2">
-                      <PiggyBank className="w-4 h-4" style={{ color: 'var(--warn)' }} />
-                      <span className="text-xs uppercase tracking-wider" style={{ color: 'var(--ink-2)' }}>
-                        Ahorro
-                      </span>
-                    </div>
-                    <p className="text-2xl font-bold num" style={{ color: 'var(--warn)' }}>
-                      {fmtUsd(presupuesto.ahorro_usd)}
+                    <p
+                      className="num"
+                      style={{
+                        fontSize: 18,
+                        fontWeight: 700,
+                        color: k.neg ? "var(--negative)" : "var(--ink)",
+                        marginBottom: 2,
+                      }}
+                    >
+                      {k.val}
                     </p>
-                    <p className="text-xs mt-0.5" style={{ color: 'var(--ink-3)' }}>se queda en USD</p>
-                  </div>
-
-                  {/* Inversión */}
-                  <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 10, padding: 16 }}>
-                    <div className="flex items-center gap-2 mb-2">
-                      <TrendingUp className="w-4 h-4" style={{ color: 'var(--ink-2)' }} />
-                      <span className="text-xs uppercase tracking-wider" style={{ color: 'var(--ink-2)' }}>
-                        Inversión
-                      </span>
-                    </div>
-                    <p className="text-2xl font-bold num" style={{ color: 'var(--ink)' }}>
-                      {fmtUsd(presupuesto.inversion_usd)}
-                    </p>
-                    <p className="text-xs mt-0.5" style={{ color: 'var(--ink-3)' }}>reservado</p>
-                  </div>
-
-                  {/* Disponible */}
-                  <div style={{ background: 'var(--pos-soft)', border: '1px solid var(--positive)', borderRadius: 10, padding: 16 }}>
-                    <div className="flex items-center gap-2 mb-2">
-                      <ArrowRightLeft className="w-4 h-4" style={{ color: 'var(--positive)' }} />
-                      <span className="text-xs uppercase tracking-wider" style={{ color: 'var(--ink-2)' }}>
-                        Disponible
-                      </span>
-                    </div>
-                    <p className="text-2xl font-bold num" style={{ color: 'var(--positive)' }}>
-                      {fmtUsd(disponibleUsd)}
-                    </p>
-                    <p className="text-xs mt-0.5" style={{ color: 'var(--ink-3)' }}>
-                      para convertir a ARS
+                    <p
+                      className="num"
+                      style={{ fontSize: 11, color: "var(--ink-3)" }}
+                    >
+                      {k.sub}
                     </p>
                   </div>
-                </div>
-              )}
-
-              {/* ── Estado de conversiones ── */}
-              {presupuesto && (
-                <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 10, padding: 16 }}>
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="text-sm font-semibold flex items-center gap-2" style={{ color: 'var(--ink-2)' }}>
-                      <ArrowRightLeft className="w-4 h-4" style={{ color: 'var(--positive)' }} />
-                      Estado de conversiones USDC
-                    </h3>
-                  </div>
-                  <div className="grid grid-cols-3 gap-4">
-                    <div>
-                      <p className="text-xs mb-0.5" style={{ color: 'var(--ink-3)' }}>Convertido</p>
-                      <p className="text-lg font-bold num" style={{ color: 'var(--positive)' }}>
-                        {fmtUsd(totalUsdcConvertido)}
-                      </p>
-                      <p className="text-xs num" style={{ color: 'var(--ink-3)' }}>
-                        {fmtArs(totalArsConvertido)}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-xs mb-0.5" style={{ color: 'var(--ink-3)' }}>Por convertir</p>
-                      <p
-                        className="text-lg font-bold num"
-                        style={{ color: (usdcPendiente ?? 0) > 0 ? 'var(--warn)' : 'var(--ink-3)' }}
-                      >
-                        {fmtUsd(usdcPendiente ?? 0)}
-                      </p>
-                      <p className="text-xs" style={{ color: 'var(--ink-3)' }}>restante del mes</p>
-                    </div>
-                    <div>
-                      <p className="text-xs mb-0.5" style={{ color: 'var(--ink-3)' }}>Gastado ARS</p>
-                      <p className="text-lg font-bold num" style={{ color: 'var(--ink)' }}>
-                        {fmtArs(totalArsGastado)}
-                      </p>
-                      {totalArsConvertido > 0 && (
-                        <p className="text-xs num" style={{ color: 'var(--ink-3)' }}>
-                          de {fmtArs(totalArsConvertido)}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                  {totalArsConvertido > 0 && (
-                    <ProgressBar
-                      value={totalArsGastado}
-                      max={totalArsConvertido}
-                    />
-                  )}
-                </div>
-              )}
-
-              {/* ── Conversiones del mes ── */}
-              <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 10, overflow: 'hidden' }}>
-                <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: '1px solid var(--line)' }}>
-                  <h3 className="font-semibold flex items-center gap-2" style={{ color: 'var(--ink)' }}>
-                    <ArrowRightLeft className="w-4 h-4" style={{ color: 'var(--positive)' }} />
-                    Conversiones del mes
-                    {conversiones.length > 0 && (
-                      <span
-                        className="text-xs px-2 py-0.5 rounded-full num"
-                        style={{ background: 'var(--pos-soft)', color: 'var(--positive)' }}
-                      >
-                        {conversiones.length}
-                      </span>
-                    )}
-                  </h3>
-                  <button
-                    onClick={() => {
-                      setEditConv(null);
-                      setShowConvModal(true);
-                    }}
-                    className="flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-sm font-medium transition-colors"
-                    style={{ background: 'var(--accent)', color: 'var(--accent-ink)', border: 'none', cursor: 'pointer' }}
-                  >
-                    <Plus className="w-4 h-4" />
-                    Nueva
-                  </button>
-                </div>
-
-                {conversiones.length === 0 ? (
-                  <div className="text-center py-10" style={{ color: 'var(--ink-3)' }}>
-                    <ArrowRightLeft className="w-8 h-8 mx-auto mb-2 opacity-40" />
-                    <p className="text-sm">
-                      No hay conversiones registradas este mes
-                    </p>
-                  </div>
-                ) : (
-                  <div style={{ borderTop: '1px solid var(--line-soft)' }}>
-                    {conversiones.map((c) => (
-                      <div
-                        key={c.id}
-                        className="flex items-center px-5 py-3 transition-colors group row-hover"
-                        style={{ borderBottom: '1px solid var(--line-soft)' }}
-                      >
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-3">
-                            <span className="text-xs num w-10" style={{ color: 'var(--ink-2)' }}>
-                              {fmtDate(c.fecha)}
-                            </span>
-                            <span className="font-medium num" style={{ color: 'var(--ink)' }}>
-                              {fmtUsd(c.monto_usdc)} USDC
-                            </span>
-                            <span className="text-xs" style={{ color: 'var(--ink-3)' }}>→</span>
-                            <span className="font-medium num" style={{ color: 'var(--positive)' }}>
-                              {fmtArs(c.monto_ars)}
-                            </span>
-                            <span className="text-xs num" style={{ color: 'var(--ink-3)' }}>
-                              @ ${c.tipo_cambio.toLocaleString("es-AR")}
-                            </span>
-                          </div>
-                          {c.nota && (
-                            <p className="text-xs mt-0.5 pl-[52px]" style={{ color: 'var(--ink-3)' }}>
-                              {c.nota}
-                            </p>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button
-                            onClick={() => {
-                              setEditConv(c);
-                              setShowConvModal(true);
-                            }}
-                            className="p-1.5 rounded-lg transition-colors"
-                            style={{ color: 'var(--ink-3)', background: 'none', border: 'none', cursor: 'pointer' }}
-                            onMouseEnter={e => (e.currentTarget.style.color = 'var(--accent)')}
-                            onMouseLeave={e => (e.currentTarget.style.color = 'var(--ink-3)')}
-                          >
-                            <Pencil className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            onClick={() => convDeleteMutation.mutate(c.id)}
-                            className="p-1.5 rounded-lg transition-colors"
-                            style={{ color: 'var(--ink-3)', background: 'none', border: 'none', cursor: 'pointer' }}
-                            onMouseEnter={e => (e.currentTarget.style.color = 'var(--negative)')}
-                            onMouseLeave={e => (e.currentTarget.style.color = 'var(--ink-3)')}
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                ))}
               </div>
 
-              {/* ── Gasto vs Presupuesto por categoría ── */}
-              {presupuesto && presupuesto.categorias_budget.length > 0 && (
-                <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 10, overflow: 'hidden' }}>
-                  <div className="px-5 py-4" style={{ borderBottom: '1px solid var(--line)' }}>
-                    <h3 className="font-semibold flex items-center gap-2" style={{ color: 'var(--ink)' }}>
-                      <Wallet className="w-4 h-4" style={{ color: 'var(--accent)' }} />
-                      Gasto vs Presupuesto por categoría
-                    </h3>
-                  </div>
-                  <div>
-                    {presupuesto.categorias_budget
-                      .slice()
-                      .sort((a, b) => b.monto_ars - a.monto_ars)
-                      .map((cat) => {
-                        const gastado = gastosPorCategoria[cat.concepto] || 0;
-                        const pct =
-                          cat.monto_ars > 0
-                            ? (gastado / cat.monto_ars) * 100
-                            : 0;
-                        const over = gastado > cat.monto_ars;
-                        return (
-                          <div
-                            key={cat.concepto}
-                            className="px-5 py-3"
-                            style={{ borderBottom: '1px solid var(--line-soft)' }}
-                          >
-                            <div className="flex items-center justify-between mb-1">
-                              <span className="text-sm" style={{ color: 'var(--ink-2)' }}>
-                                {cat.concepto}
-                              </span>
-                              <div className="flex items-center gap-2">
-                                {over && (
-                                  <span className="text-xs font-medium num" style={{ color: 'var(--negative)' }}>
-                                    +{fmtArs(gastado - cat.monto_ars)}
-                                  </span>
-                                )}
-                                <span
-                                  className="text-sm font-medium num"
-                                  style={{
-                                    color: over
-                                      ? 'var(--negative)'
-                                      : pct > 85
-                                      ? 'var(--warn)'
-                                      : 'var(--ink)',
-                                  }}
-                                >
-                                  {fmtArs(gastado)}
-                                </span>
-                                <span className="text-xs num" style={{ color: 'var(--ink-3)' }}>
-                                  / {fmtArs(cat.monto_ars)}
-                                </span>
-                              </div>
-                            </div>
-                            <ProgressBar
-                              value={gastado}
-                              max={cat.monto_ars}
-                            />
-                          </div>
-                        );
-                      })}
-                  </div>
+              {/* Overall progress */}
+              <div
+                style={{
+                  ...card,
+                  padding: "14px 16px",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 8,
+                }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                  }}
+                >
+                  <span
+                    style={{ fontSize: 12, color: "var(--ink-2)", fontWeight: 500 }}
+                  >
+                    Progreso general
+                  </span>
+                  <span className="num" style={{ fontSize: 12, color: "var(--ink-3)" }}>
+                    {presupuesto.total_usd > 0
+                      ? Math.round(
+                          (totalGastadoUsd / presupuesto.total_usd) * 100,
+                        )
+                      : 0}
+                    %
+                  </span>
+                </div>
+                <ProgressBar
+                  pct={
+                    presupuesto.total_usd > 0
+                      ? (totalGastadoUsd / presupuesto.total_usd) * 100
+                      : 0
+                  }
+                />
+              </div>
 
-                  {/* Total sin presupuestar */}
-                  {(() => {
-                    const presupuestadoCategorias = presupuesto.categorias_budget.map(
-                      (c) => c.concepto,
-                    );
-                    const sinPresupuesto = Object.entries(gastosPorCategoria)
-                      .filter(([cat]) => !presupuestadoCategorias.includes(cat))
-                      .reduce((s, [, v]) => s + v, 0);
-                    if (sinPresupuesto === 0) return null;
-                    return (
-                      <div className="px-5 py-3" style={{ borderTop: '1px solid var(--line)', background: 'var(--surface-alt)' }}>
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm italic" style={{ color: 'var(--ink-3)' }}>
-                            Sin presupuesto asignado
-                          </span>
-                          <span className="text-sm num" style={{ color: 'var(--ink-2)' }}>
-                            {fmtArs(sinPresupuesto)}
+              {/* Category breakdown */}
+              <div style={card}>
+                {/* Column headers */}
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "1fr 100px 100px",
+                    gap: 12,
+                    padding: "10px 16px",
+                    borderBottom: "1px solid var(--line)",
+                    background: "var(--surface-alt)",
+                  }}
+                >
+                  {["Categoría", "Presupuesto", "Gastado"].map((h, i) => (
+                    <span
+                      key={h}
+                      style={{
+                        fontSize: 10,
+                        color: "var(--ink-3)",
+                        textTransform: "uppercase",
+                        letterSpacing: "0.08em",
+                        textAlign: i > 0 ? "right" : "left",
+                      }}
+                    >
+                      {h}
+                    </span>
+                  ))}
+                </div>
+
+                {/* Budgeted category rows */}
+                {presupuesto.presupuesto_items.map((item, idx) => {
+                  const gastado = spendByConcepto[item.concepto] ?? 0
+                  const pct =
+                    item.monto_usd > 0
+                      ? (gastado / item.monto_usd) * 100
+                      : 0
+                  const overBudget = gastado > item.monto_usd
+                  const hex = getChipHex(item.concepto, "concepto", settings)
+                  const isLast =
+                    idx === presupuesto.presupuesto_items.length - 1 &&
+                    restoPres <= 0
+                  const diffUsd = overBudget
+                    ? gastado - item.monto_usd
+                    : item.monto_usd - gastado
+                  return (
+                    <div
+                      key={item.concepto}
+                      style={{
+                        padding: "14px 16px",
+                        borderBottom: isLast ? "none" : "1px solid var(--line)",
+                      }}
+                    >
+                      {/* Name + amounts */}
+                      <div
+                        style={{
+                          display: "grid",
+                          gridTemplateColumns: "1fr 100px 100px",
+                          gap: 12,
+                          alignItems: "flex-start",
+                          marginBottom: 10,
+                        }}
+                      >
+                        {/* Category name */}
+                        <div style={{ display: "flex", alignItems: "center", gap: 7, paddingTop: 2 }}>
+                          <span
+                            style={{
+                              width: 7, height: 7, borderRadius: "50%",
+                              background: hex, flexShrink: 0,
+                            }}
+                          />
+                          <span style={{ fontSize: 13, fontWeight: 500, color: "var(--ink)" }}>
+                            {item.concepto}
                           </span>
                         </div>
+                        {/* Presupuesto cell */}
+                        <div style={{ textAlign: "right" }}>
+                          <div className="num" style={{ fontSize: 13, color: "var(--ink-2)" }}>
+                            {fmtUsd(item.monto_usd)}
+                          </div>
+                          <div className="num" style={{ fontSize: 10, color: "var(--ink-3)", marginTop: 1 }}>
+                            {fmtArs(item.monto_usd * rate)}
+                          </div>
+                        </div>
+                        {/* Gastado cell */}
+                        <div style={{ textAlign: "right" }}>
+                          <div
+                            className="num"
+                            style={{
+                              fontSize: 13, fontWeight: 700,
+                              color: overBudget ? "var(--negative)" : "var(--ink)",
+                            }}
+                          >
+                            {fmtUsd(gastado)}
+                          </div>
+                          <div className="num" style={{ fontSize: 10, color: overBudget ? "var(--negative)" : "var(--ink-3)", marginTop: 1, opacity: 0.8 }}>
+                            {fmtArs(gastado * rate)}
+                          </div>
+                        </div>
                       </div>
-                    );
-                  })()}
+
+                      {/* Progress + restante */}
+                      <ProgressBar pct={pct} />
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                          marginTop: 6,
+                        }}
+                      >
+                        <span style={{ fontSize: 10, color: "var(--ink-3)" }}>
+                          {Math.round(pct)}% del presupuesto
+                        </span>
+                        <span
+                          className="num"
+                          style={{
+                            fontSize: 10,
+                            color: overBudget ? "var(--negative)" : "var(--ink-3)",
+                          }}
+                        >
+                          {overBudget ? "+" : ""}{fmtUsd(diffUsd)} ({fmtArs(diffUsd * rate)}) {overBudget ? "pasado" : "restante"}
+                        </span>
+                      </div>
+                    </div>
+                  )
+                })}
+
+                {/* El resto row */}
+                {restoPres > 0 && (
+                  <div style={{ padding: "14px 16px" }}>
+                    {/* Name + amounts */}
+                    <div
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns: "1fr 100px 100px",
+                        gap: 12,
+                        alignItems: "flex-start",
+                        marginBottom: 10,
+                      }}
+                    >
+                      {/* Label */}
+                      <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+                          <span
+                            style={{
+                              width: 7, height: 7, borderRadius: "50%",
+                              background: "var(--ink-3)", flexShrink: 0,
+                            }}
+                          />
+                          <span style={{ fontSize: 13, fontWeight: 500, color: "var(--ink-2)", fontStyle: "italic" }}>
+                            El resto
+                          </span>
+                        </div>
+                        <span style={{ fontSize: 10, color: "var(--ink-3)", paddingLeft: 14 }}>
+                          Categorías sin límite definido
+                        </span>
+                      </div>
+                      {/* Presupuesto cell */}
+                      <div style={{ textAlign: "right" }}>
+                        <div className="num" style={{ fontSize: 13, color: "var(--ink-2)" }}>
+                          {fmtUsd(restoPres)}
+                        </div>
+                        <div className="num" style={{ fontSize: 10, color: "var(--ink-3)", marginTop: 1 }}>
+                          {fmtArs(restoPres * rate)}
+                        </div>
+                      </div>
+                      {/* Gastado cell */}
+                      <div style={{ textAlign: "right" }}>
+                        <div
+                          className="num"
+                          style={{
+                            fontSize: 13, fontWeight: 700,
+                            color: restoGastado > restoPres ? "var(--negative)" : "var(--ink)",
+                          }}
+                        >
+                          {fmtUsd(restoGastado)}
+                        </div>
+                        <div className="num" style={{ fontSize: 10, color: restoGastado > restoPres ? "var(--negative)" : "var(--ink-3)", marginTop: 1, opacity: 0.8 }}>
+                          {fmtArs(restoGastado * rate)}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Progress + restante */}
+                    <ProgressBar pct={restoPres > 0 ? (restoGastado / restoPres) * 100 : 0} />
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        marginTop: 6,
+                      }}
+                    >
+                      <span style={{ fontSize: 10, color: "var(--ink-3)" }}>
+                        {Math.round(restoPres > 0 ? (restoGastado / restoPres) * 100 : 0)}% del presupuesto
+                      </span>
+                      <span
+                        className="num"
+                        style={{
+                          fontSize: 10,
+                          color: restoGastado > restoPres ? "var(--negative)" : "var(--ink-3)",
+                        }}
+                      >
+                        {restoGastado > restoPres ? "+" : ""}
+                        {fmtUsd(Math.abs(restoPres - restoGastado))} ({fmtArs(Math.abs(restoPres - restoGastado) * rate)}) {restoGastado > restoPres ? "pasado" : "restante"}
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Total row */}
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "1fr 100px 100px",
+                    gap: 12,
+                    padding: "12px 16px",
+                    background: "var(--surface-alt)",
+                    borderTop: "1px solid var(--line)",
+                  }}
+                >
+                  <span style={{ fontSize: 12, fontWeight: 600, color: "var(--ink)" }}>
+                    Total
+                  </span>
+                  <div style={{ textAlign: "right" }}>
+                    <div className="num" style={{ fontSize: 12, fontWeight: 600, color: "var(--ink)" }}>
+                      {fmtUsd(presupuesto.total_usd)}
+                    </div>
+                    <div className="num" style={{ fontSize: 10, color: "var(--ink-3)", marginTop: 1 }}>
+                      {fmtArs(presupuesto.total_usd * rate)}
+                    </div>
+                  </div>
+                  <div style={{ textAlign: "right" }}>
+                    <div
+                      className="num"
+                      style={{
+                        fontSize: 12,
+                        fontWeight: 600,
+                        color:
+                          totalGastadoUsd > presupuesto.total_usd
+                            ? "var(--negative)"
+                            : "var(--ink)",
+                      }}
+                    >
+                      {fmtUsd(totalGastadoUsd)}
+                    </div>
+                    <div className="num" style={{ fontSize: 10, color: totalGastadoUsd > presupuesto.total_usd ? "var(--negative)" : "var(--ink-3)", marginTop: 1, opacity: 0.8 }}>
+                      {fmtArs(totalGastadoUsd * rate)}
+                    </div>
+                  </div>
                 </div>
-              )}
-            </>
+              </div>
+
+              {/* Rate footnote */}
+              <p
+                style={{
+                  fontSize: 11,
+                  color: "var(--ink-3)",
+                  textAlign: "center",
+                }}
+              >
+                Tipo de cambio:{" "}
+                <span className="num">
+                  ${presupuesto.usd_rate.toLocaleString("es-AR")}
+                </span>{" "}
+                · Los gastos en ARS se convierten con este valor
+              </p>
+            </div>
           )}
         </main>
-
-        {/* Modals */}
-        {showConvModal && (
-          <ConversionModal
-            conversion={editConv}
-            defaultDate={today()}
-            onClose={() => {
-              setShowConvModal(false);
-              setEditConv(null);
-            }}
-            onSave={async (data) => {
-              if (editConv) {
-                await convUpdateMutation.mutateAsync({ id: editConv.id, data });
-              } else {
-                await convMutation.mutateAsync(data);
-              }
-            }}
-          />
-        )}
-
-        {showBudgetModal && (
-          <BudgetModal
-            presupuesto={presupuesto ?? null}
-            monthLabel={monthLabel}
-            onClose={() => setShowBudgetModal(false)}
-            onSave={async (data) => {
-              await budgetMutation.mutateAsync(data);
-            }}
-          />
-        )}
       </div>
+
+      {/* ── Budget Modal ──────────────────────────────────────────────── */}
+      {showModal && (
+        <BudgetModal
+          year={year}
+          month={month}
+          existing={presupuesto ?? undefined}
+          defaultRate={currentRate}
+          conceptos={settings.conceptos}
+          onClose={() => setShowModal(false)}
+          onSave={async (data) => {
+            await saveMut.mutateAsync(data)
+          }}
+        />
+      )}
+
+      {/* ── Delete confirm ────────────────────────────────────────────── */}
+      {confirmDelete && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 50,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            background: "rgba(0,0,0,0.6)",
+            backdropFilter: "blur(4px)",
+          }}
+          onMouseDown={(e) =>
+            e.target === e.currentTarget && setConfirmDelete(false)
+          }
+        >
+          <div
+            style={{
+              background: "var(--surface)",
+              border: "1px solid var(--line)",
+              borderRadius: 16,
+              padding: 24,
+              width: "min(360px, 90vw)",
+              display: "flex",
+              flexDirection: "column",
+              gap: 16,
+            }}
+          >
+            <div>
+              <p
+                style={{
+                  fontSize: 15,
+                  fontWeight: 600,
+                  color: "var(--ink)",
+                  marginBottom: 6,
+                }}
+              >
+                ¿Eliminar presupuesto?
+              </p>
+              <p style={{ fontSize: 13, color: "var(--ink-3)" }}>
+                Se eliminará el presupuesto de {MONTH_FULL[month]} {year} y
+                todas sus categorías.
+              </p>
+            </div>
+            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+              <button
+                onClick={() => setConfirmDelete(false)}
+                style={{
+                  padding: "9px 16px",
+                  borderRadius: 10,
+                  border: "1px solid var(--line)",
+                  background: "var(--surface-alt)",
+                  color: "var(--ink-2)",
+                  fontSize: 14,
+                  cursor: "pointer",
+                }}
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => deleteMut.mutate()}
+                disabled={deleteMut.isPending}
+                style={{
+                  padding: "9px 16px",
+                  borderRadius: 10,
+                  border: "none",
+                  background: "var(--negative)",
+                  color: "#fff",
+                  fontSize: 14,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                }}
+              >
+                {deleteMut.isPending && (
+                  <Loader2
+                    size={13}
+                    style={{ animation: "spin 1s linear infinite" }}
+                  />
+                )}
+                Eliminar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </AppShell>
-  );
+  )
 }
