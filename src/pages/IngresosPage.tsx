@@ -2,7 +2,6 @@ import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
-  ArrowLeft,
   Loader2,
   Plus,
   Pencil,
@@ -34,6 +33,7 @@ import {
   fetchUsdRates,
 } from "@/api";
 import IngresoModal from "@/components/IngresoModal";
+import { AppShell } from "@/components";
 import { useAuth } from "@/contexts";
 import { useYearParam } from "@/hooks";
 import { MONTH_NAMES, MONTH_FULL } from "@/constants";
@@ -62,16 +62,20 @@ type Currency = "USD" | "ARS";
 
 function CurrencyToggle({ value, onChange }: { value: Currency; onChange: (c: Currency) => void }) {
   return (
-    <div className="flex items-center bg-gray-800 rounded-lg p-0.5 gap-0.5">
+    <div
+      className="flex items-center rounded-lg p-0.5 gap-0.5"
+      style={{ background: 'var(--surface-alt)' }}
+    >
       {(["USD", "ARS"] as Currency[]).map((c) => (
         <button
           key={c}
           onClick={() => onChange(c)}
-          className={`px-2.5 py-1 rounded-md text-xs font-semibold transition-all ${
+          className="px-2.5 py-1 rounded-md text-xs font-semibold transition-all"
+          style={
             value === c
-              ? "bg-gray-600 text-white shadow-sm"
-              : "text-gray-500 hover:text-gray-300"
-          }`}
+              ? { background: 'var(--line)', color: 'var(--ink)', boxShadow: '0 1px 2px rgba(0,0,0,0.3)' }
+              : { color: 'var(--ink-3)', background: 'transparent' }
+          }
         >
           {c}
         </button>
@@ -94,12 +98,21 @@ function ChartTooltip({
   const gas = payload.find((p) => p.name === "Gastos");
   const restante = (ing?.value ?? 0) - (gas?.value ?? 0);
   return (
-    <div className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2.5 shadow-xl text-xs space-y-1">
-      <p className="font-semibold text-white mb-1.5">{label}</p>
+    <div
+      className="rounded-lg px-3 py-2.5 shadow-xl text-xs space-y-1"
+      style={{ background: 'var(--surface)', border: '1px solid var(--line)' }}
+    >
+      <p className="font-semibold mb-1.5" style={{ color: 'var(--ink)' }}>{label}</p>
       {ing && <p style={{ color: ing.color }}>Ingresos: <span className="font-semibold">{fmt(ing.value)}</span></p>}
       {gas && <p style={{ color: gas.color }}>Gastos: <span className="font-semibold">{fmt(gas.value)}</span></p>}
       {ing && gas && (
-        <p className={`font-bold border-t border-gray-700 pt-1 mt-1 ${restante >= 0 ? "text-emerald-400" : "text-red-400"}`}>
+        <p
+          className="font-bold pt-1 mt-1"
+          style={{
+            borderTop: '1px solid var(--line)',
+            color: restante >= 0 ? 'var(--positive)' : 'var(--negative)',
+          }}
+        >
           Restante: {restante >= 0 ? "+" : ""}{fmt(restante)}
         </p>
       )}
@@ -107,26 +120,24 @@ function ChartTooltip({
   );
 }
 
-function StatCard({ label, value, sub, color = "blue", icon }: {
-  label: string; value: string; sub?: string;
-  color?: "blue" | "green" | "red" | "purple" | "emerald";
+function StatCard({ label, value, sub, colorVar, icon }: {
+  label: string;
+  value: string;
+  sub?: string;
+  colorVar: string;
   icon?: React.ReactNode;
 }) {
-  const styles = {
-    blue:    { ring: "ring-blue-800/40",    text: "text-blue-300" },
-    green:   { ring: "ring-green-800/40",   text: "text-green-300" },
-    red:     { ring: "ring-red-800/40",     text: "text-red-400" },
-    purple:  { ring: "ring-purple-800/40",  text: "text-purple-300" },
-    emerald: { ring: "ring-emerald-800/40", text: "text-emerald-300" },
-  }[color];
   return (
-    <div className={`bg-gray-900 ring-1 ${styles.ring} rounded-2xl p-4`}>
+    <div
+      className="rounded-2xl p-4"
+      style={{ background: 'var(--surface)', border: '1px solid var(--line)' }}
+    >
       <div className="flex items-center gap-1.5 mb-1">
-        {icon && <span className={`${styles.text} opacity-70`}>{icon}</span>}
-        <p className="text-xs text-gray-500 uppercase tracking-wider">{label}</p>
+        {icon && <span style={{ color: colorVar, opacity: 0.7 }}>{icon}</span>}
+        <p className="text-xs uppercase tracking-wider" style={{ color: 'var(--ink-3)' }}>{label}</p>
       </div>
-      <p className={`text-2xl font-bold tabular-nums ${styles.text}`}>{value}</p>
-      {sub && <p className="text-xs text-gray-600 mt-1 tabular-nums">{sub}</p>}
+      <p className="text-2xl font-bold num" style={{ color: colorVar }}>{value}</p>
+      {sub && <p className="text-xs mt-1 num" style={{ color: 'var(--ink-3)' }}>{sub}</p>}
     </div>
   );
 }
@@ -210,7 +221,6 @@ export default function IngresosPage() {
 
   // ── Derived data ──────────────────────────────────────────────────────────
 
-  // Monthly combined data: ingresos + gastos + restante, in both currencies
   const monthlyData = useMemo(() => {
     return MONTH_NAMES.map((name, idx) => {
       const mk = `${selectedYear}-${String(idx + 1).padStart(2, "0")}`;
@@ -235,7 +245,6 @@ export default function IngresosPage() {
     });
   }, [ingresos, gastos, selectedYear, usdRates]);
 
-  // Ingresos grouped by month for the table
   const groups = useMemo(() => {
     const map: Record<number, Ingreso[]> = {};
     for (const i of ingresos) {
@@ -257,51 +266,56 @@ export default function IngresosPage() {
   // ── Auth guard ────────────────────────────────────────────────────────────
 
   if (authLoading) return (
-    <div className="min-h-screen bg-gray-950 flex items-center justify-center">
-      <Loader2 className="w-8 h-8 animate-spin text-blue-400" />
+    <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--bg)' }}>
+      <Loader2 className="w-8 h-8 animate-spin" style={{ color: 'var(--accent)' }} />
     </div>
   );
   if (!user) { navigate("/", { replace: true }); return null; }
 
   const loading = ingresosLoading || gastosLoading;
-  const fmt = currency === "USD" ? fmtUsd : fmtArs;
 
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <div className="min-h-screen bg-gray-950 flex flex-col">
-
+    <AppShell user={user}>
       {/* ── Top bar ── */}
-      <div className="bg-gray-900 border-b border-gray-800 sticky top-0 z-10">
+      <div
+        className="sticky top-0 z-10"
+        style={{ background: 'var(--surface)', borderBottom: '1px solid var(--line)' }}
+      >
         <div className="max-w-screen-2xl mx-auto flex items-center gap-4 px-4 py-3">
-          <button
-            onClick={() => navigate(`/?year=${selectedYear}`)}
-            className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-white transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Volver
-          </button>
-
-          <div className="w-px h-5 bg-gray-700" />
-
           <div className="flex items-center gap-2">
-            <TrendingUp className="w-4 h-4 text-blue-400" />
-            <h1 className="text-sm font-semibold text-white">Ingresos</h1>
+            <TrendingUp className="w-4 h-4" style={{ color: 'var(--accent)' }} />
+            <h1 className="text-sm font-semibold" style={{ color: 'var(--ink)' }}>Ingresos</h1>
           </div>
 
-          <div className="flex items-center gap-1 bg-gray-800 rounded-lg px-2 py-1.5 ml-auto">
-            <button onClick={() => setYear(selectedYear - 1)} className="text-gray-400 hover:text-white p-0.5 transition-colors">
+          <div
+            className="flex items-center gap-1 rounded-lg px-2 py-1.5 ml-auto"
+            style={{ background: 'var(--surface-alt)' }}
+          >
+            <button
+              onClick={() => setYear(selectedYear - 1)}
+              className="p-0.5 transition-colors"
+              style={{ color: 'var(--ink-3)' }}
+            >
               <ChevronLeft className="w-3.5 h-3.5" />
             </button>
-            <span className="text-white font-bold text-sm w-12 text-center">{selectedYear}</span>
-            <button onClick={() => setYear(selectedYear + 1)} className="text-gray-400 hover:text-white p-0.5 transition-colors">
+            <span className="font-bold text-sm w-12 text-center num" style={{ color: 'var(--ink)' }}>
+              {selectedYear}
+            </span>
+            <button
+              onClick={() => setYear(selectedYear + 1)}
+              className="p-0.5 transition-colors"
+              style={{ color: 'var(--ink-3)' }}
+            >
               <ChevronRight className="w-3.5 h-3.5" />
             </button>
           </div>
 
           <button
             onClick={openNew}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-medium bg-blue-600 hover:bg-blue-500 text-white transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-medium transition-colors"
+            style={{ background: 'var(--accent)', color: 'var(--accent-ink)', border: 'none', cursor: 'pointer', borderRadius: 7 }}
           >
             <Plus className="w-4 h-4" />
             Nuevo ingreso
@@ -314,8 +328,8 @@ export default function IngresosPage() {
         <div className="max-w-screen-2xl mx-auto p-4 lg:p-6 space-y-6">
 
           {loading ? (
-            <div className="flex items-center justify-center h-64 gap-3 text-gray-400">
-              <Loader2 className="w-6 h-6 animate-spin text-blue-400" />
+            <div className="flex items-center justify-center h-64 gap-3" style={{ color: 'var(--ink-2)' }}>
+              <Loader2 className="w-6 h-6 animate-spin" style={{ color: 'var(--accent)' }} />
               <span className="text-sm">Cargando...</span>
             </div>
           ) : (
@@ -326,30 +340,33 @@ export default function IngresosPage() {
                   label="Ingresos"
                   value={fmtUsd(totalYearUsd)}
                   sub={fmtArs(totalYearArs)}
-                  color="blue"
+                  colorVar="var(--accent)"
                   icon={<TrendingUp className="w-3.5 h-3.5" />}
                 />
                 <StatCard
                   label="Gastos"
                   value={fmtUsd(totalGasUsd)}
                   sub={fmtArs(totalGasArs)}
-                  color="red"
+                  colorVar="var(--negative)"
                   icon={<TrendingDown className="w-3.5 h-3.5" />}
                 />
                 <StatCard
                   label="Restante"
                   value={`${restanteUsd >= 0 ? "+" : ""}${fmtUsd(restanteUsd)}`}
                   sub={`${restanteArs >= 0 ? "+" : ""}${fmtArs(restanteArs)}`}
-                  color={restanteUsd >= 0 ? "emerald" : "red"}
+                  colorVar={restanteUsd >= 0 ? 'var(--positive)' : 'var(--negative)'}
                   icon={<Minus className="w-3.5 h-3.5" />}
                 />
               </div>
 
               {/* ── Ingresos vs Gastos chart ── */}
               {(ingresos.length > 0 || gastos.length > 0) && (
-                <div className="bg-gray-900 ring-1 ring-gray-800 rounded-2xl p-4">
+                <div
+                  className="rounded-2xl p-4"
+                  style={{ background: 'var(--surface)', border: '1px solid var(--line)' }}
+                >
                   <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                    <h2 className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--ink-3)' }}>
                       Ingresos vs Gastos — {selectedYear}
                     </h2>
                     <CurrencyToggle value={currency} onChange={setCurrency} />
@@ -362,34 +379,32 @@ export default function IngresosPage() {
                         barCategoryGap="25%"
                         barGap={2}
                       >
-                        <CartesianGrid strokeDasharray="3 3" stroke="#1F2937" vertical={false} />
-                        <XAxis dataKey="name" tick={{ fill: "#6B7280", fontSize: 11 }} axisLine={false} tickLine={false} />
+                        <CartesianGrid strokeDasharray="3 3" stroke="var(--line)" vertical={false} />
+                        <XAxis dataKey="name" tick={{ fill: 'var(--ink-3)', fontSize: 11 }} axisLine={false} tickLine={false} />
                         <YAxis
-                          tick={{ fill: "#6B7280", fontSize: 10 }}
+                          tick={{ fill: 'var(--ink-3)', fontSize: 10 }}
                           tickFormatter={(v) => {
                             if (currency === "USD") return v >= 1000 ? `$${(v / 1000).toFixed(0)}k` : `$${v}`;
                             return v >= 1_000_000 ? `$${(v / 1_000_000).toFixed(1)}M` : v >= 1000 ? `$${(v / 1000).toFixed(0)}k` : `$${v}`;
                           }}
                           width={52} axisLine={false} tickLine={false}
                         />
-                        <Tooltip
-                          content={<ChartTooltip currency={currency} />}
-                        />
+                        <Tooltip content={<ChartTooltip currency={currency} />} />
                         <Legend
-                          wrapperStyle={{ fontSize: 11, color: "#9CA3AF", paddingTop: 8 }}
-                          formatter={(value) => <span style={{ color: "#9CA3AF" }}>{value}</span>}
+                          wrapperStyle={{ fontSize: 11, color: 'var(--ink-2)', paddingTop: 8 }}
+                          formatter={(value) => <span style={{ color: 'var(--ink-2)' }}>{value}</span>}
                         />
-                        <ReferenceLine y={0} stroke="#374151" />
+                        <ReferenceLine y={0} stroke="var(--line)" />
                         <Bar
                           name="Ingresos"
                           dataKey={currency === "USD" ? "ingUsd" : "ingArs"}
-                          fill="#2563EB"
+                          fill="var(--accent)"
                           radius={[4, 4, 0, 0]}
                         />
                         <Bar
                           name="Gastos"
                           dataKey={currency === "USD" ? "gasUsd" : "gasArs"}
-                          fill="#DC2626"
+                          fill="var(--negative)"
                           radius={[4, 4, 0, 0]}
                         />
                       </BarChart>
@@ -398,17 +413,24 @@ export default function IngresosPage() {
 
                   {/* Restante mensual table */}
                   {monthlyData.some((m) => m.hasData) && (
-                    <div className="mt-4 border-t border-gray-800 pt-3">
-                      <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">Restante mensual</p>
+                    <div className="mt-4 pt-3" style={{ borderTop: '1px solid var(--line)' }}>
+                      <p className="text-xs uppercase tracking-wider mb-2" style={{ color: 'var(--ink-3)' }}>Restante mensual</p>
                       <div className="grid grid-cols-6 sm:grid-cols-12 gap-1">
                         {monthlyData.map((m, idx) => {
                           if (!m.hasData) return null;
                           const val = currency === "USD" ? m.restUsd : m.restArs;
                           const isPos = val >= 0;
                           return (
-                            <div key={idx} className="sm:col-span-1 col-span-1 flex flex-col items-center gap-0.5 px-1 py-1.5 rounded-lg bg-gray-800/40">
-                              <span className="text-gray-600 text-[10px]">{m.name}</span>
-                              <span className={`text-[10px] font-bold tabular-nums leading-tight text-center ${isPos ? "text-emerald-400" : "text-red-400"}`}>
+                            <div
+                              key={idx}
+                              className="sm:col-span-1 col-span-1 flex flex-col items-center gap-0.5 px-1 py-1.5 rounded-lg"
+                              style={{ background: 'var(--surface-alt)' }}
+                            >
+                              <span className="text-[10px]" style={{ color: 'var(--ink-3)' }}>{m.name}</span>
+                              <span
+                                className="text-[10px] font-bold num leading-tight text-center"
+                                style={{ color: isPos ? 'var(--positive)' : 'var(--negative)' }}
+                              >
                                 {isPos ? "+" : ""}{currency === "USD"
                                   ? fmtUsd(val).replace("$", "$")
                                   : fmtArs(val)}
@@ -423,23 +445,30 @@ export default function IngresosPage() {
               )}
 
               {/* ── Ingresos table grouped by month ── */}
-              <div className="bg-gray-900 ring-1 ring-gray-800 rounded-2xl overflow-hidden">
-                <div className="flex items-center justify-between px-4 py-3 border-b border-gray-800">
-                  <h2 className="text-sm font-semibold text-white">{selectedYear}</h2>
+              <div
+                className="rounded-2xl overflow-hidden"
+                style={{ background: 'var(--surface)', border: '1px solid var(--line)' }}
+              >
+                <div
+                  className="flex items-center justify-between px-4 py-3"
+                  style={{ borderBottom: '1px solid var(--line)' }}
+                >
+                  <h2 className="text-sm font-semibold" style={{ color: 'var(--ink)' }}>{selectedYear}</h2>
                   {ingresos.length > 0 && (
-                    <span className="text-xs text-gray-500">
+                    <span className="text-xs num" style={{ color: 'var(--ink-3)' }}>
                       {ingresos.length} {ingresos.length === 1 ? "entrada" : "entradas"} · {fmtUsd(totalYearUsd)}
                     </span>
                   )}
                 </div>
 
                 {ingresos.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-16 gap-3 text-gray-600">
+                  <div className="flex flex-col items-center justify-center py-16 gap-3" style={{ color: 'var(--ink-3)' }}>
                     <DollarSign className="w-8 h-8" />
                     <p className="text-sm">No hay ingresos en {selectedYear}</p>
                     <button
                       onClick={openNew}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium bg-blue-600 hover:bg-blue-500 text-white transition-colors mt-1"
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium mt-1"
+                      style={{ background: 'var(--accent)', color: 'var(--accent-ink)', border: 'none', borderRadius: 7, cursor: 'pointer' }}
                     >
                       <Plus className="w-3.5 h-3.5" />
                       Agregar ingreso
@@ -448,34 +477,37 @@ export default function IngresosPage() {
                 ) : (
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="border-b border-gray-800 bg-gray-900/60">
-                        <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Fecha</th>
-                        <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Descripción</th>
-                        <th className="text-right px-4 py-2.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">USD</th>
-                        <th className="text-right px-4 py-2.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Cambio</th>
-                        <th className="text-right px-4 py-2.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">ARS</th>
+                      <tr style={{ borderBottom: '1px solid var(--line)', background: 'var(--surface-alt)' }}>
+                        <th className="text-left px-4 py-2.5 text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--ink-3)' }}>Fecha</th>
+                        <th className="text-left px-4 py-2.5 text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--ink-3)' }}>Descripción</th>
+                        <th className="text-right px-4 py-2.5 text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--ink-3)' }}>USD</th>
+                        <th className="text-right px-4 py-2.5 text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--ink-3)' }}>Cambio</th>
+                        <th className="text-right px-4 py-2.5 text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--ink-3)' }}>ARS</th>
                         <th className="px-4 py-2.5 w-20" />
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-800/40">
+                    <tbody>
                       {groups.map(({ month, items }) => {
                         const groupUsd = items.reduce((a, i) => a + i.monto_usd, 0);
                         const groupArs = items.reduce((a, i) => a + i.monto_ars, 0);
                         return [
-                          <tr key={`grp-${month}`} className="bg-gray-800/50 border-t border-gray-700/40 first:border-t-0">
+                          <tr
+                            key={`grp-${month}`}
+                            style={{ background: 'var(--surface-alt)', borderTop: '1px solid var(--line-soft)' }}
+                          >
                             <td className="pl-4 pr-3 py-1.5" colSpan={2}>
                               <div className="flex items-center gap-2">
-                                <span className="text-gray-200 text-xs font-semibold">{MONTH_FULL[month]}</span>
-                                <span className="text-gray-600 text-xs">·</span>
-                                <span className="text-gray-500 text-xs">{items.length} {items.length === 1 ? "ingreso" : "ingresos"}</span>
+                                <span className="text-xs font-semibold" style={{ color: 'var(--ink)' }}>{MONTH_FULL[month]}</span>
+                                <span className="text-xs" style={{ color: 'var(--line)' }}>·</span>
+                                <span className="text-xs" style={{ color: 'var(--ink-3)' }}>{items.length} {items.length === 1 ? "ingreso" : "ingresos"}</span>
                               </div>
                             </td>
                             <td className="px-4 py-1.5 text-right">
-                              <span className="text-blue-400/80 text-xs font-semibold tabular-nums">{fmtUsd(groupUsd)}</span>
+                              <span className="text-xs font-semibold num" style={{ color: 'var(--accent)' }}>{fmtUsd(groupUsd)}</span>
                             </td>
                             <td />
                             <td className="px-4 py-1.5 text-right">
-                              <span className="text-gray-500 text-xs font-medium tabular-nums">{fmtArs(groupArs)}</span>
+                              <span className="text-xs font-medium num" style={{ color: 'var(--ink-3)' }}>{fmtArs(groupArs)}</span>
                             </td>
                             <td />
                           </tr>,
@@ -483,26 +515,36 @@ export default function IngresosPage() {
                             const isConfirming = confirmDeleteId === ingreso.id;
                             const isDeleting = deletingId === ingreso.id;
                             return (
-                              <tr key={ingreso.id} className={`transition-colors ${isConfirming ? "bg-red-950/20" : "hover:bg-gray-800/30"}`}>
-                                <td className="px-4 py-3 text-gray-400 text-xs tabular-nums whitespace-nowrap">{fmtDate(ingreso.fecha)}</td>
-                                <td className="px-4 py-3 text-gray-200 font-medium">{ingreso.descripcion}</td>
-                                <td className="px-4 py-3 text-right text-blue-300 font-semibold tabular-nums whitespace-nowrap">{fmtUsd(ingreso.monto_usd)}</td>
-                                <td className="px-4 py-3 text-right text-gray-500 text-xs tabular-nums whitespace-nowrap">{ingreso.usd_rate.toLocaleString("es-AR")}</td>
-                                <td className="px-4 py-3 text-right text-gray-300 tabular-nums whitespace-nowrap">{fmtArs(ingreso.monto_ars)}</td>
+                              <tr
+                                key={ingreso.id}
+                                className={isConfirming ? "" : "row-hover"}
+                                style={{
+                                  transition: 'background 0.15s',
+                                  background: isConfirming ? 'var(--neg-soft)' : undefined,
+                                  borderTop: '1px solid var(--line-soft)',
+                                }}
+                              >
+                                <td className="px-4 py-3 text-xs num whitespace-nowrap" style={{ color: 'var(--ink-2)' }}>{fmtDate(ingreso.fecha)}</td>
+                                <td className="px-4 py-3 font-medium" style={{ color: 'var(--ink)' }}>{ingreso.descripcion}</td>
+                                <td className="px-4 py-3 text-right font-semibold num whitespace-nowrap" style={{ color: 'var(--accent)' }}>{fmtUsd(ingreso.monto_usd)}</td>
+                                <td className="px-4 py-3 text-right text-xs num whitespace-nowrap" style={{ color: 'var(--ink-3)' }}>{ingreso.usd_rate.toLocaleString("es-AR")}</td>
+                                <td className="px-4 py-3 text-right num whitespace-nowrap" style={{ color: 'var(--ink-2)' }}>{fmtArs(ingreso.monto_ars)}</td>
                                 <td className="px-4 py-3">
                                   {isConfirming ? (
                                     <div className="flex items-center justify-end gap-1">
                                       <button
                                         onClick={() => handleDelete(ingreso.id)}
                                         disabled={isDeleting}
-                                        className="px-2 py-1 rounded-lg text-xs font-semibold bg-red-600 hover:bg-red-500 text-white transition-colors disabled:opacity-50 flex items-center gap-1"
+                                        className="px-2 py-1 rounded-lg text-xs font-semibold flex items-center gap-1 disabled:opacity-50 transition-colors"
+                                        style={{ background: 'var(--negative)', color: '#fff', border: 'none', cursor: 'pointer' }}
                                       >
                                         {isDeleting && <Loader2 className="w-3 h-3 animate-spin" />}
                                         Eliminar
                                       </button>
                                       <button
                                         onClick={() => setConfirmDeleteId(null)}
-                                        className="px-2 py-1 rounded-lg text-xs font-semibold bg-gray-700 hover:bg-gray-600 text-gray-300 transition-colors"
+                                        className="px-2 py-1 rounded-lg text-xs font-semibold transition-colors"
+                                        style={{ background: 'var(--surface-alt)', color: 'var(--ink-2)', border: '1px solid var(--line)', cursor: 'pointer' }}
                                       >
                                         Cancelar
                                       </button>
@@ -511,14 +553,16 @@ export default function IngresosPage() {
                                     <div className="flex items-center justify-end gap-1">
                                       <button
                                         onClick={() => openEdit(ingreso)}
-                                        className="p-1.5 rounded-lg text-gray-500 hover:text-blue-400 hover:bg-gray-700 transition-colors"
+                                        className="p-1.5 rounded-lg transition-colors"
+                                        style={{ color: 'var(--ink-3)', background: 'transparent', border: 'none', cursor: 'pointer' }}
                                         title="Editar"
                                       >
                                         <Pencil className="w-3.5 h-3.5" />
                                       </button>
                                       <button
                                         onClick={() => setConfirmDeleteId(ingreso.id)}
-                                        className="p-1.5 rounded-lg text-gray-500 hover:text-red-400 hover:bg-gray-700 transition-colors"
+                                        className="p-1.5 rounded-lg transition-colors"
+                                        style={{ color: 'var(--ink-3)', background: 'transparent', border: 'none', cursor: 'pointer' }}
                                         title="Eliminar"
                                       >
                                         <Trash2 className="w-3.5 h-3.5" />
@@ -533,11 +577,11 @@ export default function IngresosPage() {
                       })}
                     </tbody>
                     <tfoot>
-                      <tr className="border-t border-gray-700 bg-gray-900/60">
-                        <td colSpan={2} className="px-4 py-2.5 text-xs font-semibold text-gray-500">Total {selectedYear}</td>
-                        <td className="px-4 py-2.5 text-right text-blue-300 font-bold tabular-nums whitespace-nowrap">{fmtUsd(totalYearUsd)}</td>
+                      <tr style={{ borderTop: '1px solid var(--line)', background: 'var(--surface-alt)' }}>
+                        <td colSpan={2} className="px-4 py-2.5 text-xs font-semibold" style={{ color: 'var(--ink-3)' }}>Total {selectedYear}</td>
+                        <td className="px-4 py-2.5 text-right font-bold num whitespace-nowrap" style={{ color: 'var(--accent)' }}>{fmtUsd(totalYearUsd)}</td>
                         <td />
-                        <td className="px-4 py-2.5 text-right text-gray-200 font-bold tabular-nums whitespace-nowrap">{fmtArs(totalYearArs)}</td>
+                        <td className="px-4 py-2.5 text-right font-bold num whitespace-nowrap" style={{ color: 'var(--ink)' }}>{fmtArs(totalYearArs)}</td>
                         <td />
                       </tr>
                     </tfoot>
@@ -558,6 +602,6 @@ export default function IngresosPage() {
           onSave={handleSave}
         />
       )}
-    </div>
+    </AppShell>
   );
 }

@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import {
   ResponsiveContainer, LineChart, Line,
-  CartesianGrid, XAxis, YAxis, Tooltip, Legend,
+  CartesianGrid, XAxis, YAxis, Tooltip,
 } from 'recharts'
 import type { Gasto } from '@/types'
 import { fmt, fmtShort, MONTH_SHORT } from './utils'
@@ -15,10 +15,7 @@ interface ComparacionAnualProps {
 }
 
 export default function ComparacionAnual({
-  gastos,
-  prevYearGastos,
-  selectedYear,
-  prevYear,
+  gastos, prevYearGastos, selectedYear, prevYear,
 }: ComparacionAnualProps) {
   const data = useMemo(() => {
     return MONTH_SHORT.map((short, idx) => {
@@ -37,14 +34,12 @@ export default function ComparacionAnual({
         .reduce((a, g) => a + Number(g.cantidad), 0)
 
       const delta = prev > 0 ? ((curr - prev) / prev) * 100 : null
-
       return { short, curr: curr || null, prev: prev || null, delta, currRaw: curr, prevRaw: prev }
     })
   }, [gastos, prevYearGastos, selectedYear, prevYear])
 
   const hasCurr = data.some(d => d.currRaw > 0)
   const hasPrev = data.some(d => d.prevRaw > 0)
-
   if (!hasCurr && !hasPrev) return null
 
   const totalCurr = data.reduce((a, d) => a + d.currRaw, 0)
@@ -52,40 +47,41 @@ export default function ComparacionAnual({
   const totalDelta = totalPrev > 0 ? ((totalCurr - totalPrev) / totalPrev) * 100 : null
 
   return (
-    <div className="bg-gray-800/30 border border-gray-800 rounded-2xl p-5 space-y-6">
-      <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-gray-300 uppercase tracking-wider">
-          Comparación {prevYear} vs {selectedYear}
+    <div className="rounded-2xl overflow-hidden" style={{ background: 'var(--surface)', border: '1px solid var(--line)' }}>
+      {/* Header */}
+      <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: '1px solid var(--line)' }}>
+        <h3 className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--ink-3)' }}>
+          {prevYear} vs {selectedYear}
         </h3>
         <div className="flex items-center gap-4 text-xs">
           <span className="flex items-center gap-1.5">
-            <span className="w-3 h-0.5 bg-gray-500 inline-block rounded" />
-            <span className="text-gray-400">{prevYear}</span>
+            <span className="w-4 h-0.5 rounded inline-block" style={{ background: 'var(--ink-3)' }} />
+            <span style={{ color: 'var(--ink-3)' }}>{prevYear}</span>
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="w-3 h-0.5 bg-blue-400 inline-block rounded" />
-            <span className="text-gray-200">{selectedYear}</span>
+            <span className="w-4 h-0.5 rounded inline-block" style={{ background: 'var(--accent)' }} />
+            <span style={{ color: 'var(--ink)' }}>{selectedYear}</span>
           </span>
         </div>
       </div>
 
-      <div style={{ height: 260 }}>
+      {/* Chart */}
+      <div className="px-4 pt-4 pb-2" style={{ height: 280 }}>
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={data} margin={{ top: 10, right: 10, left: 10, bottom: 5 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#374151" vertical={false} />
-            <XAxis dataKey="short" tick={{ fill: '#9CA3AF', fontSize: 11 }} />
-            <YAxis tick={{ fill: '#9CA3AF', fontSize: 10 }} tickFormatter={fmtShort} width={72} />
-            <Tooltip content={<LineTooltipComp />} />
-            <Legend formatter={value => <span style={{ color: '#9CA3AF', fontSize: 12 }}>{value}</span>} />
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--line)" vertical={false} />
+            <XAxis dataKey="short" tick={{ fill: 'var(--ink-3)', fontSize: 11 }} axisLine={false} tickLine={false} />
+            <YAxis tick={{ fill: 'var(--ink-3)', fontSize: 10 }} tickFormatter={fmtShort} width={68} axisLine={false} tickLine={false} />
+            <Tooltip content={<LineTooltipComp />} cursor={{ stroke: 'var(--line)', strokeWidth: 1 }} />
             {hasPrev && (
               <Line
                 type="monotone"
                 dataKey="prev"
                 name={String(prevYear)}
-                stroke="#6B7280"
-                strokeWidth={2}
+                stroke="var(--ink-3)"
+                strokeWidth={1.5}
                 strokeDasharray="5 3"
-                dot={{ fill: '#6B7280', r: 3, strokeWidth: 0 }}
+                dot={{ fill: 'var(--ink-3)', r: 3, strokeWidth: 0 }}
                 activeDot={{ r: 5 }}
                 connectNulls={false}
               />
@@ -95,10 +91,10 @@ export default function ComparacionAnual({
                 type="monotone"
                 dataKey="curr"
                 name={String(selectedYear)}
-                stroke="#3B82F6"
+                stroke="var(--accent)"
                 strokeWidth={2.5}
-                dot={{ fill: '#3B82F6', r: 4, strokeWidth: 0 }}
-                activeDot={{ r: 6 }}
+                dot={{ fill: 'var(--accent)', r: 4, strokeWidth: 0 }}
+                activeDot={{ r: 6, fill: 'var(--accent)' }}
                 connectNulls={false}
               />
             )}
@@ -106,52 +102,78 @@ export default function ComparacionAnual({
         </ResponsiveContainer>
       </div>
 
-      <div>
-        <div className="flex items-center py-1 px-2 text-xs text-gray-500 uppercase tracking-wider border-b border-gray-700/50">
-          <span className="w-16">Mes</span>
-          <span className="flex-1 text-right">{prevYear}</span>
-          <span className="flex-1 text-right">{selectedYear}</span>
-          <span className="w-20 text-right">Δ%</span>
+      {/* Table */}
+      <div style={{ borderTop: '1px solid var(--line)' }}>
+        {/* Column headers */}
+        <div
+          className="grid text-[10px] uppercase tracking-widest font-medium px-5 py-2"
+          style={{ color: 'var(--ink-3)', borderBottom: '1px solid var(--line)', gridTemplateColumns: '56px 1fr 1fr 72px' }}
+        >
+          <span>Mes</span>
+          <span className="text-right">{prevYear}</span>
+          <span className="text-right">{selectedYear}</span>
+          <span className="text-right">Δ%</span>
         </div>
-        <div className="space-y-0.5 mt-1">
-          {data.map((m, i) => {
-            const hasAny = m.currRaw > 0 || m.prevRaw > 0
-            if (!hasAny) return null
-            const isDecrease = m.delta !== null && m.delta < 0
-            const isIncrease = m.delta !== null && m.delta > 0
-            return (
-              <div key={i} className="flex items-center py-1.5 px-2 rounded-lg hover:bg-gray-700/30 text-sm">
-                <span className="w-16 text-gray-400 text-xs">{MONTH_SHORT[i]}</span>
-                <span className="flex-1 text-right text-gray-500 text-sm">
-                  {m.prevRaw > 0 ? fmt(m.prevRaw) : '—'}
-                </span>
-                <span className="flex-1 text-right text-white font-semibold text-sm">
-                  {m.currRaw > 0 ? fmt(m.currRaw) : '—'}
-                </span>
-                <span className={`w-20 text-right text-xs font-semibold ${
-                  isDecrease ? 'text-green-400' : isIncrease ? 'text-red-400' : 'text-gray-500'
-                }`}>
-                  {m.delta !== null ? `${isIncrease ? '+' : ''}${m.delta.toFixed(1)}%` : '—'}
-                </span>
-              </div>
-            )
-          })}
-        </div>
-        <div className="border-t border-gray-700 pt-2 mt-2 flex items-center px-2">
-          <span className="w-16 text-gray-400 font-semibold text-sm">TOTAL</span>
-          <span className="flex-1 text-right text-gray-400 font-bold text-sm">
+
+        {data.map((m, i) => {
+          const hasAny = m.currRaw > 0 || m.prevRaw > 0
+          if (!hasAny) return null
+          const isDecrease = m.delta !== null && m.delta < 0
+          const isIncrease = m.delta !== null && m.delta > 0
+          return (
+            <div
+              key={i}
+              className="grid items-center px-5 py-2.5 transition-colors"
+              style={{
+                gridTemplateColumns: '56px 1fr 1fr 72px',
+                borderBottom: '1px solid var(--line)',
+              }}
+              onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface-alt)')}
+              onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+            >
+              <span className="text-xs" style={{ color: 'var(--ink-3)' }}>{MONTH_SHORT[i]}</span>
+              <span className="num text-sm text-right" style={{ color: 'var(--ink-3)' }}>
+                {m.prevRaw > 0 ? fmt(m.prevRaw) : '—'}
+              </span>
+              <span className="num text-sm font-semibold text-right" style={{ color: 'var(--ink)' }}>
+                {m.currRaw > 0 ? fmt(m.currRaw) : '—'}
+              </span>
+              <span
+                className="num text-xs font-semibold text-right px-1.5 py-0.5 rounded justify-self-end"
+                style={{
+                  color: isDecrease ? 'var(--positive)' : isIncrease ? 'var(--negative)' : 'var(--ink-3)',
+                  background: isDecrease ? 'var(--pos-soft)' : isIncrease ? 'var(--neg-soft)' : 'transparent',
+                }}
+              >
+                {m.delta !== null ? `${isIncrease ? '+' : ''}${m.delta.toFixed(1)}%` : '—'}
+              </span>
+            </div>
+          )
+        })}
+
+        {/* Total row */}
+        <div
+          className="grid items-center px-5 py-3"
+          style={{ gridTemplateColumns: '56px 1fr 1fr 72px', background: 'var(--surface-alt)' }}
+        >
+          <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--ink-3)' }}>Total</span>
+          <span className="num text-sm font-semibold text-right" style={{ color: 'var(--ink-3)' }}>
             {totalPrev > 0 ? fmt(totalPrev) : '—'}
           </span>
-          <span className="flex-1 text-right text-green-400 font-bold text-sm">
+          <span className="num text-sm font-bold text-right" style={{ color: 'var(--accent)' }}>
             {totalCurr > 0 ? fmt(totalCurr) : '—'}
           </span>
-          <span className={`w-20 text-right text-xs font-bold ${
-            totalDelta !== null && totalDelta < 0
-              ? 'text-green-400'
-              : totalDelta !== null && totalDelta > 0
-                ? 'text-red-400'
-                : 'text-gray-500'
-          }`}>
+          <span
+            className="num text-xs font-bold text-right px-1.5 py-0.5 rounded justify-self-end"
+            style={{
+              color: totalDelta !== null && totalDelta < 0
+                ? 'var(--positive)' : totalDelta !== null && totalDelta > 0
+                ? 'var(--negative)' : 'var(--ink-3)',
+              background: totalDelta !== null && totalDelta < 0
+                ? 'var(--pos-soft)' : totalDelta !== null && totalDelta > 0
+                ? 'var(--neg-soft)' : 'transparent',
+            }}
+          >
             {totalDelta !== null ? `${totalDelta > 0 ? '+' : ''}${totalDelta.toFixed(1)}%` : '—'}
           </span>
         </div>

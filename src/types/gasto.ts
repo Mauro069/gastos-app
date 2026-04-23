@@ -5,6 +5,7 @@ export type Forma =
   | 'Uala'
   | 'Mercado Pago'
   | 'Efectivo'
+  | 'Transferencia'
 
 export type Concepto =
   | 'Creditos'

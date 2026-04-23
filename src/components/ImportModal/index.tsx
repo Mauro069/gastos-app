@@ -5,7 +5,7 @@ import { FORMAS, CONCEPTOS } from '@/constants'
 import { createGasto } from '@/api'
 import type { Forma, Concepto, CreateGastoData } from '@/types'
 import { useUserSettings } from '@/contexts'
-import { parseDate, validateRow, revalidateRow } from './parseHelpers'
+import { validateRow, revalidateRow } from './parseHelpers'
 import type { ParsedRow, ImportResult, RawRow } from './parseHelpers'
 import FixableCell from './FixableCell'
 
@@ -138,53 +138,76 @@ export default function ImportModal({ onClose, onImported }: Props) {
   const invalidCount = parsedRows ? parsedRows.filter(r => !r.valid).length : 0
 
   return (
-    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-      <div className="bg-gray-900 border border-gray-700 rounded-2xl w-full max-w-2xl shadow-2xl flex flex-col max-h-[90vh]">
-
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(4px)' }}
+      onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
+    >
+      <div
+        className="w-full max-w-2xl rounded-2xl flex flex-col shadow-2xl"
+        style={{ background: 'var(--surface)', border: '1px solid var(--line)', maxHeight: '90dvh' }}
+      >
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-800">
+        <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: '1px solid var(--line)' }}>
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-green-600/20 flex items-center justify-center">
-              <FileSpreadsheet className="w-5 h-5 text-green-400" />
+            <div
+              className="w-9 h-9 rounded-xl flex items-center justify-center"
+              style={{ background: 'var(--accent-soft)' }}
+            >
+              <FileSpreadsheet size={16} style={{ color: 'var(--accent)' }} />
             </div>
             <div>
-              <h2 className="text-white font-bold text-lg">Importar gastos</h2>
-              <p className="text-gray-500 text-xs">Cargá un Excel con tus gastos en formato plantilla</p>
+              <h2 className="text-sm font-semibold" style={{ color: 'var(--ink)' }}>Importar gastos</h2>
+              <p className="text-xs" style={{ color: 'var(--ink-3)' }}>Cargá un Excel con tus gastos en formato plantilla</p>
             </div>
           </div>
-          <button onClick={onClose} className="text-gray-500 hover:text-white p-1 rounded-lg hover:bg-gray-800 transition-colors">
-            <X className="w-5 h-5" />
+          <button
+            onClick={onClose}
+            className="rounded-lg p-1.5 transition-colors"
+            style={{ background: 'var(--surface-alt)', border: 'none', cursor: 'pointer', color: 'var(--ink-3)' }}
+          >
+            <X size={16} />
           </button>
         </div>
 
         {/* Body */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-5">
+        <div className="flex-1 overflow-y-auto p-5 space-y-4">
 
           {/* Action buttons */}
           <div className="grid grid-cols-2 gap-3">
             <button
               onClick={downloadTemplate}
-              className="flex flex-col items-center gap-2 p-5 rounded-xl border border-gray-700 hover:border-blue-500 hover:bg-blue-600/10 transition-all group"
+              className="flex flex-col items-center gap-2.5 p-5 rounded-xl transition-colors"
+              style={{ background: 'var(--surface-alt)', border: '1px solid var(--line)', cursor: 'pointer' }}
+              onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--accent)')}
+              onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--line)')}
             >
-              <div className="w-10 h-10 rounded-lg bg-blue-600/20 flex items-center justify-center group-hover:bg-blue-600/30 transition-colors">
-                <Download className="w-5 h-5 text-blue-400" />
+              <div
+                className="w-9 h-9 rounded-xl flex items-center justify-center"
+                style={{ background: 'var(--surface)', border: '1px solid var(--line)' }}
+              >
+                <Download size={16} style={{ color: 'var(--ink-2)' }} />
               </div>
               <div className="text-center">
-                <p className="text-white text-sm font-semibold">Descargar plantilla</p>
-                <p className="text-gray-500 text-xs mt-0.5">Excel con el formato correcto</p>
+                <p className="text-sm font-medium" style={{ color: 'var(--ink)' }}>Descargar plantilla</p>
+                <p className="text-xs mt-0.5" style={{ color: 'var(--ink-3)' }}>Excel con el formato correcto</p>
               </div>
             </button>
 
             <button
               onClick={() => fileRef.current?.click()}
-              className="flex flex-col items-center gap-2 p-5 rounded-xl border border-gray-700 hover:border-green-500 hover:bg-green-600/10 transition-all group"
+              className="flex flex-col items-center gap-2.5 p-5 rounded-xl transition-colors"
+              style={{ background: 'var(--accent-soft)', border: '1px solid var(--accent)', cursor: 'pointer' }}
             >
-              <div className="w-10 h-10 rounded-lg bg-green-600/20 flex items-center justify-center group-hover:bg-green-600/30 transition-colors">
-                <Upload className="w-5 h-5 text-green-400" />
+              <div
+                className="w-9 h-9 rounded-xl flex items-center justify-center"
+                style={{ background: 'var(--surface)', border: '1px solid var(--line)' }}
+              >
+                <Upload size={16} style={{ color: 'var(--accent)' }} />
               </div>
               <div className="text-center">
-                <p className="text-white text-sm font-semibold">Seleccionar archivo</p>
-                <p className="text-gray-500 text-xs mt-0.5">.xlsx, .xls o .csv</p>
+                <p className="text-sm font-medium" style={{ color: 'var(--ink)' }}>Seleccionar archivo</p>
+                <p className="text-xs mt-0.5" style={{ color: 'var(--ink-3)' }}>.xlsx, .xls o .csv</p>
               </div>
               <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleFile} />
             </button>
@@ -193,27 +216,41 @@ export default function ImportModal({ onClose, onImported }: Props) {
           {/* Preview */}
           {parsedRows && !done && (
             <div className="space-y-3">
-              <div className="flex items-center gap-3">
-                <div className="flex items-center gap-1.5 bg-green-900/30 border border-green-800 rounded-lg px-3 py-1.5">
-                  <CheckCircle className="w-4 h-4 text-green-400" />
-                  <span className="text-green-400 text-sm font-semibold">{validCount} válidas</span>
+              {/* Summary pills */}
+              <div className="flex items-center gap-2">
+                <div
+                  className="flex items-center gap-1.5 rounded-lg px-3 py-1.5"
+                  style={{ background: 'var(--pos-soft)', border: '1px solid var(--positive)' }}
+                >
+                  <CheckCircle size={13} style={{ color: 'var(--positive)' }} />
+                  <span className="text-xs font-semibold" style={{ color: 'var(--positive)' }}>{validCount} válidas</span>
                 </div>
                 {invalidCount > 0 && (
-                  <div className="flex items-center gap-1.5 bg-red-900/30 border border-red-800 rounded-lg px-3 py-1.5">
-                    <AlertCircle className="w-4 h-4 text-red-400" />
-                    <span className="text-red-400 text-sm font-semibold">{invalidCount} con errores</span>
+                  <div
+                    className="flex items-center gap-1.5 rounded-lg px-3 py-1.5"
+                    style={{ background: 'var(--neg-soft)', border: '1px solid var(--negative)' }}
+                  >
+                    <AlertCircle size={13} style={{ color: 'var(--negative)' }} />
+                    <span className="text-xs font-semibold" style={{ color: 'var(--negative)' }}>{invalidCount} con errores</span>
                   </div>
                 )}
-                <span className="text-gray-500 text-xs ml-auto">{parsedRows.length} filas leídas</span>
+                <span className="text-xs ml-auto" style={{ color: 'var(--ink-3)' }}>{parsedRows.length} filas leídas</span>
               </div>
 
-              <div className="rounded-xl border border-gray-800 overflow-hidden">
-                <div className="overflow-x-auto max-h-72">
+              {/* Table */}
+              <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--line)' }}>
+                <div className="overflow-x-auto max-h-64">
                   <table className="w-full text-xs">
-                    <thead className="bg-gray-800 sticky top-0">
+                    <thead className="sticky top-0" style={{ background: 'var(--surface-alt)' }}>
                       <tr>
-                        {['#', 'Fecha', 'Cantidad', 'Forma', 'Concepto', 'Nota', 'Estado'].map(h => (
-                          <th key={h} className="px-3 py-2 text-left text-gray-400 font-semibold whitespace-nowrap">{h}</th>
+                        {['#', 'Fecha', 'Cantidad', 'Forma', 'Concepto', 'Nota', ''].map((h, i) => (
+                          <th
+                            key={i}
+                            className="px-3 py-2 text-left font-medium whitespace-nowrap uppercase tracking-widest"
+                            style={{ color: 'var(--ink-3)', borderBottom: '1px solid var(--line)' }}
+                          >
+                            {h}
+                          </th>
                         ))}
                       </tr>
                     </thead>
@@ -222,11 +259,19 @@ export default function ImportModal({ onClose, onImported }: Props) {
                         const formaInvalid = r.errors.some(e => e.includes('Forma'))
                         const conceptoInvalid = r.errors.some(e => e.includes('Concepto'))
                         return (
-                          <tr key={i} className={`border-t border-gray-800 ${r.valid ? '' : 'bg-red-950/20'}`}>
-                            <td className="px-3 py-2 text-gray-500">{r.row}</td>
-                            <td className="px-3 py-2 text-gray-300 whitespace-nowrap">{r.fecha ?? <span className="text-red-400">—</span>}</td>
-                            <td className="px-3 py-2 text-gray-300 whitespace-nowrap">
-                              {r.cantidad > 0 ? r.cantidad.toLocaleString('es-AR') : <span className="text-red-400">—</span>}
+                          <tr
+                            key={i}
+                            style={{
+                              borderBottom: '1px solid var(--line)',
+                              background: r.valid ? 'transparent' : 'var(--neg-soft)',
+                            }}
+                          >
+                            <td className="px-3 py-2" style={{ color: 'var(--ink-3)' }}>{r.row}</td>
+                            <td className="px-3 py-2 whitespace-nowrap" style={{ color: 'var(--ink-2)' }}>
+                              {r.fecha ?? <span style={{ color: 'var(--negative)' }}>—</span>}
+                            </td>
+                            <td className="px-3 py-2 whitespace-nowrap num" style={{ color: 'var(--ink-2)' }}>
+                              {r.cantidad > 0 ? r.cantidad.toLocaleString('es-AR') : <span style={{ color: 'var(--negative)' }}>—</span>}
                             </td>
                             <td className="px-3 py-2">
                               <FixableCell
@@ -248,13 +293,13 @@ export default function ImportModal({ onClose, onImported }: Props) {
                                 onCreateAndFix={val => createAndFixConcepto(i, val)}
                               />
                             </td>
-                            <td className="px-3 py-2 text-gray-400 max-w-[140px] truncate">{r.nota}</td>
+                            <td className="px-3 py-2 max-w-[140px] truncate" style={{ color: 'var(--ink-3)' }}>{r.nota}</td>
                             <td className="px-3 py-2 text-center">
                               {r.valid
-                                ? <CheckCircle className="w-4 h-4 text-green-500 mx-auto" />
+                                ? <CheckCircle size={14} style={{ color: 'var(--positive)', margin: 'auto' }} />
                                 : (
                                   <span title={r.errors.join('\n')}>
-                                    <AlertCircle className="w-4 h-4 text-red-500 mx-auto cursor-help" />
+                                    <AlertCircle size={14} style={{ color: 'var(--negative)', margin: 'auto', cursor: 'help' }} />
                                   </span>
                                 )}
                             </td>
@@ -266,13 +311,17 @@ export default function ImportModal({ onClose, onImported }: Props) {
                 </div>
               </div>
 
+              {/* Non-fixable errors */}
               {parsedRows.some(r => r.errors.some(e => !e.includes('Forma') && !e.includes('Concepto'))) && (
-                <div className="bg-red-950/30 border border-red-900 rounded-xl p-3 space-y-1">
-                  <p className="text-red-400 text-xs font-semibold mb-2">Errores no corregibles:</p>
+                <div
+                  className="rounded-xl p-3 space-y-1"
+                  style={{ background: 'var(--neg-soft)', border: '1px solid var(--negative)' }}
+                >
+                  <p className="text-xs font-semibold mb-2" style={{ color: 'var(--negative)' }}>Errores no corregibles:</p>
                   {parsedRows
                     .filter(r => r.errors.some(e => !e.includes('Forma') && !e.includes('Concepto')))
                     .map((r, i) => (
-                      <p key={i} className="text-red-300 text-xs">
+                      <p key={i} className="text-xs" style={{ color: 'var(--negative)' }}>
                         <span className="font-semibold">Fila {r.row}:</span>{' '}
                         {r.errors.filter(e => !e.includes('Forma') && !e.includes('Concepto')).join(' · ')}
                       </p>
@@ -280,10 +329,14 @@ export default function ImportModal({ onClose, onImported }: Props) {
                 </div>
               )}
 
+              {/* Fixable hint */}
               {parsedRows.some(r => r.errors.some(e => e.includes('Forma') || e.includes('Concepto'))) && (
-                <div className="flex items-start gap-2 bg-amber-950/30 border border-amber-800/50 rounded-xl px-3 py-2.5">
-                  <Plus className="w-3.5 h-3.5 text-amber-400 mt-0.5 shrink-0" />
-                  <p className="text-amber-300 text-xs">
+                <div
+                  className="flex items-start gap-2 rounded-xl px-3 py-2.5"
+                  style={{ background: 'var(--surface-alt)', border: '1px solid var(--line)' }}
+                >
+                  <Plus size={13} style={{ color: 'var(--ink-3)', marginTop: 2, flexShrink: 0 }} />
+                  <p className="text-xs" style={{ color: 'var(--ink-2)' }}>
                     Las filas con <span className="font-semibold">Forma</span> o <span className="font-semibold">Concepto</span> inválidos se pueden corregir directo en la tabla — elegí uno existente o creá uno nuevo.
                   </p>
                 </div>
@@ -293,45 +346,48 @@ export default function ImportModal({ onClose, onImported }: Props) {
 
           {/* Done state */}
           {done && importResult && (
-            <div className="rounded-xl border border-green-800 bg-green-900/20 p-6 text-center space-y-2">
-              <CheckCircle className="w-10 h-10 text-green-400 mx-auto" />
-              <p className="text-white font-bold text-lg">{importResult.ok} gastos importados</p>
-              {importResult.fail > 0 && <p className="text-red-400 text-sm">{importResult.fail} no pudieron importarse</p>}
-              <p className="text-gray-500 text-xs">La tabla se actualizó automáticamente</p>
+            <div
+              className="rounded-xl p-6 text-center space-y-2"
+              style={{ background: 'var(--pos-soft)', border: '1px solid var(--positive)' }}
+            >
+              <CheckCircle size={36} style={{ color: 'var(--positive)', margin: 'auto' }} />
+              <p className="font-semibold text-base" style={{ color: 'var(--ink)' }}>{importResult.ok} gastos importados</p>
+              {importResult.fail > 0 && (
+                <p className="text-sm" style={{ color: 'var(--negative)' }}>{importResult.fail} no pudieron importarse</p>
+              )}
+              <p className="text-xs" style={{ color: 'var(--ink-3)' }}>La tabla se actualizó automáticamente</p>
             </div>
           )}
         </div>
 
         {/* Footer */}
-        <div className="p-6 border-t border-gray-800 space-y-3">
+        <div className="px-5 py-4 space-y-3" style={{ borderTop: '1px solid var(--line)' }}>
           {importing && progress.total > 0 && (
             <div className="space-y-1.5">
-              <div className="flex items-center justify-between text-xs text-gray-400">
+              <div className="flex items-center justify-between text-xs" style={{ color: 'var(--ink-3)' }}>
                 <span className="flex items-center gap-1.5">
-                  <Loader2 className="w-3.5 h-3.5 animate-spin text-green-400" />
+                  <Loader2 size={13} className="animate-spin" style={{ color: 'var(--accent)' }} />
                   Importando gastos...
                 </span>
-                <span className="font-semibold text-white tabular-nums">
+                <span className="num font-semibold" style={{ color: 'var(--ink)' }}>
                   {progress.current} / {progress.total}
                 </span>
               </div>
-              <div className="w-full bg-gray-800 rounded-full h-2 overflow-hidden">
+              <div className="w-full rounded-full h-1.5 overflow-hidden" style={{ background: 'var(--surface-alt)' }}>
                 <div
-                  className="h-2 bg-green-500 rounded-full transition-all duration-300 ease-out"
-                  style={{ width: `${Math.round((progress.current / progress.total) * 100)}%` }}
+                  className="h-full rounded-full transition-all duration-300"
+                  style={{ width: `${Math.round((progress.current / progress.total) * 100)}%`, background: 'var(--accent)' }}
                 />
               </div>
-              <p className="text-xs text-gray-600 text-right tabular-nums">
-                {Math.round((progress.current / progress.total) * 100)}%
-              </p>
             </div>
           )}
 
-          <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
             <button
               onClick={onClose}
               disabled={importing}
-              className="px-4 py-2 text-sm text-gray-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              className="flex-1 rounded-xl py-2.5 text-sm font-medium transition-opacity disabled:opacity-40"
+              style={{ background: 'var(--surface-alt)', color: 'var(--ink-2)', border: '1px solid var(--line)', cursor: 'pointer' }}
             >
               {done ? 'Cerrar' : 'Cancelar'}
             </button>
@@ -339,9 +395,10 @@ export default function ImportModal({ onClose, onImported }: Props) {
               <button
                 onClick={handleImport}
                 disabled={validCount === 0}
-                className="flex items-center gap-2 px-5 py-2.5 bg-green-600 hover:bg-green-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-semibold rounded-xl transition-colors"
+                className="flex-1 flex items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-semibold transition-opacity disabled:opacity-40"
+                style={{ background: 'var(--accent)', color: 'var(--accent-ink)', border: 'none', cursor: validCount > 0 ? 'pointer' : 'default' }}
               >
-                <Upload className="w-4 h-4" />
+                <Upload size={14} />
                 Importar {validCount} gasto{validCount !== 1 ? 's' : ''}
               </button>
             )}

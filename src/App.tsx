@@ -1,42 +1,486 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useNavigate } from "react-router-dom";
 import {
-  BarChart2,
-  Table2,
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Cell,
+  Tooltip as RechartTooltip,
+  PieChart,
+  Pie,
+} from "recharts";
+import {
   Loader2,
-  TrendingUp,
   ChevronLeft,
   ChevronRight,
-  DollarSign,
-  Wallet,
-  CalendarRange,
+  Plus,
+  ArrowUpRight,
+  Calendar,
+  Search,
 } from "lucide-react";
-import {
-  Header,
-  GastosTable,
-  Charts,
-  Landing,
-  ImportModal,
-} from "@/components";
+import { GastosTable, Landing, ImportModal, AppShell } from "@/components";
 import { fetchGastosByYear, fetchUsdRates } from "@/api";
-import { useAuth } from "@/contexts";
+import { useAuth, useUserSettings } from "@/contexts";
 import { useMonthlyGastos } from "@/hooks";
 import { MONTH_NAMES, MONTH_FULL, monthKey } from "@/constants";
+import { getChipHex } from "@/utils/chipColor";
 import type { UsdRates } from "@/types";
 
 export { monthKey };
 
 const DEFAULT_RATE = 1000;
 
+// ── Formatters ─────────────────────────────────────────────────────────────
+const fmtArs = (n: number, compact = false) =>
+  new Intl.NumberFormat("es-AR", {
+    style: "currency",
+    currency: "ARS",
+    maximumFractionDigits: 0,
+    notation: compact ? "compact" : "standard",
+  }).format(n);
+
+const fmtUsd = (n: number) =>
+  new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 0,
+  }).format(n);
+
+const fmtShort = (n: number) => {
+  if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `$${(n / 1_000).toFixed(0)}k`;
+  return `$${n}`;
+};
+
+// ── KPI card ───────────────────────────────────────────────────────────────
+function KPICard({
+  label,
+  value,
+  sub,
+  trend,
+  positive,
+}: {
+  label: string;
+  value: string;
+  sub?: string;
+  trend?: number | null;
+  positive?: boolean;
+}) {
+  const isUp = trend != null && trend > 0;
+  const isDown = trend != null && trend < 0;
+  return (
+    <div style={{ background: "var(--surface)", padding: "18px 20px" }}>
+      <p
+        className="text-[10px] uppercase tracking-widest mb-2.5"
+        style={{ color: "var(--ink-3)" }}
+      >
+        {label}
+      </p>
+      <p
+        className="num font-medium leading-none"
+        style={{
+          fontSize: 24,
+          letterSpacing: "-0.03em",
+          color: positive ? "var(--positive)" : "var(--ink)",
+        }}
+      >
+        {value}
+      </p>
+      <div className="flex items-center gap-2 mt-1.5">
+        {sub && (
+          <span className="text-[11px]" style={{ color: "var(--ink-3)" }}>
+            {sub}
+          </span>
+        )}
+        {trend != null && (
+          <span
+            className="num text-[10px] font-semibold px-1.5 py-0.5 rounded"
+            style={{
+              background: isUp
+                ? "var(--neg-soft)"
+                : isDown
+                  ? "var(--pos-soft)"
+                  : "var(--surface-alt)",
+              color: isUp
+                ? "var(--negative)"
+                : isDown
+                  ? "var(--positive)"
+                  : "var(--ink-3)",
+            }}
+          >
+            {isUp ? "+" : ""}
+            {trend.toFixed(0)}%
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Month picker popover ───────────────────────────────────────────────────
+function MonthPicker({
+  year,
+  month,
+  onChange,
+}: {
+  year: number;
+  month: number;
+  onChange: (y: number, m: number) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [pickerYear, setPickerYear] = useState(year);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setPickerYear(year);
+  }, [year]);
+
+  // Close on outside click
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node))
+        setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  const select = (m: number) => {
+    onChange(pickerYear, m);
+    setOpen(false);
+  };
+
+  const prevMonth = () => {
+    const pm = month === 0 ? 11 : month - 1;
+    const py = month === 0 ? year - 1 : year;
+    onChange(py, pm);
+  };
+  const nextMonth = () => {
+    const nm = month === 11 ? 0 : month + 1;
+    const ny = month === 11 ? year + 1 : year;
+    onChange(ny, nm);
+  };
+
+  return (
+    <div ref={ref} className="flex items-center gap-0.5 relative">
+      {/* Prev arrow */}
+      <button
+        onClick={prevMonth}
+        className="p-1.5 rounded-md transition-opacity hover:opacity-70"
+        style={{
+          background: "none",
+          border: "none",
+          cursor: "pointer",
+          color: "var(--ink-3)",
+        }}
+      >
+        <ChevronLeft size={15} strokeWidth={2} />
+      </button>
+
+      {/* Date label button (opens picker) */}
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium"
+        style={{
+          background: open ? "var(--surface-alt)" : "var(--surface)",
+          color: "var(--ink)",
+          border: "1px solid var(--line)",
+          cursor: "pointer",
+        }}
+      >
+        <Calendar size={12} style={{ color: "var(--ink-3)" }} />
+        <span style={{ minWidth: 110, textAlign: "center" }}>
+          {MONTH_FULL[month]} {year}
+        </span>
+      </button>
+
+      {/* Next arrow */}
+      <button
+        onClick={nextMonth}
+        className="p-1.5 rounded-md transition-opacity hover:opacity-70"
+        style={{
+          background: "none",
+          border: "none",
+          cursor: "pointer",
+          color: "var(--ink-3)",
+        }}
+      >
+        <ChevronRight size={15} strokeWidth={2} />
+      </button>
+
+      {open && (
+        <div
+          className="absolute top-full mt-1 rounded-xl shadow-xl z-50 p-3"
+          style={{
+            background: "var(--surface)",
+            border: "1px solid var(--line)",
+            width: 220,
+            left: "50%",
+            transform: "translateX(-50%)",
+          }}
+        >
+          {/* Year nav */}
+          <div className="flex items-center justify-between mb-2.5 px-1">
+            <button
+              onClick={() => setPickerYear((y) => y - 1)}
+              style={{
+                background: "none",
+                border: "none",
+                cursor: "pointer",
+                color: "var(--ink-3)",
+                padding: "2px 6px",
+              }}
+            >
+              <ChevronLeft size={14} />
+            </button>
+            <span
+              className="num text-sm font-semibold"
+              style={{ color: "var(--ink)" }}
+            >
+              {pickerYear}
+            </span>
+            <button
+              onClick={() => setPickerYear((y) => y + 1)}
+              style={{
+                background: "none",
+                border: "none",
+                cursor: "pointer",
+                color: "var(--ink-3)",
+                padding: "2px 6px",
+              }}
+            >
+              <ChevronRight size={14} />
+            </button>
+          </div>
+          {/* Month grid */}
+          <div className="grid grid-cols-3 gap-1">
+            {MONTH_NAMES.map((name, idx) => {
+              const isActive = idx === month && pickerYear === year;
+              return (
+                <button
+                  key={idx}
+                  onClick={() => select(idx)}
+                  className="py-1.5 text-xs font-medium rounded-lg transition-colors"
+                  style={{
+                    background: isActive ? "var(--accent)" : "transparent",
+                    color: isActive ? "var(--accent-ink)" : "var(--ink-2)",
+                    border: "none",
+                    cursor: "pointer",
+                  }}
+                >
+                  {name}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── USD Rate pill ──────────────────────────────────────────────────────────
+function RatePill({
+  rate,
+  hasCustom,
+  monthKey: mk,
+  onUpdate,
+}: {
+  rate: number;
+  hasCustom: boolean;
+  monthKey: string;
+  onUpdate: (rates: UsdRates) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [val, setVal] = useState(rate);
+  useEffect(() => {
+    setVal(rate);
+  }, [rate]);
+
+  const save = async () => {
+    const r = Number(val);
+    if (r > 0) {
+      const mod = await import("@/api");
+      const res = await mod.updateMonthRate(mk, r);
+      onUpdate(res.usdRates);
+    }
+    setEditing(false);
+  };
+
+  if (editing)
+    return (
+      <div
+        className="flex items-center gap-1.5 rounded-lg px-2.5 py-1"
+        style={{
+          background: "var(--surface-alt)",
+          border: "1px solid var(--line)",
+        }}
+      >
+        <span className="text-[10px]" style={{ color: "var(--ink-3)" }}>
+          USD $
+        </span>
+        <input
+          type="number"
+          value={val}
+          onChange={(e) => setVal(Number(e.target.value))}
+          className="num bg-transparent w-16 text-sm focus:outline-none"
+          style={{ color: "var(--ink)", border: "none" }}
+          autoFocus
+          onKeyDown={(e) => {
+            if (e.key === "Enter") save();
+            if (e.key === "Escape") setEditing(false);
+          }}
+        />
+        <button
+          onClick={save}
+          style={{
+            color: "var(--positive)",
+            background: "none",
+            border: "none",
+            cursor: "pointer",
+            fontSize: 12,
+          }}
+        >
+          ✓
+        </button>
+        <button
+          onClick={() => setEditing(false)}
+          style={{
+            color: "var(--negative)",
+            background: "none",
+            border: "none",
+            cursor: "pointer",
+            fontSize: 12,
+          }}
+        >
+          ✕
+        </button>
+      </div>
+    );
+
+  return (
+    <button
+      onClick={() => setEditing(true)}
+      className="flex items-center gap-1.5 rounded-lg px-2.5 py-1 transition-colors"
+      style={{
+        background: "var(--surface-alt)",
+        border: "1px solid var(--line)",
+        cursor: "pointer",
+      }}
+    >
+      <span
+        className="text-[10px] uppercase tracking-widest"
+        style={{ color: "var(--ink-3)" }}
+      >
+        USD
+      </span>
+      <span
+        className="num text-xs font-medium"
+        style={{ color: hasCustom ? "var(--warn)" : "var(--ink-2)" }}
+      >
+        ${rate.toLocaleString("es-AR")}
+      </span>
+      {!hasCustom && (
+        <span className="text-[9px]" style={{ color: "var(--ink-3)" }}>
+          est.
+        </span>
+      )}
+    </button>
+  );
+}
+
+// ── Bar tooltip ────────────────────────────────────────────────────────────
+function DayBarTooltip({
+  active,
+  payload,
+  label,
+}: {
+  active?: boolean;
+  payload?: { value: number }[];
+  label?: string;
+}) {
+  if (!active || !payload?.length) return null;
+  return (
+    <div
+      className="rounded-lg px-3 py-2 text-xs shadow-xl"
+      style={{
+        background: "var(--surface)",
+        border: "1px solid var(--line)",
+        color: "var(--ink)",
+      }}
+    >
+      <p style={{ color: "var(--ink-3)", marginBottom: 2 }}>Día {label}</p>
+      <p className="num font-semibold">{fmtArs(payload[0].value)}</p>
+    </div>
+  );
+}
+
+// ── Donut tooltip ──────────────────────────────────────────────────────────
+function DonutTooltip({
+  active,
+  payload,
+}: {
+  active?: boolean;
+  payload?: { name: string; value: number; payload: { pct: string } }[];
+}) {
+  if (!active || !payload?.length) return null;
+  const d = payload[0];
+  return (
+    <div
+      className="rounded-lg px-3 py-2 text-xs shadow-xl"
+      style={{
+        background: "var(--surface)",
+        border: "1px solid var(--line)",
+        color: "var(--ink)",
+      }}
+    >
+      <p className="font-medium">{d.name}</p>
+      <p className="num" style={{ color: "var(--ink-3)" }}>
+        {fmtArs(d.value)} · {d.payload.pct}%
+      </p>
+    </div>
+  );
+}
+
+// ── Main App ───────────────────────────────────────────────────────────────
 export default function App() {
-  const { user, loading: authLoading, signOut } = useAuth();
-  const navigate = useNavigate();
+  const { user, loading: authLoading } = useAuth();
+  const { settings } = useUserSettings();
   const queryClient = useQueryClient();
 
-  // Mobile-only view toggle (desktop shows both side by side)
-  const [mobileView, setMobileView] = useState<"tabla" | "charts">("tabla");
   const [showImport, setShowImport] = useState(false);
+  const [showAddGasto, setShowAddGasto] = useState(false);
+  const [showAllRows, setShowAllRows] = useState(true);
+  const [showAllCategories, setShowAllCategories] = useState(false);
+  const CATEGORIES_PREVIEW = 3;
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement).tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA") return;
+      if (e.key === "n" || e.key === "N") {
+        e.preventDefault();
+        setShowAddGasto(true);
+      }
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        setShowAllRows(true);
+        setTimeout(
+          () =>
+            document
+              .querySelector<HTMLInputElement>('input[placeholder*="uscar"]')
+              ?.focus(),
+          100,
+        );
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
 
   const now = new Date();
 
@@ -53,7 +497,6 @@ export default function App() {
   const [selectedYear, setSelectedYear] = useState(() => initFromUrl().year);
   const [selectedMonth, setSelectedMonth] = useState(() => initFromUrl().month);
 
-  // Sync URL — solo cuando autenticado para no pisar el hash de OAuth
   useEffect(() => {
     if (!user) return;
     const params = new URLSearchParams(window.location.search);
@@ -61,8 +504,6 @@ export default function App() {
     params.set("month", String(selectedMonth + 1));
     history.replaceState(null, "", `?${params.toString()}`);
   }, [selectedYear, selectedMonth, user]);
-
-  // ── Queries ───────────────────────────────────────────────────────────────
 
   const {
     data: gastos = [],
@@ -84,9 +525,6 @@ export default function App() {
   );
 
   const loading = gastosLoading || ratesLoading;
-
-  // ── Derived data ──────────────────────────────────────────────────────────
-
   const currentMonthKey = monthKey(selectedYear, selectedMonth);
 
   const currentRate = useMemo(() => {
@@ -96,13 +534,10 @@ export default function App() {
     return prior ? usdRates[prior] : DEFAULT_RATE;
   }, [usdRates, currentMonthKey]);
 
-  const {
-    gastosDelMes,
-    gastosDelMesAnterior,
-    prevMonthLabel,
-    currMonthLabel,
-    totalMes,
-  } = useMonthlyGastos(gastos, selectedYear, selectedMonth);
+  const hasCustomRate = !!usdRates[currentMonthKey];
+
+  const { gastosDelMes, gastosDelMesAnterior, prevMonthLabel, totalMes } =
+    useMonthlyGastos(gastos, selectedYear, selectedMonth);
 
   const prevTotalMes = useMemo(
     () =>
@@ -120,7 +555,93 @@ export default function App() {
     [gastosDelMes],
   );
 
-  // ── Handlers ──────────────────────────────────────────────────────────────
+  const delta =
+    prevTotalMes > 0 ? ((totalMes - prevTotalMes) / prevTotalMes) * 100 : null;
+
+  const avgPerDay = useMemo(() => {
+    const daysElapsed =
+      selectedMonth === now.getMonth() && selectedYear === now.getFullYear()
+        ? now.getDate()
+        : new Date(selectedYear, selectedMonth + 1, 0).getDate();
+    return daysElapsed > 0 ? totalMes / daysElapsed : 0;
+  }, [gastosDelMes, selectedMonth, selectedYear]);
+
+  // ── Daily bar chart data ─────────────────────────────────────────────────
+  const daysInMonth = new Date(selectedYear, selectedMonth + 1, 0).getDate();
+  const todayDay =
+    selectedMonth === now.getMonth() && selectedYear === now.getFullYear()
+      ? now.getDate()
+      : null;
+
+  const dailyData = useMemo(() => {
+    const map: Record<number, number> = {};
+    gastosDelMes.forEach((g) => {
+      const d = new Date(g.fecha + "T12:00:00").getDate();
+      map[d] = (map[d] ?? 0) + Number(g.cantidad);
+    });
+    return Array.from({ length: daysInMonth }, (_, i) => ({
+      day: i + 1,
+      total: map[i + 1] ?? 0,
+      isToday: todayDay === i + 1,
+    }));
+  }, [gastosDelMes, daysInMonth, todayDay]);
+
+  // ── Forma de pago donut data ─────────────────────────────────────────────
+  const formaColorMap = useMemo(
+    () =>
+      Object.fromEntries(
+        settings.formas.map((f) => [f, getChipHex(f, "forma", settings)]),
+      ),
+    [settings],
+  );
+
+  const byForma = useMemo(() => {
+    const total = gastosDelMes.reduce((a, g) => a + Number(g.cantidad), 0);
+    return settings.formas
+      .map((f) => {
+        const items = gastosDelMes.filter((g) => g.forma === f);
+        const sum = items.reduce((a, g) => a + Number(g.cantidad), 0);
+        return {
+          name: f,
+          count: items.length,
+          total: sum,
+          pct: total > 0 ? ((sum / total) * 100).toFixed(1) : "0.0",
+        };
+      })
+      .filter((d) => d.total > 0)
+      .sort((a, b) => b.total - a.total);
+  }, [gastosDelMes, settings.formas]);
+
+  // ── Category summary data ────────────────────────────────────────────────
+  const conceptoColorMap = useMemo(
+    () =>
+      Object.fromEntries(
+        settings.conceptos.map((c) => [c, getChipHex(c, "concepto", settings)]),
+      ),
+    [settings],
+  );
+
+  const byConcepto = useMemo(() => {
+    const total = gastosDelMes.reduce((a, g) => a + Number(g.cantidad), 0);
+    return settings.conceptos
+      .map((c) => {
+        const items = gastosDelMes.filter((g) => g.concepto === c);
+        const sum = items.reduce((a, g) => a + Number(g.cantidad), 0);
+        return {
+          name: c,
+          count: items.length,
+          total: sum,
+          pct: total > 0 ? (sum / total) * 100 : 0,
+          avg: items.length > 0 ? sum / items.length : 0,
+        };
+      })
+      .filter((d) => d.total > 0)
+      .sort((a, b) => b.total - a.total);
+  }, [gastosDelMes, settings.conceptos]);
+
+  const handleRatesUpdated = (newRates: UsdRates) => {
+    queryClient.setQueryData(["usd_rates", user?.id], newRates);
+  };
 
   const handleImported = () => {
     queryClient.invalidateQueries({
@@ -129,16 +650,22 @@ export default function App() {
     setShowImport(false);
   };
 
-  const handleRatesUpdated = (newRates: UsdRates) => {
-    queryClient.setQueryData(["usd_rates", user?.id], newRates);
+  const handleMonthChange = (y: number, m: number) => {
+    setSelectedYear(y);
+    setSelectedMonth(m);
   };
 
-  // ── Render ────────────────────────────────────────────────────────────────
-
+  // ── Auth / loading states ────────────────────────────────────────────────
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-gray-950 flex items-center justify-center">
-        <Loader2 className="w-10 h-10 animate-spin text-green-500" />
+      <div
+        className="min-h-screen flex items-center justify-center"
+        style={{ background: "var(--bg)" }}
+      >
+        <Loader2
+          className="w-8 h-8 animate-spin"
+          style={{ color: "var(--accent)" }}
+        />
       </div>
     );
   }
@@ -147,10 +674,18 @@ export default function App() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-950 flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4 text-gray-400">
-          <Loader2 className="w-10 h-10 animate-spin text-green-500" />
-          <p className="text-sm">Cargando tus gastos...</p>
+      <div
+        className="min-h-screen flex items-center justify-center"
+        style={{ background: "var(--bg)" }}
+      >
+        <div className="flex flex-col items-center gap-3">
+          <Loader2
+            className="w-8 h-8 animate-spin"
+            style={{ color: "var(--accent)" }}
+          />
+          <p className="text-sm" style={{ color: "var(--ink-3)" }}>
+            Cargando gastos...
+          </p>
         </div>
       </div>
     );
@@ -158,17 +693,34 @@ export default function App() {
 
   if (gastosError) {
     return (
-      <div className="min-h-screen bg-gray-950 flex items-center justify-center p-6">
-        <div className="bg-red-900/30 border border-red-700 rounded-2xl p-8 max-w-md text-center">
-          <p className="text-red-400 font-semibold text-lg mb-2">Error</p>
-          <p className="text-gray-400 text-sm">
-            No se pudieron cargar los datos.
+      <div
+        className="min-h-screen flex items-center justify-center p-6"
+        style={{ background: "var(--bg)" }}
+      >
+        <div
+          className="rounded-xl p-8 max-w-sm text-center"
+          style={{
+            background: "var(--neg-soft)",
+            border: "1px solid var(--negative)",
+          }}
+        >
+          <p
+            className="font-semibold mb-2"
+            style={{ color: "var(--negative)" }}
+          >
+            Error al cargar datos
           </p>
           <button
             onClick={() =>
               queryClient.invalidateQueries({ queryKey: ["gastos", user?.id] })
             }
-            className="mt-4 bg-gray-800 hover:bg-gray-700 text-white rounded-xl px-4 py-2 text-sm"
+            className="mt-4 rounded-lg px-4 py-2 text-sm"
+            style={{
+              background: "var(--surface)",
+              color: "var(--ink)",
+              border: "1px solid var(--line)",
+              cursor: "pointer",
+            }}
           >
             Reintentar
           </button>
@@ -178,152 +730,584 @@ export default function App() {
   }
 
   return (
-    <div className="h-screen bg-gray-950 flex flex-col overflow-hidden">
-      {/* ── Header ── */}
-      <Header
-        total={totalMes}
-        prevTotal={prevTotalMes}
-        inversionesTotal={inversionesMes}
-        usdRate={currentRate}
-        usdRates={usdRates}
-        setUsdRates={handleRatesUpdated}
-        monthKey={currentMonthKey}
-        monthLabel={`${MONTH_FULL[selectedMonth]} ${selectedYear}`}
-        isPromedios={false}
-        user={user}
-        onSignOut={signOut}
-      />
+    <AppShell user={user} onQuickAdd={() => setShowAddGasto(true)}>
+      {/* ── Topbar ────────────────────────────────────────────────────── */}
+      <header
+        className="sticky top-0 z-20 flex items-center gap-2 px-5 py-3"
+        style={{
+          background: "color-mix(in srgb, var(--bg) 90%, transparent)",
+          backdropFilter: "blur(10px)",
+          borderBottom: "1px solid var(--line)",
+        }}
+      >
+        <h1
+          className="text-sm font-semibold mr-1 hidden sm:block"
+          style={{ color: "var(--ink)" }}
+        >
+          Gastos
+        </h1>
 
-      {/* ── Barra de año / meses ── */}
-      <div className="bg-gray-900 border-b border-gray-800 px-4 flex-shrink-0">
-        <div className="max-w-screen-2xl mx-auto flex items-center gap-1.5 overflow-x-auto scrollbar-none py-1.5">
-          {/* Selector de año */}
-          <div className="flex items-center gap-0.5 bg-gray-800 rounded-lg px-2 py-1.5 mr-1 flex-shrink-0">
+        <MonthPicker
+          year={selectedYear}
+          month={selectedMonth}
+          onChange={handleMonthChange}
+        />
+
+        <div className="flex-1" />
+
+        {/* Search */}
+        <button
+          onClick={() => {
+            setShowAllRows(true);
+            setTimeout(
+              () =>
+                document
+                  .querySelector<HTMLInputElement>(
+                    'input[placeholder*="uscar"]',
+                  )
+                  ?.focus(),
+              100,
+            );
+          }}
+          className="hidden sm:flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs transition-opacity hover:opacity-80"
+          style={{
+            background: "var(--surface)",
+            color: "var(--ink-2)",
+            border: "1px solid var(--line)",
+            cursor: "pointer",
+          }}
+        >
+          <Search size={12} style={{ color: "var(--ink-3)" }} />
+          <span>Buscar</span>
+          <kbd
+            className="num text-[9px] px-1 py-0.5 rounded"
+            style={{
+              background: "var(--surface-alt)",
+              color: "var(--ink-3)",
+              border: "1px solid var(--line)",
+            }}
+          >
+            ⌘K
+          </kbd>
+        </button>
+
+        {/* USD rate */}
+        <RatePill
+          rate={currentRate}
+          hasCustom={hasCustomRate}
+          monthKey={currentMonthKey}
+          onUpdate={handleRatesUpdated}
+        />
+
+        {/* New expense */}
+        <button
+          onClick={() => setShowAddGasto(true)}
+          className="flex items-center gap-1.5 rounded-lg pl-3 pr-2 py-1.5 text-xs font-semibold"
+          style={{
+            background: "var(--accent)",
+            color: "var(--accent-ink)",
+            border: "none",
+            cursor: "pointer",
+          }}
+        >
+          <Plus size={14} strokeWidth={2.5} />
+          <span>Nuevo gasto</span>
+          <kbd
+            className="num text-[9px] px-1.5 py-0.5 rounded ml-0.5"
+            style={{
+              background: "rgba(0,0,0,0.2)",
+              color: "var(--accent-ink)",
+              border: "none",
+            }}
+          >
+            N
+          </kbd>
+        </button>
+      </header>
+
+      {/* ── KPI grid ──────────────────────────────────────────────────── */}
+      <div
+        className="grid grid-cols-2 lg:grid-cols-4 flex-shrink-0"
+        style={{
+          borderBottom: "1px solid var(--line)",
+          gap: 1,
+          background: "var(--line)",
+        }}
+      >
+        <KPICard
+          label="Gastado"
+          value={fmtArs(totalMes)}
+          sub={`${fmtUsd(totalMes / currentRate)} al dólar`}
+          trend={delta}
+        />
+        <KPICard
+          label="Inversiones"
+          value={fmtArs(inversionesMes)}
+          sub={`${gastosDelMes.filter((g) => g.concepto === "Inversiones").length} movimientos`}
+          positive
+        />
+        <KPICard
+          label="Promedio / día"
+          value={fmtArs(avgPerDay)}
+          sub={`${gastosDelMes.length} gastos en ${todayDay ?? daysInMonth} días`}
+        />
+        <KPICard
+          label="vs mes anterior"
+          value={prevTotalMes > 0 ? fmtArs(prevTotalMes) : "—"}
+          sub={prevMonthLabel}
+        />
+      </div>
+
+      {/* ── Main scroll area ───────────────────────────────────────────── */}
+      <main className="flex-1 overflow-y-auto min-h-0">
+        {gastosDelMes.length === 0 ? (
+          <div
+            className="flex flex-col items-center justify-center py-24 gap-4"
+            style={{ color: "var(--ink-3)" }}
+          >
+            <p className="text-sm">
+              No hay gastos en {MONTH_FULL[selectedMonth]} {selectedYear}
+            </p>
             <button
-              onClick={() => setSelectedYear((y) => y - 1)}
-              className="text-gray-400 hover:text-white p-0.5 transition-colors"
+              onClick={() => setShowAddGasto(true)}
+              className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium"
+              style={{
+                background: "var(--accent)",
+                color: "var(--accent-ink)",
+                border: "none",
+                cursor: "pointer",
+              }}
             >
-              <ChevronLeft className="w-3.5 h-3.5" />
-            </button>
-            <span className="text-white font-bold text-xs w-9 text-center tabular-nums">
-              {selectedYear}
-            </span>
-            <button
-              onClick={() => setSelectedYear((y) => y + 1)}
-              className="text-gray-400 hover:text-white p-0.5 transition-colors"
-            >
-              <ChevronRight className="w-3.5 h-3.5" />
+              <Plus size={15} /> Agregar primer gasto
             </button>
           </div>
-
-          {/* Meses */}
-          {MONTH_NAMES.map((name, idx) => {
-            const hasData = gastos.some((g) => {
-              const d = new Date(g.fecha + "T12:00:00");
-              return d.getFullYear() === selectedYear && d.getMonth() === idx;
-            });
-            const isActive = selectedMonth === idx;
-            const isCurrent =
-              idx === now.getMonth() && selectedYear === now.getFullYear();
-
-            return (
-              <button
-                key={idx}
-                onClick={() => {
-                  setSelectedMonth(idx);
-                  setMobileView("tabla");
+        ) : (
+          <div className="p-4 lg:p-5 space-y-4">
+            {/* ── Charts row ── */}
+            <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-4">
+              {/* Daily evolution bar chart */}
+              <div
+                className="rounded-xl p-4"
+                style={{
+                  background: "var(--surface)",
+                  border: "1px solid var(--line)",
                 }}
-                className={`flex-shrink-0 relative px-2.5 py-1.5 text-xs font-semibold rounded-lg transition-all ${
-                  isActive
-                    ? "bg-green-600 text-white shadow-sm shadow-green-900/50"
-                    : hasData
-                      ? "text-gray-200 hover:bg-gray-700/80"
-                      : "text-gray-600 hover:bg-gray-800"
-                }`}
               >
-                {name}
-                {String(selectedYear).slice(2)}
-                {/* Dot: mes con datos pero no activo */}
-                {hasData && !isActive && (
-                  <span className="absolute top-1 right-1 w-1 h-1 rounded-full bg-green-500" />
+                <div className="flex items-center justify-between mb-4">
+                  <h2
+                    className="text-sm font-medium"
+                    style={{ color: "var(--ink)" }}
+                  >
+                    Evolución diaria
+                    <span
+                      className="ml-2 num text-[11px]"
+                      style={{ color: "var(--ink-3)" }}
+                    >
+                      · {MONTH_FULL[selectedMonth].slice(0, 3)} {selectedYear}
+                    </span>
+                  </h2>
+                  <div className="flex items-center gap-3">
+                    {todayDay && (
+                      <div className="flex items-center gap-1.5">
+                        <span
+                          className="w-2 h-2 rounded-full inline-block"
+                          style={{ background: "var(--warn)" }}
+                        />
+                        <span
+                          className="text-[10px]"
+                          style={{ color: "var(--ink-3)" }}
+                        >
+                          hoy
+                        </span>
+                      </div>
+                    )}
+                    <div className="flex items-center gap-1.5">
+                      <span
+                        className="w-2 h-2 rounded-full inline-block"
+                        style={{ background: "var(--accent)" }}
+                      />
+                      <span
+                        className="text-[10px]"
+                        style={{ color: "var(--ink-3)" }}
+                      >
+                        gastado
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                <div style={{ height: 240 }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart
+                      data={dailyData.filter((d) => d.total > 0 || d.isToday)}
+                      margin={{ top: 2, right: 4, left: 0, bottom: 0 }}
+                      barSize={daysInMonth > 20 ? 9 : 16}
+                    >
+                      <XAxis
+                        dataKey="day"
+                        tick={{
+                          fill: "var(--ink-3)",
+                          fontSize: 9,
+                          fontFamily: "'JetBrains Mono', monospace",
+                        }}
+                        tickLine={false}
+                        axisLine={{ stroke: "var(--line)" }}
+                        tickFormatter={(v) => String(v).padStart(2, "0")}
+                      />
+                      <YAxis hide />
+                      <RechartTooltip
+                        content={<DayBarTooltip />}
+                        cursor={{ fill: "var(--surface-alt)", radius: 4 }}
+                      />
+                      <Bar dataKey="total" radius={[4, 4, 0, 0]}>
+                        {dailyData
+                          .filter((d) => d.total > 0 || d.isToday)
+                          .map((d) => (
+                            <Cell
+                              key={d.day}
+                              fill={
+                                d.isToday && d.total === 0
+                                  ? "var(--line)"
+                                  : d.isToday
+                                    ? "var(--warn)"
+                                    : "var(--accent)"
+                              }
+                              fillOpacity={d.total === 0 ? 0.3 : 0.9}
+                            />
+                          ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+              {/* Forma de pago donut */}
+              <div
+                className="rounded-xl p-4"
+                style={{
+                  background: "var(--surface)",
+                  border: "1px solid var(--line)",
+                }}
+              >
+                <div className="flex items-center justify-between mb-3">
+                  <h2
+                    className="text-sm font-medium"
+                    style={{ color: "var(--ink)" }}
+                  >
+                    Forma de pago
+                  </h2>
+                  <span
+                    className="num text-xs"
+                    style={{ color: "var(--ink-3)" }}
+                  >
+                    {byForma.length}
+                  </span>
+                </div>
+                {byForma.length > 0 ? (
+                  <>
+                    <div className="relative" style={{ height: 160 }}>
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={byForma}
+                            dataKey="total"
+                            nameKey="name"
+                            cx="50%"
+                            cy="50%"
+                            innerRadius={48}
+                            outerRadius={68}
+                            paddingAngle={2}
+                          >
+                            {byForma.map((d) => (
+                              <Cell
+                                key={d.name}
+                                fill={formaColorMap[d.name] ?? "#6B7280"}
+                              />
+                            ))}
+                          </Pie>
+                          <RechartTooltip content={<DonutTooltip />} />
+                        </PieChart>
+                      </ResponsiveContainer>
+                      {/* Center label */}
+                      <div
+                        className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none"
+                        style={{ top: 0 }}
+                      >
+                        <span
+                          className="num font-semibold"
+                          style={{
+                            fontSize: 15,
+                            color: "var(--ink)",
+                            letterSpacing: "-0.02em",
+                          }}
+                        >
+                          {fmtShort(totalMes)}
+                        </span>
+                        <span
+                          className="text-[9px] uppercase tracking-widest mt-0.5"
+                          style={{ color: "var(--ink-3)" }}
+                        >
+                          Total
+                        </span>
+                      </div>
+                    </div>
+                    <div className="space-y-1.5 mt-3">
+                      {byForma.map((d) => (
+                        <div key={d.name} className="flex items-center gap-2">
+                          <span
+                            className="w-2 h-2 rounded-full flex-shrink-0"
+                            style={{
+                              background: formaColorMap[d.name] ?? "#6B7280",
+                            }}
+                          />
+                          <span
+                            className="flex-1 text-[11px] truncate"
+                            style={{ color: "var(--ink-2)" }}
+                          >
+                            {d.name}
+                          </span>
+                          <span
+                            className="num text-[10px]"
+                            style={{ color: "var(--ink-3)" }}
+                          >
+                            {d.count}
+                          </span>
+                          <span
+                            className="num text-[11px] font-medium"
+                            style={{ color: "var(--ink)" }}
+                          >
+                            {fmtShort(d.total)}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  <div
+                    className="flex items-center justify-center h-32 text-xs"
+                    style={{ color: "var(--ink-3)" }}
+                  >
+                    Sin datos
+                  </div>
                 )}
-                {/* Ring: mes actual del calendario */}
-                {isCurrent && !isActive && (
-                  <span className="absolute inset-0 rounded-lg ring-1 ring-green-600/40 pointer-events-none" />
-                )}
-              </button>
-            );
-          })}
+              </div>
+            </div>
 
-          <div className="w-px h-5 bg-gray-700/80 mx-0.5 flex-shrink-0" />
+            {/* ── Categorías summary table ── */}
+            <div
+              className="rounded-xl overflow-hidden"
+              style={{
+                background: "var(--surface)",
+                border: "1px solid var(--line)",
+              }}
+            >
+              {/* Card header */}
+              <div
+                className="flex items-center justify-between px-4 py-3"
+                style={{ borderBottom: "1px solid var(--line)" }}
+              >
+                <h2
+                  className="text-sm font-medium"
+                  style={{ color: "var(--ink)" }}
+                >
+                  Categorías
+                  <span
+                    className="num ml-2 text-xs"
+                    style={{ color: "var(--ink-3)" }}
+                  >
+                    {byConcepto.length}
+                  </span>
+                </h2>
+                <button
+                  onClick={() => setShowImport(true)}
+                  className="flex items-center gap-1.5 text-xs transition-opacity hover:opacity-70"
+                  style={{
+                    background: "none",
+                    border: "none",
+                    cursor: "pointer",
+                    color: "var(--ink-3)",
+                  }}
+                >
+                  <ArrowUpRight size={12} /> Importar CSV
+                </button>
+              </div>
 
-          {/* Promedios */}
-          <button
-            onClick={() => navigate(`/promedios/resumen?year=${selectedYear}`)}
-            className="flex-shrink-0 flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold rounded-lg transition-all text-gray-400 hover:bg-gray-700 hover:text-white"
-          >
-            <TrendingUp className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Promedios</span>
-          </button>
+              {byConcepto.length === 0 ? (
+                <div
+                  className="p-8 text-center text-xs"
+                  style={{ color: "var(--ink-3)" }}
+                >
+                  Sin categorías
+                </div>
+              ) : (
+                <>
+                  {/* Column headers */}
+                  <div
+                    className="grid text-[10px] uppercase tracking-widest font-medium px-4 py-2"
+                    style={{
+                      color: "var(--ink-3)",
+                      borderBottom: "1px solid var(--line)",
+                      gridTemplateColumns: "1fr 40px 120px 160px 72px",
+                    }}
+                  >
+                    <span>Categoría</span>
+                    <span className="text-right">#</span>
+                    <span className="text-right">Total</span>
+                    <span className="pl-4">Participación</span>
+                    <span className="text-right">Promedio</span>
+                  </div>
 
-          {/* Ingresos */}
-          <button
-            onClick={() => navigate(`/ingresos?year=${selectedYear}`)}
-            className="flex-shrink-0 flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold rounded-lg transition-all text-gray-400 hover:bg-gray-700 hover:text-white"
-          >
-            <DollarSign className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Ingresos</span>
-          </button>
+                  {/* Rows — preview or all */}
+                  {(showAllCategories
+                    ? byConcepto
+                    : byConcepto.slice(0, CATEGORIES_PREVIEW)
+                  ).map((d) => (
+                    <div
+                      key={d.name}
+                      className="grid items-center px-4 py-3 row-hover transition-colors"
+                      style={{
+                        borderBottom: "1px solid var(--line)",
+                        gridTemplateColumns: "1fr 40px 120px 160px 72px",
+                      }}
+                    >
+                      {/* Name with color bar */}
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <span
+                          className="w-[3px] h-[18px] rounded-full flex-shrink-0"
+                          style={{
+                            background: conceptoColorMap[d.name] ?? "#6B7280",
+                          }}
+                        />
+                        <span
+                          className="text-sm truncate"
+                          style={{ color: "var(--ink)" }}
+                        >
+                          {d.name}
+                        </span>
+                      </div>
+                      {/* Count */}
+                      <span
+                        className="num text-xs text-right"
+                        style={{ color: "var(--ink-3)" }}
+                      >
+                        {d.count}
+                      </span>
+                      {/* Total */}
+                      <span
+                        className="num text-sm font-medium text-right"
+                        style={{ color: "var(--ink)" }}
+                      >
+                        {fmtArs(d.total)}
+                      </span>
+                      {/* Bar + % */}
+                      <div className="flex items-center gap-2 pl-4 pr-2">
+                        <div
+                          className="flex-1 h-1.5 rounded-full overflow-hidden"
+                          style={{ background: "var(--surface-alt)" }}
+                        >
+                          <div
+                            className="h-full rounded-full"
+                            style={{
+                              width: `${Math.min(d.pct, 100)}%`,
+                              background:
+                                conceptoColorMap[d.name] ?? "var(--accent)",
+                            }}
+                          />
+                        </div>
+                        <span
+                          className="num text-[10px] w-9 text-right flex-shrink-0"
+                          style={{ color: "var(--ink-3)" }}
+                        >
+                          {d.pct.toFixed(1)}%
+                        </span>
+                      </div>
+                      {/* Avg */}
+                      <span
+                        className="num text-xs text-right"
+                        style={{ color: "var(--ink-3)" }}
+                      >
+                        {fmtArs(d.avg, true)}
+                      </span>
+                    </div>
+                  ))}
 
-          {/* Activos */}
-          <button
-            onClick={() => navigate(`/activos`)}
-            className="flex-shrink-0 flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold rounded-lg transition-all text-gray-400 hover:bg-gray-700 hover:text-white"
-          >
-            <Wallet className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Activos</span>
-          </button>
+                  {/* Expand / collapse footer */}
+                  {byConcepto.length > CATEGORIES_PREVIEW && (
+                    <button
+                      onClick={() => setShowAllCategories((v) => !v)}
+                      className="w-full py-2.5 text-xs font-medium transition-colors"
+                      style={{
+                        background: "transparent",
+                        border: "none",
+                        borderTop: "1px solid var(--line)",
+                        cursor: "pointer",
+                        color: "var(--ink-3)",
+                      }}
+                      onMouseEnter={(e) =>
+                        (e.currentTarget.style.color = "var(--ink)")
+                      }
+                      onMouseLeave={(e) =>
+                        (e.currentTarget.style.color = "var(--ink-3)")
+                      }
+                    >
+                      {showAllCategories
+                        ? "Ver menos"
+                        : `Ver todas (${byConcepto.length - CATEGORIES_PREVIEW} más)`}
+                    </button>
+                  )}
+                </>
+              )}
+            </div>
 
-          {/* Historial */}
-          <button
-            onClick={() => navigate(`/historial`)}
-            className="flex-shrink-0 flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold rounded-lg transition-all text-gray-400 hover:bg-gray-700 hover:text-white"
-          >
-            <CalendarRange className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Historial</span>
-          </button>
-
-          <div className="flex-1" />
-        </div>
-      </div>
-
-      {/* ── Mobile tab switcher (solo en pantallas pequeñas) ── */}
-      <div className="lg:hidden bg-gray-900/60 border-b border-gray-800/60 px-4 flex-shrink-0">
-        <div className="flex gap-1 max-w-screen-2xl mx-auto">
-          <button
-            onClick={() => setMobileView("tabla")}
-            className={`flex items-center gap-2 px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-              mobileView === "tabla"
-                ? "border-green-500 text-green-400"
-                : "border-transparent text-gray-500 hover:text-white"
-            }`}
-          >
-            <Table2 className="w-4 h-4" />
-            Tabla
-          </button>
-          <button
-            onClick={() => setMobileView("charts")}
-            className={`flex items-center gap-2 px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-              mobileView === "charts"
-                ? "border-green-500 text-green-400"
-                : "border-transparent text-gray-500 hover:text-white"
-            }`}
-          >
-            <BarChart2 className="w-4 h-4" />
-            Gráficos
-          </button>
-        </div>
-      </div>
+            {/* ── Actividad reciente ── */}
+            <div
+              className="rounded-xl overflow-hidden"
+              style={{
+                background: "var(--surface)",
+                border: "1px solid var(--line)",
+              }}
+            >
+              {/* Card header */}
+              <div
+                className="flex items-center justify-between px-4 py-3"
+                style={{ borderBottom: "1px solid var(--line)" }}
+              >
+                <h2
+                  className="text-sm font-medium"
+                  style={{ color: "var(--ink)" }}
+                >
+                  Actividad reciente
+                  <span
+                    className="num ml-2 text-xs"
+                    style={{ color: "var(--ink-3)" }}
+                  >
+                    {gastosDelMes.length}
+                  </span>
+                </h2>
+                <button
+                  onClick={() => setShowAllRows((v) => !v)}
+                  className="text-xs transition-opacity hover:opacity-70"
+                  style={{
+                    background: "none",
+                    border: "none",
+                    cursor: "pointer",
+                    color: "var(--ink-3)",
+                  }}
+                >
+                  {showAllRows ? "Colapsar" : "Expandir"}
+                </button>
+              </div>
+              {showAllRows && (
+                <GastosTable
+                  gastos={gastosDelMes}
+                  selectedYear={selectedYear}
+                  externalShowAdd={showAddGasto}
+                  onAddClose={() => setShowAddGasto(false)}
+                />
+              )}
+            </div>
+          </div>
+        )}
+      </main>
 
       {showImport && (
         <ImportModal
@@ -332,40 +1316,21 @@ export default function App() {
         />
       )}
 
-      {/* ── Contenido principal ── */}
-      <main className="flex-1 flex overflow-hidden min-h-0">
-        {/* Tabla — siempre visible en desktop, condicional en mobile */}
-        <div
-          className={`flex-1 overflow-auto min-w-0 p-4 lg:p-6 ${mobileView === "charts" ? "hidden lg:flex lg:flex-col" : "flex flex-col"}`}
-        >
-          <GastosTable
-            gastos={gastosDelMes}
-            selectedYear={selectedYear}
-            selectedMonth={selectedMonth}
-            onImport={() => setShowImport(true)}
-          />
-        </div>
-
-        {/* Charts — sidebar en desktop, tab en mobile */}
-        <aside
-          className={`
-          lg:w-80 xl:w-96 flex-shrink-0
-          border-l border-gray-800
-          overflow-y-auto scrollbar-thin
-          bg-gray-900/20
-          ${mobileView === "charts" ? "flex-1 flex flex-col" : "hidden lg:block"}
-        `}
-        >
-          <div className="p-4">
-            <Charts
-              gastos={gastosDelMes}
-              prevGastos={gastosDelMesAnterior}
-              monthLabel={currMonthLabel}
-              prevMonthLabel={prevMonthLabel}
-            />
-          </div>
-        </aside>
-      </main>
-    </div>
+      {/* Mobile FAB */}
+      <button
+        onClick={() => setShowAddGasto(true)}
+        className="lg:hidden fixed bottom-20 right-4 z-20 grid place-items-center rounded-full shadow-xl"
+        style={{
+          width: 52,
+          height: 52,
+          background: "var(--accent)",
+          color: "var(--accent-ink)",
+          border: "none",
+          cursor: "pointer",
+        }}
+      >
+        <Plus size={22} strokeWidth={2} />
+      </button>
+    </AppShell>
   );
 }

@@ -1,31 +1,131 @@
+/* JetBrains Mono for numbers */
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* ── Design tokens as CSS custom properties ── */
+:root {
+  --bg:            #0E0F11;
+  --surface:       #15171A;
+  --surface-alt:   #1C1F23;
+  --surface-hi:    #24282D;
+  --line:          #262A2F;
+  --line-soft:     #1E2125;
+  --ink:           #E8E9EB;
+  --ink-2:         #A0A4AA;
+  --ink-3:         #6B7077;
+  --accent:        #B8D06B;
+  --accent-ink:    #0E0F11;
+  --accent-soft:   #3A4724;
+  --positive:      #7CC08A;
+  --pos-soft:      #1F3325;
+  --negative:      #E07B6B;
+  --neg-soft:      #3A201C;
+  --warn:          #E0B86B;
+  --warn-soft:     #3A2F1C;
+}
 
 @layer base {
   * {
     box-sizing: border-box;
   }
+
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
   body {
-    @apply bg-gray-950 text-gray-100;
+    background: var(--bg);
+    color: var(--ink);
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 14px;
+  }
+
+  /* Date inputs dark scheme */
+  input[type="date"] {
+    color-scheme: dark;
   }
 }
 
+/* ── Mono numeric utility ── */
 @layer utilities {
+  .num {
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-feature-settings: "tnum";
+    letter-spacing: -0.02em;
+  }
+
+  /* Scrollbars */
   .scrollbar-thin {
     scrollbar-width: thin;
-    scrollbar-color: #374151 transparent;
+    scrollbar-color: var(--line) transparent;
   }
   .scrollbar-thin::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
+    width: 5px;
+    height: 5px;
   }
   .scrollbar-thin::-webkit-scrollbar-track {
     background: transparent;
   }
   .scrollbar-thin::-webkit-scrollbar-thumb {
-    background: #374151;
+    background: var(--line);
     border-radius: 3px;
+  }
+
+  /* ── App surface/card helpers ── */
+  .app-card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+  }
+
+  .app-card-padded {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 18px 20px;
+  }
+
+  /* ── Table row hover ── */
+  .row-hover:hover {
+    background: var(--surface-alt);
+  }
+
+  /* ── Sidebar active indicator ── */
+  .nav-active::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 6px;
+    bottom: 6px;
+    width: 3px;
+    background: var(--accent);
+    border-radius: 0 2px 2px 0;
+  }
+
+  /* ── Keypad button ── */
+  .keypad-btn {
+    background: var(--surface-alt);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    color: var(--ink);
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 18px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.1s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 52px;
+  }
+  .keypad-btn:hover {
+    background: var(--surface-hi);
+  }
+  .keypad-btn:active {
+    background: var(--line);
   }
 }

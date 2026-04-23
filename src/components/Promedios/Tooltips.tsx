@@ -1,9 +1,16 @@
 import { fmt } from './utils'
 
+const tooltipStyle: React.CSSProperties = {
+  background: 'var(--surface)',
+  border: '1px solid var(--line)',
+  borderRadius: 10,
+  padding: '8px 12px',
+  boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
+  fontSize: 12,
+}
+
 export function TrendTooltip({
-  active,
-  payload,
-  label,
+  active, payload, label,
 }: {
   active?: boolean
   payload?: Array<{ dataKey: string; name: string; value: number; color: string }>
@@ -11,10 +18,10 @@ export function TrendTooltip({
 }) {
   if (!active || !payload?.length) return null
   return (
-    <div className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 shadow-xl text-xs">
-      <p className="font-semibold text-white mb-1">{label}</p>
+    <div style={tooltipStyle}>
+      <p className="font-semibold mb-1" style={{ color: 'var(--ink)' }}>{label}</p>
       {payload.map(p => (
-        <p key={p.dataKey} style={{ color: p.color }}>
+        <p key={p.dataKey} className="num" style={{ color: p.color }}>
           {p.name}: {fmt(p.value)}
         </p>
       ))}
@@ -23,9 +30,7 @@ export function TrendTooltip({
 }
 
 export function BarTooltipMonth({
-  active,
-  payload,
-  label,
+  active, payload, label,
 }: {
   active?: boolean
   payload?: Array<{ value: number }>
@@ -33,17 +38,15 @@ export function BarTooltipMonth({
 }) {
   if (!active || !payload?.length) return null
   return (
-    <div className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 shadow-xl text-xs">
-      <p className="font-semibold text-white mb-1">{label}</p>
-      <p className="text-green-300">{fmt(payload[0].value)}</p>
+    <div style={tooltipStyle}>
+      <p className="font-semibold mb-1" style={{ color: 'var(--ink)' }}>{label}</p>
+      <p className="num" style={{ color: 'var(--accent)' }}>{fmt(payload[0].value)}</p>
     </div>
   )
 }
 
 export function BarTooltipCat({
-  active,
-  payload,
-  label,
+  active, payload, label,
 }: {
   active?: boolean
   payload?: Array<{ value: number }>
@@ -51,17 +54,15 @@ export function BarTooltipCat({
 }) {
   if (!active || !payload?.length) return null
   return (
-    <div className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 shadow-xl text-xs">
-      <p className="font-semibold text-white mb-1">{label}</p>
-      <p className="text-gray-300">{fmt(payload[0].value)}</p>
+    <div style={tooltipStyle}>
+      <p className="font-semibold mb-1" style={{ color: 'var(--ink)' }}>{label}</p>
+      <p className="num" style={{ color: 'var(--ink-2)' }}>{fmt(payload[0].value)}</p>
     </div>
   )
 }
 
 export function LineTooltipComp({
-  active,
-  payload,
-  label,
+  active, payload, label,
 }: {
   active?: boolean
   payload?: Array<{ name: string; value: number; color: string }>
@@ -69,10 +70,10 @@ export function LineTooltipComp({
 }) {
   if (!active || !payload?.length) return null
   return (
-    <div className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 shadow-xl text-xs">
-      <p className="font-semibold text-white mb-1">{label}</p>
+    <div style={tooltipStyle}>
+      <p className="font-semibold mb-1" style={{ color: 'var(--ink)' }}>{label}</p>
       {payload.map(p => (
-        <p key={p.name} style={{ color: p.color }}>
+        <p key={p.name} className="num" style={{ color: p.color }}>
           {p.name}: {fmt(p.value)}
         </p>
       ))}

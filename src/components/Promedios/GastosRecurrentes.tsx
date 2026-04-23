@@ -46,69 +46,97 @@ export default function GastosRecurrentes({ gastosAno, selectedYear }: GastosRec
       .slice(0, 15)
   }, [gastosAno])
 
-  if (recurrentes.length === 0) {
-    return (
-      <div className="bg-gray-800/30 border border-gray-800 rounded-2xl p-5">
-        <div className="flex items-center gap-2 mb-3">
-          <RefreshCw className="w-4 h-4 text-blue-400" />
-          <h3 className="text-sm font-semibold text-gray-300 uppercase tracking-wider">
-            Gastos recurrentes
-          </h3>
-        </div>
-        <p className="text-gray-500 text-sm">
-          No se detectaron gastos que se repitan en 2+ meses todavía.
-        </p>
-      </div>
-    )
-  }
-
   return (
-    <div className="bg-gray-800/30 border border-gray-800 rounded-2xl p-5">
-      <div className="flex items-center gap-2 mb-4">
-        <RefreshCw className="w-4 h-4 text-blue-400" />
-        <h3 className="text-sm font-semibold text-gray-300 uppercase tracking-wider">
+    <div className="rounded-2xl overflow-hidden" style={{ background: 'var(--surface)', border: '1px solid var(--line)' }}>
+      {/* Header */}
+      <div className="flex items-center gap-2 px-5 py-4" style={{ borderBottom: '1px solid var(--line)' }}>
+        <RefreshCw size={13} style={{ color: 'var(--accent)' }} />
+        <h3 className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--ink-3)' }}>
           Gastos recurrentes — {selectedYear}
         </h3>
-        <span className="ml-auto text-xs text-gray-500">Se repiten en 2+ meses</span>
+        <span className="ml-auto text-xs" style={{ color: 'var(--ink-3)' }}>2+ meses</span>
       </div>
 
-      <div className="flex items-center gap-2 px-2 mb-1 text-xs text-gray-600 uppercase tracking-wider">
-        <span className="flex-1">Concepto / Nota</span>
-        <span className="w-10 text-center">Meses</span>
-        <span className="w-28 text-right">Promedio</span>
-        <span className="w-28 text-right">Total año</span>
-      </div>
-
-      <div className="space-y-0.5">
-        {recurrentes.map((r, i) => (
-          <div key={i} className="flex items-center gap-2 px-2 py-2 rounded-lg hover:bg-gray-800/50 text-sm">
-            <div className="flex-1 min-w-0">
-              <p className="text-gray-200 truncate text-sm">{r.nota || r.concepto}</p>
-              <p className="text-xs mt-0.5" style={{ color: getChipHex(r.concepto, 'concepto', settings) }}>
-                {r.concepto}
-              </p>
-            </div>
-            <div className="w-10 flex justify-center">
-              <span className={`text-xs font-bold px-1.5 py-0.5 rounded-full ${
-                r.monthCount >= 6
-                  ? 'bg-green-900 text-green-300'
-                  : r.monthCount >= 3
-                    ? 'bg-blue-900 text-blue-300'
-                    : 'bg-gray-700 text-gray-400'
-              }`}>
-                {r.monthCount}x
-              </span>
-            </div>
-            <div className="w-28 text-right">
-              <p className="text-gray-300 text-sm font-semibold">{fmt(r.avg)}</p>
-              {r.minAmt !== r.maxAmt && (
-                <p className="text-gray-600 text-xs">{fmt(r.minAmt)} – {fmt(r.maxAmt)}</p>
-              )}
-            </div>
-            <span className="text-white font-bold text-sm w-28 text-right">{fmt(r.total)}</span>
+      {recurrentes.length === 0 ? (
+        <div className="px-5 py-8 text-center">
+          <p className="text-sm" style={{ color: 'var(--ink-3)' }}>
+            No se detectaron gastos que se repitan en 2+ meses todavía.
+          </p>
+        </div>
+      ) : (
+        <>
+          {/* Column headers */}
+          <div
+            className="grid text-[10px] uppercase tracking-widest font-medium px-5 py-2"
+            style={{ color: 'var(--ink-3)', borderBottom: '1px solid var(--line)', gridTemplateColumns: '1fr 48px 120px 120px' }}
+          >
+            <span>Concepto / Nota</span>
+            <span className="text-center">Meses</span>
+            <span className="text-right">Promedio</span>
+            <span className="text-right">Total año</span>
           </div>
-        ))}
-      </div>
+
+          {recurrentes.map((r, i) => {
+            const color = getChipHex(r.concepto, 'concepto', settings)
+            const badgeBg = r.monthCount >= 6
+              ? 'var(--pos-soft)' : r.monthCount >= 3
+              ? 'var(--accent-soft)' : 'var(--surface-alt)'
+            const badgeColor = r.monthCount >= 6
+              ? 'var(--positive)' : r.monthCount >= 3
+              ? 'var(--accent)' : 'var(--ink-3)'
+
+            return (
+              <div
+                key={i}
+                className="grid items-center px-5 py-3 transition-colors"
+                style={{
+                  gridTemplateColumns: '1fr 48px 120px 120px',
+                  borderBottom: '1px solid var(--line)',
+                }}
+                onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface-alt)')}
+                onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+              >
+                {/* Nota + concepto */}
+                <div className="min-w-0">
+                  <p className="text-sm truncate" style={{ color: 'var(--ink)' }}>{r.nota || r.concepto}</p>
+                  <span
+                    className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium mt-0.5"
+                    style={{ background: `${color}18`, color, border: `1px solid ${color}30` }}
+                  >
+                    <span className="w-1 h-1 rounded-full flex-shrink-0" style={{ background: color }} />
+                    {r.concepto}
+                  </span>
+                </div>
+
+                {/* Frecuencia */}
+                <div className="flex justify-center">
+                  <span
+                    className="num text-xs font-bold px-2 py-0.5 rounded-full"
+                    style={{ background: badgeBg, color: badgeColor }}
+                  >
+                    {r.monthCount}×
+                  </span>
+                </div>
+
+                {/* Promedio */}
+                <div className="text-right">
+                  <p className="num text-sm font-medium" style={{ color: 'var(--ink-2)' }}>{fmt(r.avg)}</p>
+                  {r.minAmt !== r.maxAmt && (
+                    <p className="num text-[10px]" style={{ color: 'var(--ink-3)' }}>
+                      {fmt(r.minAmt)} – {fmt(r.maxAmt)}
+                    </p>
+                  )}
+                </div>
+
+                {/* Total */}
+                <span className="num text-sm font-semibold text-right" style={{ color: 'var(--ink)' }}>
+                  {fmt(r.total)}
+                </span>
+              </div>
+            )
+          })}
+        </>
+      )}
     </div>
   )
 }

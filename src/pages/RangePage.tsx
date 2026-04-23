@@ -2,14 +2,14 @@ import { useState, useMemo, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
-  ArrowLeft, Loader2, CalendarRange, ChevronDown, ChevronUp,
+  Loader2, CalendarRange, ChevronDown, ChevronUp,
   Pencil, Trash2, Search, X,
 } from "lucide-react";
 import { fetchGastosByRange, deleteGasto, updateGasto } from "@/api";
 import { useAuth } from "@/contexts";
 import { useUserSettings } from "@/contexts";
-import { GastoModal } from "@/components";
-import { getChipStyle } from "@/utils/chipColor";
+import { AppShell, GastoModal } from "@/components";
+import { getChipHex } from "@/utils/chipColor";
 import type { Gasto, UserSettings } from "@/types";
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -34,6 +34,8 @@ function lastDayOfMonth(year: number, month: number): string {
 }
 
 // ── MultiSelectFilter ────────────────────────────────────────────────────────
+
+import { Check } from "lucide-react";
 
 function MultiSelectFilter({
   placeholder, options, selected, onChange,
@@ -61,55 +63,97 @@ function MultiSelectFilter({
     onChange(next);
   };
 
+  const isActive = selected.size > 0;
   const label =
     selected.size === 0
       ? placeholder
       : selected.size === 1
         ? [...selected][0]
-        : `${selected.size} selec.`;
-
-  const isActive = selected.size > 0;
+        : `${placeholder} · ${selected.size}`;
 
   return (
     <div ref={ref} className="relative">
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-sm transition-colors whitespace-nowrap ${
-          isActive
-            ? "bg-green-900/40 border border-green-600 text-green-300"
-            : "bg-gray-800 border border-gray-700 text-white hover:border-gray-600"
-        }`}
+        className="flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors whitespace-nowrap"
+        style={{
+          background: isActive ? 'var(--accent-soft)' : 'var(--surface)',
+          color: isActive ? 'var(--accent)' : 'var(--ink-2)',
+          border: `1px solid ${isActive ? 'var(--accent)' : 'var(--line)'}`,
+          cursor: 'pointer',
+        }}
       >
         <span>{label}</span>
-        {isActive && (
+        {isActive ? (
           <button
             type="button"
             onClick={(e) => { e.stopPropagation(); onChange(new Set()); }}
-            className="text-green-400 hover:text-white transition-colors"
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--accent)', display: 'flex', padding: 0 }}
           >
-            <X className="w-3.5 h-3.5" />
+            <X size={11} />
           </button>
+        ) : (
+          <ChevronDown
+            size={11}
+            style={{
+              color: 'var(--ink-3)',
+              transform: open ? 'rotate(180deg)' : 'none',
+              transition: 'transform 0.15s',
+            }}
+          />
         )}
-        <ChevronDown className={`w-3.5 h-3.5 text-gray-400 transition-transform ${open ? "rotate-180" : ""}`} />
       </button>
 
       {open && (
-        <div className="absolute top-full mt-1 left-0 bg-gray-800 border border-gray-700 rounded-xl shadow-2xl z-30 min-w-[180px] py-1 max-h-64 overflow-y-auto">
-          {options.map((opt) => (
-            <label
-              key={opt}
-              className="flex items-center gap-2.5 px-3 py-2 hover:bg-gray-700 cursor-pointer select-none"
+        <div
+          className="absolute top-full mt-1 left-0 rounded-xl shadow-xl z-30 overflow-hidden"
+          style={{ background: 'var(--surface)', border: '1px solid var(--line)', minWidth: 180 }}
+        >
+          {options.map((opt) => {
+            const isSel = selected.has(opt);
+            return (
+              <button
+                key={opt}
+                type="button"
+                onClick={() => toggle(opt)}
+                className="w-full flex items-center gap-2.5 px-3 py-2.5 text-left text-sm transition-colors"
+                style={{
+                  background: isSel ? 'var(--accent-soft)' : 'transparent',
+                  color: isSel ? 'var(--accent)' : 'var(--ink-2)',
+                  border: 'none',
+                  cursor: 'pointer',
+                  borderBottom: '1px solid var(--line)',
+                }}
+                onMouseEnter={(e) => { if (!isSel) (e.currentTarget as HTMLElement).style.background = 'var(--surface-alt)'; }}
+                onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = isSel ? 'var(--accent-soft)' : 'transparent'; }}
+              >
+                <span
+                  className="flex-shrink-0 flex items-center justify-center rounded"
+                  style={{
+                    width: 14, height: 14,
+                    background: isSel ? 'var(--accent)' : 'var(--surface-alt)',
+                    border: isSel ? 'none' : '1px solid var(--line)',
+                  }}
+                >
+                  {isSel && <Check size={9} style={{ color: 'var(--accent-ink)', strokeWidth: 3 }} />}
+                </span>
+                <span className="flex-1">{opt}</span>
+              </button>
+            );
+          })}
+          {isActive && (
+            <button
+              type="button"
+              onClick={() => { onChange(new Set()); setOpen(false); }}
+              className="w-full text-center py-2 text-xs transition-colors"
+              style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--ink-3)' }}
+              onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--ink)')}
+              onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--ink-3)')}
             >
-              <input
-                type="checkbox"
-                checked={selected.has(opt)}
-                onChange={() => toggle(opt)}
-                className="w-3.5 h-3.5 rounded accent-green-500 cursor-pointer"
-              />
-              <span className="text-sm text-gray-200">{opt}</span>
-            </label>
-          ))}
+              Limpiar filtro
+            </button>
+          )}
         </div>
       )}
     </div>
@@ -131,14 +175,24 @@ function MonthPicker({
   const years: number[] = [];
   for (let y = 2020; y <= currentYear + 1; y++) years.push(y);
 
+  const selectStyle: React.CSSProperties = {
+    background: 'var(--surface-alt)',
+    border: '1px solid var(--line)',
+    borderRadius: 8,
+    padding: '6px 8px',
+    color: 'var(--ink)',
+    fontSize: 14,
+    outline: 'none',
+  };
+
   return (
     <div className="flex flex-col gap-1">
-      <span className="text-xs text-gray-500 uppercase tracking-wider">{label}</span>
+      <span className="text-xs uppercase tracking-wider" style={{ color: 'var(--ink-3)' }}>{label}</span>
       <div className="flex items-center gap-1.5">
         <select
           value={month}
           onChange={(e) => onChange(year, parseInt(e.target.value))}
-          className="bg-gray-800 border border-gray-700 rounded-lg px-2 py-1.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+          style={selectStyle}
         >
           {MONTH_FULL.map((name, i) => {
             const disabled =
@@ -152,7 +206,7 @@ function MonthPicker({
         <select
           value={year}
           onChange={(e) => onChange(parseInt(e.target.value), month)}
-          className="bg-gray-800 border border-gray-700 rounded-lg px-2 py-1.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+          style={selectStyle}
         >
           {years.map((y) => <option key={y} value={y}>{y}</option>)}
         </select>
@@ -161,7 +215,10 @@ function MonthPicker({
   );
 }
 
-// ── Day group row ─────────────────────────────────────────────────────────────
+// ── Grid columns shared between header and rows ────────────────────────────
+const GRID_COLS = "130px 130px 110px 1fr 56px";
+
+// ── Day group ──────────────────────────────────────────────────────────────────
 
 function DayGroup({
   fecha,
@@ -191,83 +248,120 @@ function DayGroup({
   return (
     <>
       {/* Day header */}
-      <tr className="bg-gray-800/40">
-        <td colSpan={5} className="px-4 py-1.5">
-          <div className="flex items-center gap-2">
-            <span className="text-gray-400 font-semibold text-xs tabular-nums">
-              {fmtDayOfWeek(fecha)} {fmtDay(fecha)}
-            </span>
-            <span className="text-gray-600 text-xs tabular-nums">{fmtArs(dayTotal)}</span>
-          </div>
-        </td>
-      </tr>
-      {/* Gastos rows */}
+      <div
+        className="flex items-center justify-between px-4 py-2"
+        style={{ background: "var(--surface-alt)", borderBottom: "1px solid var(--line)" }}
+      >
+        <span className="num text-[10px] font-semibold uppercase tracking-widest" style={{ color: "var(--ink-3)" }}>
+          {fmtDayOfWeek(fecha)} {fmtDay(fecha)}
+        </span>
+        <span className="num text-[10px]" style={{ color: "var(--ink-3)" }}>{fmtArs(dayTotal)}</span>
+      </div>
+
+      {/* Rows */}
       {gastos.map((g) => {
         const isConfirming = confirmDeleteId === g.id;
         const isDeleting = deletingId === g.id;
+        const formaColor = getChipHex(g.forma, "forma", settings);
+        const conceptoColor = getChipHex(g.concepto, "concepto", settings);
+
         return (
-          <tr
+          <div
             key={g.id}
-            className={`border-b border-gray-800/40 transition-colors ${isConfirming ? "bg-red-950/20" : "hover:bg-gray-800/20"}`}
+            className="group grid items-center px-4 py-3 transition-colors"
+            style={{
+              gridTemplateColumns: GRID_COLS,
+              borderBottom: "1px solid var(--line)",
+              background: isConfirming ? "var(--neg-soft)" : "transparent",
+            }}
+            onMouseEnter={(e) => { if (!isConfirming) (e.currentTarget as HTMLElement).style.background = "var(--surface-alt)"; }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = isConfirming ? "var(--neg-soft)" : "transparent"; }}
           >
-            <td className="pl-8 pr-3 py-2.5">
+            {/* Forma — muted tag */}
+            <div className="flex items-center min-w-0">
               <span
-                className="inline-block px-2 py-0.5 rounded-full text-xs font-semibold"
-                style={getChipStyle(g.forma, "forma", settings)}
+                className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-xs font-medium truncate max-w-[120px]"
+                style={{
+                  background: `${formaColor}18`,
+                  color: formaColor,
+                  border: `1px solid ${formaColor}30`,
+                }}
               >
+                <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: formaColor }} />
                 {g.forma}
               </span>
-            </td>
-            <td className="px-3 py-2.5">
+            </div>
+
+            {/* Concepto — muted tag */}
+            <div className="flex items-center min-w-0">
               <span
-                className="inline-block px-2 py-0.5 rounded-full text-xs font-semibold"
-                style={getChipStyle(g.concepto, "concepto", settings)}
+                className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-xs font-medium truncate max-w-[120px]"
+                style={{
+                  background: `${conceptoColor}18`,
+                  color: conceptoColor,
+                  border: `1px solid ${conceptoColor}30`,
+                }}
               >
+                <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: conceptoColor }} />
                 {g.concepto}
               </span>
-            </td>
-            <td className="px-3 py-2.5 text-white text-sm font-semibold tabular-nums text-right">
+            </div>
+
+            {/* Monto */}
+            <span className="num text-sm font-semibold text-right" style={{ color: "var(--ink)" }}>
               {fmtArs(Number(g.cantidad))}
-            </td>
-            <td className="px-3 py-2.5 text-gray-500 text-xs max-w-[180px] truncate">
-              {g.nota}
-            </td>
-            <td className="px-4 py-2.5">
+            </span>
+
+            {/* Nota */}
+            <span className="text-xs truncate px-3" style={{ color: g.nota ? "var(--ink-2)" : "var(--ink-3)" }}>
+              {g.nota || "—"}
+            </span>
+
+            {/* Actions */}
+            <div className="flex items-center justify-end gap-0.5">
               {isConfirming ? (
-                <div className="flex items-center justify-end gap-1">
+                <>
                   <button
                     onClick={() => onDelete(g.id)}
                     disabled={isDeleting}
-                    className="px-2 py-1 rounded-lg text-xs font-semibold bg-red-600 hover:bg-red-500 text-white transition-colors disabled:opacity-50 flex items-center gap-1"
+                    className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold disabled:opacity-50"
+                    style={{ background: "var(--negative)", color: "#fff", border: "none", cursor: "pointer" }}
                   >
                     {isDeleting && <Loader2 className="w-3 h-3 animate-spin" />}
                     Eliminar
                   </button>
                   <button
                     onClick={onCancelDelete}
-                    className="px-2 py-1 rounded-lg text-xs bg-gray-700 hover:bg-gray-600 text-gray-300 transition-colors"
+                    className="px-2 py-1 rounded-lg text-xs"
+                    style={{ background: "var(--surface-alt)", color: "var(--ink-2)", border: "none", cursor: "pointer" }}
                   >
                     Cancelar
                   </button>
-                </div>
+                </>
               ) : (
-                <div className="flex items-center justify-end gap-1">
+                <>
                   <button
                     onClick={() => onEdit(g)}
-                    className="p-1.5 rounded-lg text-gray-600 hover:text-blue-400 hover:bg-gray-700 transition-colors"
+                    className="p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
+                    style={{ color: "var(--ink-3)", background: "transparent", border: "none", cursor: "pointer" }}
+                    onMouseEnter={(e) => (e.currentTarget.style.color = "var(--ink)")}
+                    onMouseLeave={(e) => (e.currentTarget.style.color = "var(--ink-3)")}
                   >
-                    <Pencil className="w-3.5 h-3.5" />
+                    <Pencil size={13} />
                   </button>
                   <button
                     onClick={() => onConfirmDelete(g.id)}
-                    className="p-1.5 rounded-lg text-gray-600 hover:text-red-400 hover:bg-gray-700 transition-colors"
+                    className="p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
+                    style={{ color: "var(--ink-3)", background: "transparent", border: "none", cursor: "pointer" }}
+                    onMouseEnter={(e) => (e.currentTarget.style.color = "var(--negative)")}
+                    onMouseLeave={(e) => (e.currentTarget.style.color = "var(--ink-3)")}
                   >
-                    <Trash2 className="w-3.5 h-3.5" />
+                    <Trash2 size={13} />
                   </button>
-                </div>
+                </>
               )}
-            </td>
-          </tr>
+            </div>
+          </div>
         );
       })}
     </>
@@ -329,7 +423,6 @@ export default function RangePage() {
     mutationFn: ({ id, data }: { id: string; data: Gasto }) => updateGasto(id, data),
     onSuccess: () => {
       invalidate();
-      // Also invalidate main gastos cache
       queryClient.invalidateQueries({ queryKey: ["gastos"] });
     },
   });
@@ -378,7 +471,6 @@ export default function RangePage() {
       if (!dayMap.has(g.fecha)) dayMap.set(g.fecha, []);
       dayMap.get(g.fecha)!.push(g);
     }
-    // Sort months descending, days descending within each month
     return [...map.entries()]
       .sort(([a], [b]) => b.localeCompare(a))
       .map(([mk, dayMap]) => ({
@@ -418,8 +510,8 @@ export default function RangePage() {
   // ── Auth guard ────────────────────────────────────────────────────────────
   if (authLoading)
     return (
-      <div className="min-h-screen bg-gray-950 flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-green-400" />
+      <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--bg)' }}>
+        <Loader2 className="w-8 h-8 animate-spin" style={{ color: 'var(--accent)' }} />
       </div>
     );
   if (!user) { navigate("/", { replace: true }); return null; }
@@ -431,204 +523,218 @@ export default function RangePage() {
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-gray-950 flex flex-col">
-      {/* ── Top bar ── */}
-      <div className="bg-gray-900 border-b border-gray-800 sticky top-0 z-10">
-        <div className="max-w-screen-xl mx-auto flex items-center gap-4 px-4 py-3">
-          <button
-            onClick={() => navigate("/")}
-            className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-white transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Volver
-          </button>
-          <div className="w-px h-5 bg-gray-700" />
-          <div className="flex items-center gap-2">
-            <CalendarRange className="w-4 h-4 text-green-400" />
-            <h1 className="text-sm font-semibold text-white">Historial</h1>
+    <AppShell user={user}>
+      <div className="flex flex-col min-h-screen" style={{ background: 'var(--bg)' }}>
+        {/* ── Top bar ── */}
+        <div className="sticky top-0 z-10" style={{ background: 'var(--surface)', borderBottom: '1px solid var(--line)' }}>
+          <div className="max-w-screen-xl mx-auto flex items-center gap-3 px-4 py-3">
+            <CalendarRange className="w-4 h-4" style={{ color: 'var(--accent)' }} />
+            <h1 className="text-sm font-semibold" style={{ color: 'var(--ink)' }}>Historial</h1>
           </div>
         </div>
-      </div>
 
-      {/* ── Filters bar ── */}
-      <div className="bg-gray-900/60 border-b border-gray-800/60 sticky top-[52px] z-10">
-        <div className="max-w-screen-xl mx-auto px-4 py-3 flex flex-wrap items-end gap-4">
-          {/* Range pickers */}
-          <MonthPicker
-            label="Desde"
-            year={fromYear}
-            month={fromMonth}
-            onChange={(y, m) => { setFromYear(y); setFromMonth(m); }}
-            max={{ year: toYear, month: toMonth }}
-          />
-          <MonthPicker
-            label="Hasta"
-            year={toYear}
-            month={toMonth}
-            onChange={(y, m) => { setToYear(y); setToMonth(m); }}
-            min={{ year: fromYear, month: fromMonth }}
-          />
-
-          {/* Divider */}
-          <div className="w-px h-8 bg-gray-700 hidden sm:block" />
-
-          {/* Forma filter */}
-          <div className="flex flex-col gap-1">
-            <span className="text-xs text-gray-500 uppercase tracking-wider">Forma</span>
-            <MultiSelectFilter
-              placeholder="Todas"
-              options={settings.formas}
-              selected={selectedFormas}
-              onChange={setSelectedFormas}
+        {/* ── Filters bar ── */}
+        <div className="sticky top-[48px] z-10" style={{ background: 'var(--surface)', borderBottom: '1px solid var(--line-soft)', opacity: 0.97 }}>
+          <div className="max-w-screen-xl mx-auto px-4 py-3 flex flex-wrap items-end gap-4">
+            {/* Range pickers */}
+            <MonthPicker
+              label="Desde"
+              year={fromYear}
+              month={fromMonth}
+              onChange={(y, m) => { setFromYear(y); setFromMonth(m); }}
+              max={{ year: toYear, month: toMonth }}
             />
+            <MonthPicker
+              label="Hasta"
+              year={toYear}
+              month={toMonth}
+              onChange={(y, m) => { setToYear(y); setToMonth(m); }}
+              min={{ year: fromYear, month: fromMonth }}
+            />
+
+            {/* Divider */}
+            <div className="w-px h-8 hidden sm:block" style={{ background: 'var(--line)' }} />
+
+            {/* Forma filter */}
+            <div className="flex flex-col gap-1">
+              <span className="text-xs uppercase tracking-wider" style={{ color: 'var(--ink-3)' }}>Forma</span>
+              <MultiSelectFilter
+                placeholder="Todas"
+                options={settings.formas}
+                selected={selectedFormas}
+                onChange={setSelectedFormas}
+              />
+            </div>
+
+            {/* Concepto filter */}
+            <div className="flex flex-col gap-1">
+              <span className="text-xs uppercase tracking-wider" style={{ color: 'var(--ink-3)' }}>Concepto</span>
+              <MultiSelectFilter
+                placeholder="Todos"
+                options={settings.conceptos}
+                selected={selectedConceptos}
+                onChange={setSelectedConceptos}
+              />
+            </div>
+
+            {/* Divider */}
+            <div className="w-px h-8 hidden sm:block" style={{ background: 'var(--line)' }} />
+
+            {/* Search */}
+            <div className="relative flex-1 min-w-[180px] max-w-xs">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 pointer-events-none" style={{ color: 'var(--ink-3)' }} />
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Buscar..."
+                style={{
+                  width: '100%',
+                  background: 'var(--surface-alt)',
+                  border: '1px solid var(--line)',
+                  borderRadius: 8,
+                  paddingLeft: 32,
+                  paddingRight: 32,
+                  paddingTop: 6,
+                  paddingBottom: 6,
+                  color: 'var(--ink)',
+                  fontSize: 14,
+                  outline: 'none',
+                }}
+              />
+              {search && (
+                <button
+                  onClick={() => setSearch("")}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 transition-colors"
+                  style={{ color: 'var(--ink-3)', background: 'none', border: 'none', cursor: 'pointer' }}
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+
+            {/* Summary */}
+            <div className="ml-auto text-right">
+              <p className="text-[10px] uppercase tracking-wider" style={{ color: 'var(--ink-3)' }}>{rangeLabel}</p>
+              <p className="text-lg font-bold num" style={{ color: 'var(--ink)' }}>{fmtArs(totalRange)}</p>
+            </div>
           </div>
+        </div>
 
-          {/* Concepto filter */}
-          <div className="flex flex-col gap-1">
-            <span className="text-xs text-gray-500 uppercase tracking-wider">Concepto</span>
-            <MultiSelectFilter
-              placeholder="Todos"
-              options={settings.conceptos}
-              selected={selectedConceptos}
-              onChange={setSelectedConceptos}
-            />
-          </div>
+        {/* ── Content ── */}
+        <main className="flex-1 overflow-auto">
+          <div className="max-w-screen-xl mx-auto p-4 lg:p-6">
+            {fromIsAfterTo ? (
+              <div className="flex items-center justify-center h-40 text-sm" style={{ color: 'var(--ink-3)' }}>
+                El inicio no puede ser posterior al fin del rango.
+              </div>
+            ) : isLoading ? (
+              <div className="flex items-center justify-center h-40 gap-3" style={{ color: 'var(--ink-2)' }}>
+                <Loader2 className="w-5 h-5 animate-spin" style={{ color: 'var(--accent)' }} />
+                <span className="text-sm">Cargando...</span>
+              </div>
+            ) : byMonth.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-40 gap-2" style={{ color: 'var(--ink-3)' }}>
+                <CalendarRange className="w-8 h-8" />
+                <p className="text-sm">
+                  {search || selectedFormas.size > 0 || selectedConceptos.size > 0
+                    ? "Sin resultados para los filtros aplicados"
+                    : "No hay gastos en este período"}
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {byMonth.map(({ mk, days }) => {
+                  const [y, m] = mk.split("-").map(Number);
+                  const collapsed = collapsedMonths.has(mk);
+                  const monthTotal = monthTotals[mk] ?? 0;
+                  const count = days.reduce((a, [, gs]) => a + gs.length, 0);
 
-          {/* Divider */}
-          <div className="w-px h-8 bg-gray-700 hidden sm:block" />
+                  return (
+                    <div
+                      key={mk}
+                      style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 10, overflow: 'hidden' }}
+                    >
+                      {/* Month header */}
+                      <button
+                        onClick={() => toggleMonth(mk)}
+                        className="w-full flex items-center justify-between px-4 py-3 transition-colors"
+                        style={{ background: 'transparent', border: 'none', cursor: 'pointer' }}
+                        onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface-alt)')}
+                        onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                      >
+                        <div className="flex items-center gap-3">
+                          <span className="text-sm font-bold" style={{ color: 'var(--ink)' }}>
+                            {MONTH_FULL[m - 1]} {y}
+                          </span>
+                          <span className="text-xs num" style={{ color: 'var(--ink-3)' }}>
+                            {count} {count === 1 ? "gasto" : "gastos"}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <span className="text-sm font-semibold num" style={{ color: 'var(--accent)' }}>
+                            {fmtArs(monthTotal)}
+                          </span>
+                          {collapsed ? (
+                            <ChevronDown className="w-4 h-4" style={{ color: 'var(--ink-3)' }} />
+                          ) : (
+                            <ChevronUp className="w-4 h-4" style={{ color: 'var(--ink-3)' }} />
+                          )}
+                        </div>
+                      </button>
 
-          {/* Search */}
-          <div className="relative flex-1 min-w-[180px] max-w-xs">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-500 pointer-events-none" />
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Buscar..."
-              className="w-full bg-gray-800 border border-gray-700 rounded-lg pl-8 pr-8 py-1.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-green-500 placeholder-gray-600"
-            />
-            {search && (
-              <button
-                onClick={() => setSearch("")}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white transition-colors"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
+                      {/* Month body */}
+                      {!collapsed && (
+                        <div style={{ borderTop: '1px solid var(--line)' }}>
+                          {/* Column headers */}
+                          <div
+                            className="grid text-[10px] uppercase tracking-widest font-medium px-4 py-2"
+                            style={{
+                              color: "var(--ink-3)",
+                              borderBottom: "1px solid var(--line)",
+                              gridTemplateColumns: GRID_COLS,
+                            }}
+                          >
+                            <span>Forma</span>
+                            <span>Concepto</span>
+                            <span className="text-right">Monto</span>
+                            <span className="pl-3">Nota</span>
+                            <span />
+                          </div>
+                          {/* Day groups */}
+                          {days.map(([fecha, dayGastos]) => (
+                            <DayGroup
+                              key={fecha}
+                              fecha={fecha}
+                              gastos={dayGastos}
+                              settings={settings}
+                              onEdit={(g) => { setEditingGasto(g); setShowModal(true); }}
+                              onDelete={handleDelete}
+                              deletingId={deletingId}
+                              confirmDeleteId={confirmDeleteId}
+                              onConfirmDelete={setConfirmDeleteId}
+                              onCancelDelete={() => setConfirmDeleteId(null)}
+                            />
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             )}
           </div>
+        </main>
 
-          {/* Summary */}
-          <div className="ml-auto text-right">
-            <p className="text-[10px] text-gray-500 uppercase tracking-wider">{rangeLabel}</p>
-            <p className="text-lg font-bold tabular-nums text-white">{fmtArs(totalRange)}</p>
-          </div>
-        </div>
+        {/* ── Edit modal ── */}
+        {showModal && editingGasto && (
+          <GastoModal
+            gasto={editingGasto}
+            onClose={() => { setShowModal(false); setEditingGasto(null); }}
+            onSave={handleSaveEdit}
+          />
+        )}
       </div>
-
-      {/* ── Content ── */}
-      <main className="flex-1 overflow-auto scrollbar-thin">
-        <div className="max-w-screen-xl mx-auto p-4 lg:p-6">
-          {fromIsAfterTo ? (
-            <div className="flex items-center justify-center h-40 text-gray-600 text-sm">
-              El inicio no puede ser posterior al fin del rango.
-            </div>
-          ) : isLoading ? (
-            <div className="flex items-center justify-center h-40 gap-3 text-gray-400">
-              <Loader2 className="w-5 h-5 animate-spin text-green-400" />
-              <span className="text-sm">Cargando...</span>
-            </div>
-          ) : byMonth.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-40 text-gray-600 gap-2">
-              <CalendarRange className="w-8 h-8" />
-              <p className="text-sm">
-                {search || selectedFormas.size > 0 || selectedConceptos.size > 0
-                  ? "Sin resultados para los filtros aplicados"
-                  : "No hay gastos en este período"}
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {byMonth.map(({ mk, days }) => {
-                const [y, m] = mk.split("-").map(Number);
-                const collapsed = collapsedMonths.has(mk);
-                const monthTotal = monthTotals[mk] ?? 0;
-                const count = days.reduce((a, [, gs]) => a + gs.length, 0);
-
-                return (
-                  <div key={mk} className="bg-gray-900 ring-1 ring-gray-800 rounded-2xl overflow-hidden">
-                    {/* Month header */}
-                    <button
-                      onClick={() => toggleMonth(mk)}
-                      className="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-800/40 transition-colors"
-                    >
-                      <div className="flex items-center gap-3">
-                        <span className="text-sm font-bold text-white">
-                          {MONTH_FULL[m - 1]} {y}
-                        </span>
-                        <span className="text-xs text-gray-500 tabular-nums">
-                          {count} {count === 1 ? "gasto" : "gastos"}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <span className="text-sm font-semibold tabular-nums text-green-300">
-                          {fmtArs(monthTotal)}
-                        </span>
-                        {collapsed ? (
-                          <ChevronDown className="w-4 h-4 text-gray-500" />
-                        ) : (
-                          <ChevronUp className="w-4 h-4 text-gray-500" />
-                        )}
-                      </div>
-                    </button>
-
-                    {/* Month body */}
-                    {!collapsed && (
-                      <div className="border-t border-gray-800">
-                        <table className="w-full">
-                          <thead>
-                            <tr className="border-b border-gray-800/60 bg-gray-900/60">
-                              <th className="pl-8 pr-3 py-2 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Forma</th>
-                              <th className="px-3 py-2 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Concepto</th>
-                              <th className="px-3 py-2 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Monto</th>
-                              <th className="px-3 py-2 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Nota</th>
-                              <th className="px-4 py-2 w-20" />
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {days.map(([fecha, dayGastos]) => (
-                              <DayGroup
-                                key={fecha}
-                                fecha={fecha}
-                                gastos={dayGastos}
-                                settings={settings}
-                                onEdit={(g) => { setEditingGasto(g); setShowModal(true); }}
-                                onDelete={handleDelete}
-                                deletingId={deletingId}
-                                confirmDeleteId={confirmDeleteId}
-                                onConfirmDelete={setConfirmDeleteId}
-                                onCancelDelete={() => setConfirmDeleteId(null)}
-                              />
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      </main>
-
-      {/* ── Edit modal ── */}
-      {showModal && editingGasto && (
-        <GastoModal
-          gasto={editingGasto}
-          onClose={() => { setShowModal(false); setEditingGasto(null); }}
-          onSave={handleSaveEdit}
-        />
-      )}
-    </div>
+    </AppShell>
   );
 }

@@ -1,4 +1,6 @@
 export { default as Header } from './Header'
+export { default as AppShell } from './AppShell'
+export { default as AuthenticatedShell } from './AuthenticatedShell'
 export { default as GastosTable } from './GastosTable'
 export { default as GastoModal } from './GastoModal'
 export { default as Charts } from './Charts'

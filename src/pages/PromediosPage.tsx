@@ -1,7 +1,7 @@
 import { useNavigate, useSearchParams, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronLeft, ChevronRight, ArrowLeft, Loader2 } from "lucide-react";
-import { Promedios } from "@/components";
+import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
+import { Promedios, AppShell } from "@/components";
 import { fetchGastosByYear, fetchUsdRates } from "@/api";
 import { useAuth } from "@/contexts";
 import { useYearParam } from "@/hooks";
@@ -12,7 +12,7 @@ const VALID_TABS: PromediosTab[] = ['resumen', 'meses', 'categorias', 'comparaci
 export default function PromediosPage() {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
   const { tab: tabParam } = useParams<{ tab: string }>();
 
   const activeTab: PromediosTab = VALID_TABS.includes(tabParam as PromediosTab)
@@ -54,8 +54,8 @@ export default function PromediosPage() {
 
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-gray-950 flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-green-500" />
+      <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--bg)' }}>
+        <Loader2 className="w-8 h-8 animate-spin" style={{ color: 'var(--accent)' }} />
       </div>
     );
   }
@@ -70,36 +70,34 @@ export default function PromediosPage() {
   // ── Render ───────────────────────────────────────────────────────────────
 
   return (
-    <div className="min-h-screen bg-gray-950 flex flex-col">
+    <AppShell user={user}>
       {/* Barra superior */}
-      <div className="bg-gray-900 border-b border-gray-800 sticky top-0 z-10">
+      <div
+        className="sticky top-0 z-10"
+        style={{ background: 'var(--surface)', borderBottom: '1px solid var(--line)' }}
+      >
         <div className="max-w-screen-2xl mx-auto flex items-center gap-4 px-4 py-3">
-          <button
-            onClick={() => navigate(`/?year=${selectedYear}`)}
-            className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-white transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Volver
-          </button>
-
-          <div className="w-px h-5 bg-gray-700" />
-
-          <h1 className="text-sm font-semibold text-white">Promedios anuales</h1>
+          <h1 className="text-sm font-semibold" style={{ color: 'var(--ink)' }}>Promedios anuales</h1>
 
           {/* Selector de año */}
-          <div className="flex items-center gap-1 bg-gray-800 rounded-lg px-2 py-1.5 ml-auto">
+          <div
+            className="flex items-center gap-1 rounded-lg px-2 py-1.5 ml-auto"
+            style={{ background: 'var(--surface-alt)' }}
+          >
             <button
               onClick={() => setYear(selectedYear - 1)}
-              className="text-gray-400 hover:text-white p-0.5 transition-colors"
+              className="p-0.5 transition-colors"
+              style={{ color: 'var(--ink-3)', background: 'transparent', border: 'none', cursor: 'pointer' }}
             >
               <ChevronLeft className="w-3.5 h-3.5" />
             </button>
-            <span className="text-white font-bold text-sm w-12 text-center">
+            <span className="font-bold text-sm w-12 text-center num" style={{ color: 'var(--ink)' }}>
               {selectedYear}
             </span>
             <button
               onClick={() => setYear(selectedYear + 1)}
-              className="text-gray-400 hover:text-white p-0.5 transition-colors"
+              className="p-0.5 transition-colors"
+              style={{ color: 'var(--ink-3)', background: 'transparent', border: 'none', cursor: 'pointer' }}
             >
               <ChevronRight className="w-3.5 h-3.5" />
             </button>
@@ -111,8 +109,8 @@ export default function PromediosPage() {
       <main className="flex-1 overflow-auto scrollbar-thin">
         <div className="max-w-screen-2xl mx-auto p-6">
           {loading ? (
-            <div className="flex items-center justify-center h-64 gap-3 text-gray-400">
-              <Loader2 className="w-6 h-6 animate-spin text-green-500" />
+            <div className="flex items-center justify-center h-64 gap-3" style={{ color: 'var(--ink-2)' }}>
+              <Loader2 className="w-6 h-6 animate-spin" style={{ color: 'var(--accent)' }} />
               <span className="text-sm">Cargando datos de {selectedYear}...</span>
             </div>
           ) : (
@@ -128,6 +126,6 @@ export default function PromediosPage() {
           )}
         </div>
       </main>
-    </div>
+    </AppShell>
   );
 }

@@ -74,9 +74,9 @@ export default function IngresoModal({
       await onSave({
         fecha,
         descripcion: descripcion.trim(),
-        monto_usd: usd.numericValue,
-        usd_rate: rate.numericValue,
-        monto_ars: usd.numericValue * rate.numericValue,
+        monto_usd: usd.numericValue as number,
+        usd_rate: rate.numericValue as number,
+        monto_ars: (usd.numericValue as number) * (rate.numericValue as number),
       });
       onClose();
     });

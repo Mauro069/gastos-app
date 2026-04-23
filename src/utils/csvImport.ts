@@ -69,10 +69,6 @@ function normalizeHeader(h: string): string {
   return String(h).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z]/g, '')
 }
 
-function findCol(header: string[], names: string[]): number {
-  return header.findIndex(h => names.includes(h))
-}
-
 function parseAmount(raw: string): number {
   let s = String(raw ?? '').replace(/[$\s]/g, '')
   // Argentine format: 5.200,50 → comma is decimal

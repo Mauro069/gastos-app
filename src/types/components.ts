@@ -20,14 +20,17 @@ export interface HeaderProps {
 export interface GastosTableProps {
   gastos: Gasto[];
   selectedYear: number;
-  selectedMonth: number;
+  selectedMonth?: number;
   demo?: boolean;
   onImport?: () => void;
+  externalShowAdd?: boolean;
+  onAddClose?: () => void;
 }
 
 export interface GastoModalProps {
   gasto: Gasto | null;
   defaultDate?: string;
+  recentGastos?: Gasto[];
   onClose: () => void;
   onSave: (
     data: Partial<Gasto> & {

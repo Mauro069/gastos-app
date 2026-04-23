@@ -72,126 +72,169 @@ export default function Promedios({
     { id: 'comparacion', label: 'Comparación' },
   ]
 
+  // Shared card style
+  const card: React.CSSProperties = {
+    background: 'var(--surface)',
+    border: '1px solid var(--line)',
+    borderRadius: 16,
+    overflow: 'hidden',
+  }
+
   return (
     <div className="space-y-6">
-      {/* Tarjetas de stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-gray-800/60 border border-gray-700/50 rounded-2xl p-4">
-          <p className="text-xs text-gray-400 uppercase tracking-wider mb-1">Total {selectedYear}</p>
-          <p className="text-xl font-bold text-white">{fmt(totalAno)}</p>
-          <p className="text-sm text-green-400 mt-0.5">{fmtUSD(totalAnoUSD)}</p>
-        </div>
-        <div className="bg-gray-800/60 border border-gray-700/50 rounded-2xl p-4">
-          <p className="text-xs text-gray-400 uppercase tracking-wider mb-1">Promedio mensual</p>
-          <p className="text-xl font-bold text-white">{fmt(promedio)}</p>
-          <p className="text-xs text-gray-500 mt-0.5">
-            {monthsWithData} mes{monthsWithData !== 1 ? 'es' : ''} con datos
-          </p>
-        </div>
-        <div className="bg-gray-800/60 border border-gray-700/50 rounded-2xl p-4">
-          <p className="text-xs text-gray-400 uppercase tracking-wider mb-1">Mes más caro</p>
-          <p className="text-xl font-bold text-red-400">
-            {maxMonth.total > 0 ? fmt(maxMonth.total) : '—'}
-          </p>
-          <p className="text-xs text-gray-400 mt-0.5">{maxMonth.name || '—'}</p>
-        </div>
-        <div className="bg-gray-800/60 border border-gray-700/50 rounded-2xl p-4">
-          <p className="text-xs text-gray-400 uppercase tracking-wider mb-1">Mes más barato</p>
-          <p className="text-xl font-bold text-green-400">
-            {minMonth.total !== Infinity ? fmt(minMonth.total) : '—'}
-          </p>
-          <p className="text-xs text-gray-400 mt-0.5">
-            {minMonth.total !== Infinity ? minMonth.name : '—'}
-          </p>
-        </div>
+
+      {/* ── KPI cards ── */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-px rounded-2xl overflow-hidden" style={{ background: 'var(--line)', border: '1px solid var(--line)' }}>
+        {[
+          {
+            label: `Total ${selectedYear}`,
+            value: fmt(totalAno),
+            sub: fmtUSD(totalAnoUSD),
+            subColor: 'var(--positive)',
+          },
+          {
+            label: 'Promedio mensual',
+            value: fmt(promedio),
+            sub: `${monthsWithData} mes${monthsWithData !== 1 ? 'es' : ''} con datos`,
+            subColor: 'var(--ink-3)',
+          },
+          {
+            label: 'Mes más caro',
+            value: maxMonth.total > 0 ? fmt(maxMonth.total) : '—',
+            sub: maxMonth.name || '—',
+            subColor: 'var(--ink-3)',
+            valueColor: maxMonth.total > 0 ? 'var(--negative)' : 'var(--ink-3)',
+          },
+          {
+            label: 'Mes más barato',
+            value: minMonth.total !== Infinity ? fmt(minMonth.total) : '—',
+            sub: minMonth.total !== Infinity ? minMonth.name : '—',
+            subColor: 'var(--ink-3)',
+            valueColor: minMonth.total !== Infinity ? 'var(--positive)' : 'var(--ink-3)',
+          },
+        ].map((kpi, i) => (
+          <div key={i} className="px-5 py-4" style={{ background: 'var(--surface)' }}>
+            <p className="text-[10px] uppercase tracking-widest mb-2" style={{ color: 'var(--ink-3)' }}>{kpi.label}</p>
+            <p className="num font-semibold" style={{ fontSize: 22, letterSpacing: '-0.03em', color: kpi.valueColor ?? 'var(--ink)' }}>
+              {kpi.value}
+            </p>
+            <p className="text-xs mt-1 num" style={{ color: kpi.subColor }}>{kpi.sub}</p>
+          </div>
+        ))}
       </div>
 
-      {/* Tabs */}
-      <div className="flex gap-1 border-b border-gray-800">
+      {/* ── Tabs ── */}
+      <div className="flex gap-0.5 p-1 rounded-xl" style={{ background: 'var(--surface-alt)', width: 'fit-content' }}>
         {TABS.map(tab => (
           <button
             key={tab.id}
             onClick={() => onTabChange(tab.id)}
-            className={`px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px ${
-              activeTab === tab.id
-                ? 'border-blue-500 text-white'
-                : 'border-transparent text-gray-500 hover:text-gray-300'
-            }`}
+            className="px-4 py-1.5 rounded-lg text-sm font-medium transition-all"
+            style={{
+              background: activeTab === tab.id ? 'var(--surface)' : 'transparent',
+              color: activeTab === tab.id ? 'var(--ink)' : 'var(--ink-3)',
+              border: 'none',
+              cursor: 'pointer',
+              boxShadow: activeTab === tab.id ? '0 1px 4px rgba(0,0,0,0.15)' : 'none',
+            }}
           >
             {tab.label}
           </button>
         ))}
       </div>
 
-      {/* Tab: Resumen */}
+      {/* ── Tab: Resumen ── */}
       {activeTab === 'resumen' && (
-        <div className="space-y-6">
+        <div className="space-y-4">
           <Tendencia monthlyData={monthlyData} promedio={promedio} selectedYear={selectedYear} />
           {gastosAno.length === 0 && (
-            <div className="text-center py-16 text-gray-500">
-              <p className="text-lg">No hay datos para {selectedYear}</p>
-              <p className="text-sm mt-1">Agregá gastos en los meses del año</p>
+            <div className="py-16 text-center" style={{ color: 'var(--ink-3)' }}>
+              <p className="text-sm">No hay datos para {selectedYear}</p>
+              <p className="text-xs mt-1">Agregá gastos en los meses del año</p>
             </div>
           )}
         </div>
       )}
 
-      {/* Tab: Por mes */}
+      {/* ── Tab: Por mes ── */}
       {activeTab === 'meses' && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="bg-gray-800/30 border border-gray-800 rounded-2xl p-5">
-            <h3 className="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-4">
-              Totales por mes — {selectedYear}
-            </h3>
-            <div className="space-y-1">
-              <div className="flex items-center py-1 px-2 text-xs text-gray-500 uppercase tracking-wider">
-                <span className="w-20">Mes</span>
-                <span className="flex-1 text-right">ARS</span>
-                <span className="w-28 text-right">USD</span>
-              </div>
-              {monthlyData.map((m, i) => (
-                <div
-                  key={i}
-                  className={`flex items-center py-1.5 px-2 rounded-lg text-sm ${m.total > 0 ? 'hover:bg-gray-700/40' : ''}`}
-                >
-                  <span className={`w-20 ${m.total > 0 ? 'text-gray-200' : 'text-gray-600'}`}>{m.name}</span>
-                  <span className={`flex-1 text-right font-semibold ${m.total > 0 ? 'text-white' : 'text-gray-700'}`}>
-                    {m.total > 0 ? fmt(m.total) : '—'}
-                  </span>
-                  <span className={`w-28 text-right text-xs ${m.total > 0 ? (m.hasCustomRate ? 'text-green-400' : 'text-gray-500') : 'text-gray-700'}`}>
-                    {m.total > 0 ? (
-                      <>
-                        {fmtUSD(m.total / m.rate)}
-                        {!m.hasCustomRate && <span className="ml-0.5 text-yellow-700">*</span>}
-                      </>
-                    ) : '—'}
-                  </span>
-                </div>
-              ))}
-              <div className="border-t border-gray-700 pt-2 mt-2 flex items-center px-2">
-                <span className="text-gray-400 font-semibold text-sm w-20">TOTAL</span>
-                <span className="flex-1 text-right text-green-400 font-bold text-sm">{fmt(totalAno)}</span>
-                <span className="w-28 text-right text-green-400 font-bold text-sm">{fmtUSD(totalAnoUSD)}</span>
-              </div>
-              <p className="text-xs text-gray-600 px-2 mt-1">* Rate estimado del mes anterior</p>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+
+          {/* List */}
+          <div style={card}>
+            <div className="px-5 py-4" style={{ borderBottom: '1px solid var(--line)' }}>
+              <h3 className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--ink-3)' }}>
+                Totales {selectedYear}
+              </h3>
             </div>
+            {/* Column headers */}
+            <div
+              className="grid text-[10px] uppercase tracking-widest font-medium px-5 py-2"
+              style={{ color: 'var(--ink-3)', borderBottom: '1px solid var(--line)', gridTemplateColumns: '80px 1fr 100px' }}
+            >
+              <span>Mes</span>
+              <span className="text-right">ARS</span>
+              <span className="text-right">USD</span>
+            </div>
+            {monthlyData.map((m, i) => (
+              <div
+                key={i}
+                className="grid items-center px-5 py-2.5 transition-colors"
+                style={{
+                  gridTemplateColumns: '80px 1fr 100px',
+                  borderBottom: '1px solid var(--line)',
+                  opacity: m.total > 0 ? 1 : 0.35,
+                }}
+                onMouseEnter={e => { if (m.total > 0) (e.currentTarget as HTMLElement).style.background = 'var(--surface-alt)' }}
+                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent' }}
+              >
+                <span className="text-sm" style={{ color: 'var(--ink-2)' }}>{m.name}</span>
+                <span className="num text-sm font-semibold text-right" style={{ color: 'var(--ink)' }}>
+                  {m.total > 0 ? fmt(m.total) : '—'}
+                </span>
+                <span
+                  className="num text-xs text-right"
+                  style={{ color: m.hasCustomRate ? 'var(--positive)' : 'var(--ink-3)' }}
+                >
+                  {m.total > 0 ? (
+                    <>
+                      {fmtUSD(m.total / m.rate)}
+                      {!m.hasCustomRate && <span style={{ color: 'var(--warn)', marginLeft: 2 }}>*</span>}
+                    </>
+                  ) : '—'}
+                </span>
+              </div>
+            ))}
+            {/* Total */}
+            <div
+              className="grid items-center px-5 py-3"
+              style={{ gridTemplateColumns: '80px 1fr 100px', background: 'var(--surface-alt)' }}
+            >
+              <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--ink-3)' }}>Total</span>
+              <span className="num text-sm font-bold text-right" style={{ color: 'var(--accent)' }}>{fmt(totalAno)}</span>
+              <span className="num text-xs font-bold text-right" style={{ color: 'var(--positive)' }}>{fmtUSD(totalAnoUSD)}</span>
+            </div>
+            <p className="text-[10px] px-5 py-2" style={{ color: 'var(--ink-3)' }}>* Rate estimado del mes anterior</p>
           </div>
 
-          <div className="lg:col-span-2 bg-gray-800/30 border border-gray-800 rounded-2xl p-5">
-            <h3 className="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-4">
-              Gasto mensual {selectedYear}
-            </h3>
-            <div style={{ height: 300 }}>
+          {/* Bar chart */}
+          <div className="lg:col-span-2" style={card}>
+            <div className="px-5 py-4" style={{ borderBottom: '1px solid var(--line)' }}>
+              <h3 className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--ink-3)' }}>
+                Gasto mensual {selectedYear}
+              </h3>
+            </div>
+            <div className="px-4 pt-4 pb-2" style={{ height: 300 }}>
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={monthlyData} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#374151" vertical={false} />
-                  <XAxis dataKey="short" tick={{ fill: '#9CA3AF', fontSize: 11 }} />
-                  <YAxis tick={{ fill: '#9CA3AF', fontSize: 10 }} tickFormatter={fmtShort} width={72} />
-                  <Tooltip content={<BarTooltipMonth />} />
-                  <ReferenceLine y={promedio} stroke="#EAB308" strokeDasharray="4 3" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--line)" vertical={false} />
+                  <XAxis dataKey="short" tick={{ fill: 'var(--ink-3)', fontSize: 11 }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fill: 'var(--ink-3)', fontSize: 10 }} tickFormatter={fmtShort} width={68} axisLine={false} tickLine={false} />
+                  <Tooltip content={<BarTooltipMonth />} cursor={{ fill: 'var(--surface-alt)' }} />
+                  <ReferenceLine y={promedio} stroke="var(--warn)" strokeDasharray="4 3" strokeWidth={1.5} />
                   <Bar dataKey="total" radius={[4, 4, 0, 0]}>
                     {monthlyData.map((m, i) => (
-                      <Cell key={i} fill={m.total > 0 ? '#3B82F6' : '#1F2937'} />
+                      <Cell key={i} fill={m.total > 0 ? 'var(--accent)' : 'var(--surface-alt)'} />
                     ))}
                   </Bar>
                 </BarChart>
@@ -201,44 +244,55 @@ export default function Promedios({
         </div>
       )}
 
-      {/* Tab: Categorías */}
+      {/* ── Tab: Categorías ── */}
       {activeTab === 'categorias' && (
-        <div className="space-y-6">
+        <div className="space-y-4">
           {catData.length > 0 ? (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <div className="bg-gray-800/30 border border-gray-800 rounded-2xl p-5">
-                <h3 className="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-4">
-                  Categorías {selectedYear}
-                </h3>
-                <div className="space-y-1">
-                  {catData.map(d => (
-                    <div key={d.name} className="flex items-center gap-2 py-1.5 px-2 rounded-lg hover:bg-gray-700/40 text-sm">
-                      <div
-                        className="w-2.5 h-2.5 rounded-full flex-shrink-0"
-                        style={{ backgroundColor: getChipHex(d.name, 'concepto', settings) }}
-                      />
-                      <span className="text-gray-300 flex-1 truncate">{d.name}</span>
-                      <span className="text-white font-semibold">{fmt(d.total)}</span>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+
+              {/* List */}
+              <div style={card}>
+                <div className="px-5 py-4" style={{ borderBottom: '1px solid var(--line)' }}>
+                  <h3 className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--ink-3)' }}>
+                    Categorías {selectedYear}
+                  </h3>
+                </div>
+                {catData.map(d => {
+                  const color = getChipHex(d.name, 'concepto', settings)
+                  return (
+                    <div
+                      key={d.name}
+                      className="flex items-center gap-3 px-5 py-3 transition-colors"
+                      style={{ borderBottom: '1px solid var(--line)' }}
+                      onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface-alt)')}
+                      onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                    >
+                      <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: color }} />
+                      <span className="text-sm flex-1 truncate" style={{ color: 'var(--ink-2)' }}>{d.name}</span>
+                      <span className="num text-sm font-semibold" style={{ color: 'var(--ink)' }}>{fmt(d.total)}</span>
                     </div>
-                  ))}
-                  <div className="border-t border-gray-700 pt-2 mt-2 flex items-center justify-between px-2">
-                    <span className="text-gray-400 font-semibold text-sm">TOTAL</span>
-                    <span className="text-green-400 font-bold text-sm">{fmt(totalAno)}</span>
-                  </div>
+                  )
+                })}
+                <div className="flex items-center justify-between px-5 py-3" style={{ background: 'var(--surface-alt)' }}>
+                  <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--ink-3)' }}>Total</span>
+                  <span className="num text-sm font-bold" style={{ color: 'var(--accent)' }}>{fmt(totalAno)}</span>
                 </div>
               </div>
 
-              <div className="lg:col-span-2 bg-gray-800/30 border border-gray-800 rounded-2xl p-5">
-                <h3 className="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-4">
-                  Gasto por categoría {selectedYear}
-                </h3>
-                <div style={{ height: 300 }}>
+              {/* Bar chart */}
+              <div className="lg:col-span-2" style={card}>
+                <div className="px-5 py-4" style={{ borderBottom: '1px solid var(--line)' }}>
+                  <h3 className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--ink-3)' }}>
+                    Por categoría {selectedYear}
+                  </h3>
+                </div>
+                <div className="px-4 pt-4 pb-2" style={{ height: 300 }}>
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={catData} margin={{ top: 5, right: 10, left: 10, bottom: 50 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#374151" vertical={false} />
-                      <XAxis dataKey="name" tick={{ fill: '#9CA3AF', fontSize: 10 }} angle={-35} textAnchor="end" interval={0} height={65} />
-                      <YAxis tick={{ fill: '#9CA3AF', fontSize: 10 }} tickFormatter={fmtShort} width={72} />
-                      <Tooltip content={<BarTooltipCat />} />
+                      <CartesianGrid strokeDasharray="3 3" stroke="var(--line)" vertical={false} />
+                      <XAxis dataKey="name" tick={{ fill: 'var(--ink-3)', fontSize: 10 }} angle={-35} textAnchor="end" interval={0} height={65} axisLine={false} tickLine={false} />
+                      <YAxis tick={{ fill: 'var(--ink-3)', fontSize: 10 }} tickFormatter={fmtShort} width={68} axisLine={false} tickLine={false} />
+                      <Tooltip content={<BarTooltipCat />} cursor={{ fill: 'var(--surface-alt)' }} />
                       <Bar dataKey="total" radius={[4, 4, 0, 0]}>
                         {catData.map(d => (
                           <Cell key={d.name} fill={getChipHex(d.name, 'concepto', settings)} />
@@ -250,7 +304,7 @@ export default function Promedios({
               </div>
             </div>
           ) : (
-            <div className="text-center py-16 text-gray-500">
+            <div className="py-16 text-center" style={{ color: 'var(--ink-3)' }}>
               <p className="text-sm">Sin datos de categorías para {selectedYear}</p>
             </div>
           )}
@@ -258,22 +312,20 @@ export default function Promedios({
         </div>
       )}
 
-      {/* Tab: Comparación */}
+      {/* ── Tab: Comparación ── */}
       {activeTab === 'comparacion' && (
-        <>
-          {prevYearGastos && prevYear ? (
-            <ComparacionAnual
-              gastos={gastosAno}
-              prevYearGastos={prevYearGastos}
-              selectedYear={selectedYear}
-              prevYear={prevYear}
-            />
-          ) : (
-            <div className="text-center py-16 text-gray-500">
-              <p className="text-sm">No hay datos del año anterior para comparar</p>
-            </div>
-          )}
-        </>
+        prevYearGastos && prevYear ? (
+          <ComparacionAnual
+            gastos={gastosAno}
+            prevYearGastos={prevYearGastos}
+            selectedYear={selectedYear}
+            prevYear={prevYear}
+          />
+        ) : (
+          <div className="py-16 text-center" style={{ color: 'var(--ink-3)' }}>
+            <p className="text-sm">No hay datos del año anterior para comparar</p>
+          </div>
+        )
       )}
     </div>
   )

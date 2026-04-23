@@ -57,6 +57,7 @@ export const FORMA_COLORS: Record<Forma, string> = {
   Uala: '#A855F7',
   'Mercado Pago': '#009EE3',
   Efectivo: '#6B7280',
+  Transferencia: '#8B5CF6',
 }
 
 export const FORMA_BG: Record<Forma, string> = {
@@ -66,6 +67,7 @@ export const FORMA_BG: Record<Forma, string> = {
   Uala: 'bg-purple-500 text-white',
   'Mercado Pago': 'bg-sky-500 text-white',
   Efectivo: 'bg-gray-500 text-white',
+  Transferencia: 'bg-violet-500 text-white',
 }
 
 export const CONCEPTO_BG: Record<Concepto, string> = {

@@ -60,7 +60,7 @@ export default function Charts({
 
   if (gastos.length === 0) {
     return (
-      <div className="flex items-center justify-center h-48 text-gray-500 text-sm">
+      <div className="flex items-center justify-center h-48 text-sm" style={{ color: "var(--ink-3)" }}>
         No hay datos para mostrar
       </div>
     )
@@ -69,8 +69,8 @@ export default function Charts({
   return (
     <div className="space-y-4">
       <div className="space-y-4">
-        <div className="bg-gray-800/30 rounded-2xl p-4 border border-gray-800">
-          <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
+        <div className="rounded-xl p-4" style={{ background: "var(--surface-alt)", border: "1px solid var(--line)" }}>
+          <h3 className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: "var(--ink-3)" }}>
             Por forma de pago
           </h3>
           <div className="flex flex-col gap-3">
@@ -99,8 +99,8 @@ export default function Charts({
           </div>
         </div>
 
-        <div className="bg-gray-800/30 rounded-2xl p-4 border border-gray-800">
-          <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
+        <div className="rounded-xl p-4" style={{ background: "var(--surface-alt)", border: "1px solid var(--line)" }}>
+          <h3 className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: "var(--ink-3)" }}>
             Por concepto
           </h3>
           <div className="flex flex-col gap-3">
@@ -130,23 +130,23 @@ export default function Charts({
         </div>
       </div>
 
-      <div className="bg-gray-800/30 rounded-2xl p-4 border border-gray-800">
-        <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
+      <div className="rounded-xl p-4" style={{ background: "var(--surface-alt)", border: "1px solid var(--line)" }}>
+        <h3 className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: "var(--ink-3)" }}>
           Cantidad por concepto
         </h3>
         <div style={{ height: 220 }}>
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={byConcepto} margin={{ top: 5, right: 8, left: 0, bottom: 36 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#374151" vertical={false} />
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--line)" vertical={false} />
               <XAxis
                 dataKey="name"
-                tick={{ fill: '#9CA3AF', fontSize: 9 }}
+                tick={{ fill: 'var(--ink-3)', fontSize: 9 }}
                 angle={-35}
                 textAnchor="end"
                 interval={0}
                 height={50}
               />
-              <YAxis tick={{ fill: '#9CA3AF', fontSize: 9 }} tickFormatter={fmtShort} width={52} />
+              <YAxis tick={{ fill: 'var(--ink-3)', fontSize: 9 }} tickFormatter={fmtShort} width={52} />
               <Tooltip content={<BarTooltip />} />
               <Bar dataKey="total" radius={[4, 4, 0, 0]}>
                 {byConcepto.map(d => (

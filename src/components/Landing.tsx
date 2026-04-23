@@ -325,6 +325,7 @@ export default function Landing() {
         user={null}
         demo
         onSignIn={() => setShowLogin(true)}
+        onSignOut={() => {}}
       />
 
       {/* ── Month / year nav ───────────────────────────────────────────────── */}

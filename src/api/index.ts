@@ -4,3 +4,4 @@ export * from "./usdRates";
 export * from "./ingresos";
 export * from "./activos";
 export * from "./account";
+export * from "./presupuesto";

@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
-  ArrowLeft, Loader2, Plus, Pencil, Trash2, ChevronDown, ChevronUp,
+  Loader2, Plus, Pencil, Trash2,
   Wallet, TrendingUp, TrendingDown, Save, X, Settings2, Check,
 } from "lucide-react";
 import {
@@ -15,6 +15,7 @@ import {
   fetchUsdRates,
 } from "@/api";
 import { useNumericInput } from "@/hooks";
+import { AppShell } from "@/components";
 import { useAuth } from "@/contexts";
 import type { ActivoCuenta, ActivoSnapshot, ActivoItem, CuentaTipo, UsdRates } from "@/types";
 
@@ -63,7 +64,6 @@ function AmountField({
 
   useEffect(() => { reset(initialValue ?? ""); }, []); // init once
 
-  // Report to parent on every render if value changed
   useEffect(() => {
     if (numericValue !== reported.current) {
       reported.current = numericValue;
@@ -74,7 +74,12 @@ function AmountField({
   return (
     <div className="relative">
       {prefix && (
-        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm select-none">{prefix}</span>
+        <span
+          className="absolute left-3 top-1/2 -translate-y-1/2 text-sm select-none"
+          style={{ color: 'var(--ink-3)' }}
+        >
+          {prefix}
+        </span>
       )}
       <input
         ref={inputRef}
@@ -85,7 +90,12 @@ function AmountField({
         placeholder={placeholder ?? "0"}
         autoFocus={autoFocus}
         autoComplete="off"
-        className={`w-full bg-gray-800 border border-gray-700 rounded-lg py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${prefix ? "pl-7 pr-3" : "px-3"} ${className ?? ""}`}
+        className={`w-full rounded-lg py-2 text-sm focus:outline-none ${prefix ? "pl-7 pr-3" : "px-3"} ${className ?? ""}`}
+        style={{
+          background: 'var(--surface-alt)',
+          border: '1px solid var(--line)',
+          color: 'var(--ink)',
+        }}
       />
     </div>
   );
@@ -112,7 +122,6 @@ function SnapshotModal({ snapshot, cuentas, defaultRate, onClose, onSave }: Snap
   const disponibles = cuentas.filter((c) => c.tipo === "disponible");
   const inversiones = cuentas.filter((c) => c.tipo === "inversion");
 
-  // valores: cuenta_id → number | ""
   const [valores, setValores] = useState<Record<string, number | "">>(() => {
     const init: Record<string, number | ""> = {};
     for (const c of cuentas) {
@@ -129,7 +138,6 @@ function SnapshotModal({ snapshot, cuentas, defaultRate, onClose, onSave }: Snap
     setValores((prev) => ({ ...prev, [id]: v }));
   }, []);
 
-  // Live totals
   const totalDispUsd = disponibles.reduce((a, c) => a + (Number(valores[c.id]) || 0), 0);
   const totalInvArs = inversiones.reduce((a, c) => a + (Number(valores[c.id]) || 0), 0);
   const totalInvUsd = usdRate > 0 ? totalInvArs / usdRate : 0;
@@ -157,55 +165,67 @@ function SnapshotModal({ snapshot, cuentas, defaultRate, onClose, onSave }: Snap
   };
 
   return (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-gray-900 border border-gray-700 rounded-2xl w-full max-w-lg shadow-2xl max-h-[90vh] flex flex-col">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-800">
+    <div className="fixed inset-0 backdrop-blur-sm z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.7)' }}>
+      <div
+        className="w-full max-w-lg shadow-2xl max-h-[90vh] flex flex-col rounded-2xl"
+        style={{ background: 'var(--surface)', border: '1px solid var(--line)' }}
+      >
+        <div
+          className="flex items-center justify-between px-6 py-4"
+          style={{ borderBottom: '1px solid var(--line)' }}
+        >
           <div className="flex items-center gap-2">
-            <Wallet className="w-5 h-5 text-blue-400" />
-            <h2 className="text-lg font-semibold text-white">
+            <Wallet className="w-5 h-5" style={{ color: 'var(--accent)' }} />
+            <h2 className="text-lg font-semibold" style={{ color: 'var(--ink)' }}>
               {snapshot ? "Editar registro" : "Nuevo registro"}
             </h2>
           </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-white p-1 rounded-lg hover:bg-gray-800 transition-colors">
+          <button
+            onClick={onClose}
+            className="p-1 rounded-lg transition-colors"
+            style={{ color: 'var(--ink-3)', background: 'transparent', border: 'none', cursor: 'pointer' }}
+          >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         <form onSubmit={handleSubmit} className="overflow-y-auto flex-1 px-6 py-5 space-y-5">
-          {/* Fecha + Tipo de cambio */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="text-xs text-gray-400 uppercase tracking-wider block mb-1.5">Fecha *</label>
+              <label className="text-xs uppercase tracking-wider block mb-1.5" style={{ color: 'var(--ink-3)' }}>Fecha *</label>
               <input
                 type="date"
                 value={fecha}
                 onChange={(e) => setFecha(e.target.value)}
-                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full rounded-lg px-3 py-2 text-sm focus:outline-none"
+                style={{
+                  background: 'var(--surface-alt)',
+                  border: '1px solid var(--line)',
+                  color: 'var(--ink)',
+                }}
                 required
               />
             </div>
             <div>
-              <label className="text-xs text-gray-400 uppercase tracking-wider block mb-1.5">Valor dólar *</label>
+              <label className="text-xs uppercase tracking-wider block mb-1.5" style={{ color: 'var(--ink-3)' }}>Valor dólar *</label>
               <AmountField
                 initialValue={snapshot?.usd_rate ?? defaultRate}
                 onValueChange={(v) => rateHook.reset(typeof v === "number" ? v : "")}
                 placeholder="1.000"
               />
-              {/* Hack: render the actual rate input using rateHook directly */}
             </div>
           </div>
 
-          {/* Disponible — USD */}
           {disponibles.length > 0 && (
             <div>
               <div className="flex items-center gap-2 mb-2.5">
-                <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Dinero disponible</span>
-                <span className="text-gray-700 text-xs">(USD)</span>
+                <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--ink-3)' }}>Dinero disponible</span>
+                <span className="text-xs" style={{ color: 'var(--line)' }}>(USD)</span>
               </div>
               <div className="space-y-2">
                 {disponibles.map((c) => (
                   <div key={c.id} className="flex items-center gap-3">
-                    <span className="text-gray-300 text-sm w-28 flex-shrink-0">{c.nombre}</span>
+                    <span className="text-sm w-28 flex-shrink-0" style={{ color: 'var(--ink-2)' }}>{c.nombre}</span>
                     <AmountField
                       initialValue={typeof valores[c.id] === "number" ? (valores[c.id] as number) : undefined}
                       onValueChange={(v) => setValor(c.id, v)}
@@ -216,19 +236,18 @@ function SnapshotModal({ snapshot, cuentas, defaultRate, onClose, onSave }: Snap
                 ))}
               </div>
               {totalDispUsd > 0 && (
-                <div className="mt-2 text-right text-xs text-gray-500">
-                  Total disponible: <span className="text-blue-300 font-semibold">{fmtUsd(totalDispUsd)}</span>
+                <div className="mt-2 text-right text-xs" style={{ color: 'var(--ink-3)' }}>
+                  Total disponible: <span className="font-semibold num" style={{ color: 'var(--accent)' }}>{fmtUsd(totalDispUsd)}</span>
                 </div>
               )}
             </div>
           )}
 
-          {/* Inversión — ARS → USD */}
           {inversiones.length > 0 && (
             <div>
               <div className="flex items-center gap-2 mb-2.5">
-                <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Inversiones</span>
-                <span className="text-gray-700 text-xs">(ARS → USD)</span>
+                <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--ink-3)' }}>Inversiones</span>
+                <span className="text-xs" style={{ color: 'var(--line)' }}>(ARS → USD)</span>
               </div>
               <div className="space-y-2">
                 {inversiones.map((c) => {
@@ -236,7 +255,7 @@ function SnapshotModal({ snapshot, cuentas, defaultRate, onClose, onSave }: Snap
                   const usd = usdRate > 0 && ars > 0 ? ars / usdRate : null;
                   return (
                     <div key={c.id} className="flex items-center gap-3">
-                      <span className="text-gray-300 text-sm w-28 flex-shrink-0">{c.nombre}</span>
+                      <span className="text-sm w-28 flex-shrink-0" style={{ color: 'var(--ink-2)' }}>{c.nombre}</span>
                       <div className="flex-1">
                         <AmountField
                           initialValue={typeof valores[c.id] === "number" ? (valores[c.id] as number) : undefined}
@@ -245,7 +264,7 @@ function SnapshotModal({ snapshot, cuentas, defaultRate, onClose, onSave }: Snap
                         />
                       </div>
                       {usd !== null && (
-                        <span className="text-gray-500 text-xs tabular-nums w-20 text-right flex-shrink-0">
+                        <span className="text-xs num w-20 text-right flex-shrink-0" style={{ color: 'var(--ink-3)' }}>
                           {fmtUsd(usd)}
                         </span>
                       )}
@@ -254,34 +273,47 @@ function SnapshotModal({ snapshot, cuentas, defaultRate, onClose, onSave }: Snap
                 })}
               </div>
               {totalInvUsd > 0 && (
-                <div className="mt-2 text-right text-xs text-gray-500">
-                  Total inversión: <span className="text-purple-300 font-semibold">{fmtUsd(totalInvUsd)}</span>
+                <div className="mt-2 text-right text-xs" style={{ color: 'var(--ink-3)' }}>
+                  Total inversión: <span className="font-semibold num" style={{ color: 'var(--positive)' }}>{fmtUsd(totalInvUsd)}</span>
                 </div>
               )}
             </div>
           )}
 
-          {/* Grand total preview */}
           {grandTotalUsd > 0 && (
-            <div className="bg-blue-950/40 border border-blue-800/50 rounded-xl px-4 py-3 flex items-center justify-between">
-              <span className="text-blue-300 text-xs font-medium">Total portafolio</span>
-              <span className="text-blue-100 font-bold text-lg tabular-nums">{fmtUsd(grandTotalUsd)}</span>
+            <div
+              className="rounded-xl px-4 py-3 flex items-center justify-between"
+              style={{ background: 'var(--pos-soft)', border: '1px solid var(--positive)' }}
+            >
+              <span className="text-xs font-medium" style={{ color: 'var(--positive)' }}>Total portafolio</span>
+              <span className="font-bold text-lg num" style={{ color: 'var(--positive)' }}>{fmtUsd(grandTotalUsd)}</span>
             </div>
           )}
 
           {error && (
-            <div className="bg-red-900/40 border border-red-700 rounded-lg px-3 py-2 text-red-400 text-sm">{error}</div>
+            <div
+              className="rounded-lg px-3 py-2 text-sm"
+              style={{ background: 'var(--neg-soft)', border: '1px solid var(--negative)', color: 'var(--negative)' }}
+            >
+              {error}
+            </div>
           )}
         </form>
 
-        <div className="flex gap-3 px-6 py-4 border-t border-gray-800">
-          <button type="button" onClick={onClose} className="flex-1 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-xl py-2.5 font-medium text-sm transition-colors">
+        <div className="flex gap-3 px-6 py-4" style={{ borderTop: '1px solid var(--line)' }}>
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex-1 rounded-xl py-2.5 font-medium text-sm transition-colors"
+            style={{ background: 'var(--surface-alt)', color: 'var(--ink-2)', border: '1px solid var(--line)', cursor: 'pointer' }}
+          >
             Cancelar
           </button>
           <button
             onClick={handleSubmit as unknown as React.MouseEventHandler}
             disabled={loading}
-            className="flex-1 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-xl py-2.5 font-medium text-sm transition-colors flex items-center justify-center gap-2"
+            className="flex-1 rounded-xl py-2.5 font-medium text-sm flex items-center justify-center gap-2 disabled:opacity-50 transition-colors"
+            style={{ background: 'var(--accent)', color: 'var(--accent-ink)', border: 'none', cursor: 'pointer' }}
           >
             <Save className="w-4 h-4" />
             {loading ? "Guardando..." : snapshot ? "Actualizar" : "Guardar"}
@@ -326,10 +358,16 @@ function CuentasManager({
 
   const Section = ({ titulo, tipo, items }: { titulo: string; tipo: CuentaTipo; items: ActivoCuenta[] }) => (
     <div>
-      <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">{titulo} <span className="text-gray-700">(USD)</span></p>
+      <p className="text-xs uppercase tracking-wider mb-2" style={{ color: 'var(--ink-3)' }}>
+        {titulo} <span style={{ color: 'var(--line)' }}>(USD)</span>
+      </p>
       <div className="flex flex-wrap gap-2">
         {items.map((c) => (
-          <div key={c.id} className="flex items-center gap-1 bg-gray-800 rounded-full px-3 py-1.5 group">
+          <div
+            key={c.id}
+            className="flex items-center gap-1 rounded-full px-3 py-1.5 group"
+            style={{ background: 'var(--surface-alt)', border: '1px solid var(--line)' }}
+          >
             {renamingId === c.id ? (
               <>
                 <input
@@ -337,28 +375,39 @@ function CuentasManager({
                   value={renameVal}
                   onChange={(e) => setRenameVal(e.target.value)}
                   onKeyDown={(e) => { if (e.key === "Enter") handleRename(c.id); if (e.key === "Escape") setRenamingId(null); }}
-                  className="bg-transparent text-white text-xs outline-none w-24"
+                  className="bg-transparent text-xs outline-none w-24"
+                  style={{ color: 'var(--ink)' }}
                   maxLength={30}
                 />
-                <button onClick={() => handleRename(c.id)} className="text-green-400 hover:text-green-300 transition-colors">
+                <button
+                  onClick={() => handleRename(c.id)}
+                  className="transition-colors"
+                  style={{ color: 'var(--positive)', background: 'none', border: 'none', cursor: 'pointer' }}
+                >
                   <Check className="w-3.5 h-3.5" />
                 </button>
-                <button onClick={() => setRenamingId(null)} className="text-gray-500 hover:text-gray-300 transition-colors">
+                <button
+                  onClick={() => setRenamingId(null)}
+                  className="transition-colors"
+                  style={{ color: 'var(--ink-3)', background: 'none', border: 'none', cursor: 'pointer' }}
+                >
                   <X className="w-3.5 h-3.5" />
                 </button>
               </>
             ) : (
               <>
-                <span className="text-gray-200 text-xs font-medium">{c.nombre}</span>
+                <span className="text-xs font-medium" style={{ color: 'var(--ink-2)' }}>{c.nombre}</span>
                 <button
                   onClick={() => { setRenamingId(c.id); setRenameVal(c.nombre); }}
-                  className="text-gray-600 hover:text-blue-400 transition-colors ml-1 opacity-0 group-hover:opacity-100"
+                  className="ml-1 opacity-0 group-hover:opacity-100 transition-colors"
+                  style={{ color: 'var(--ink-3)', background: 'none', border: 'none', cursor: 'pointer' }}
                 >
                   <Pencil className="w-3 h-3" />
                 </button>
                 <button
                   onClick={() => onDelete(c.id)}
-                  className="text-gray-600 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100"
+                  className="opacity-0 group-hover:opacity-100 transition-colors"
+                  style={{ color: 'var(--ink-3)', background: 'none', border: 'none', cursor: 'pointer' }}
                 >
                   <X className="w-3 h-3" />
                 </button>
@@ -367,9 +416,11 @@ function CuentasManager({
           </div>
         ))}
 
-        {/* Add button or input */}
         {addingTipo === tipo ? (
-          <div className="flex items-center gap-1 bg-gray-700 rounded-full px-2 py-1">
+          <div
+            className="flex items-center gap-1 rounded-full px-2 py-1"
+            style={{ background: 'var(--surface-alt)', border: '1px solid var(--line)' }}
+          >
             <input
               autoFocus
               value={newNombre}
@@ -377,19 +428,35 @@ function CuentasManager({
               onKeyDown={(e) => { if (e.key === "Enter") handleAdd(); if (e.key === "Escape") { setAddingTipo(null); setNewNombre(""); } }}
               placeholder="Nombre..."
               maxLength={30}
-              className="bg-transparent text-white text-xs w-20 outline-none placeholder-gray-500"
+              className="bg-transparent text-xs w-20 outline-none"
+              style={{ color: 'var(--ink)', caretColor: 'var(--accent)' }}
             />
-            <button onClick={handleAdd} disabled={!newNombre.trim()} className="text-green-400 hover:text-green-300 disabled:text-gray-600 transition-colors">
+            <button
+              onClick={handleAdd}
+              disabled={!newNombre.trim()}
+              className="transition-colors disabled:opacity-40"
+              style={{ color: 'var(--positive)', background: 'none', border: 'none', cursor: 'pointer' }}
+            >
               <Check className="w-3.5 h-3.5" />
             </button>
-            <button onClick={() => { setAddingTipo(null); setNewNombre(""); }} className="text-gray-500 hover:text-gray-300 transition-colors">
+            <button
+              onClick={() => { setAddingTipo(null); setNewNombre(""); }}
+              className="transition-colors"
+              style={{ color: 'var(--ink-3)', background: 'none', border: 'none', cursor: 'pointer' }}
+            >
               <X className="w-3.5 h-3.5" />
             </button>
           </div>
         ) : (
           <button
             onClick={() => setAddingTipo(tipo)}
-            className="flex items-center gap-1 px-2.5 py-1.5 rounded-full text-xs text-gray-500 hover:text-green-400 bg-gray-800 border border-dashed border-gray-700 hover:border-green-600 transition-all"
+            className="flex items-center gap-1 px-2.5 py-1.5 rounded-full text-xs transition-all"
+            style={{
+              color: 'var(--ink-3)',
+              background: 'var(--surface-alt)',
+              border: '1px dashed var(--line)',
+              cursor: 'pointer',
+            }}
           >
             <Plus className="w-3 h-3" />
           </button>
@@ -399,7 +466,10 @@ function CuentasManager({
   );
 
   return (
-    <div className="bg-gray-900 ring-1 ring-gray-800 rounded-2xl p-4 space-y-4">
+    <div
+      className="rounded-2xl p-4 space-y-4"
+      style={{ background: 'var(--surface)', border: '1px solid var(--line)' }}
+    >
       <Section titulo="Dinero disponible" tipo="disponible" items={disponibles} />
       <Section titulo="Inversiones" tipo="inversion" items={inversiones} />
     </div>
@@ -413,11 +483,14 @@ function ChartTooltipActivos({ active, payload, label }: {
 }) {
   if (!active || !payload?.length) return null;
   return (
-    <div className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2.5 shadow-xl text-xs space-y-1">
-      <p className="font-semibold text-white mb-1">{label}</p>
+    <div
+      className="rounded-lg px-3 py-2.5 shadow-xl text-xs space-y-1"
+      style={{ background: 'var(--surface)', border: '1px solid var(--line)' }}
+    >
+      <p className="font-semibold mb-1" style={{ color: 'var(--ink)' }}>{label}</p>
       {payload.map((p) => (
         <p key={p.name} style={{ color: p.color }}>
-          {p.name}: <span className="font-semibold">{fmtUsdDec(p.value)}</span>
+          {p.name}: <span className="font-semibold num">{fmtUsdDec(p.value)}</span>
         </p>
       ))}
     </div>
@@ -523,7 +596,6 @@ export default function ActivosPage() {
   const disponibles = useMemo(() => cuentas.filter((c) => c.tipo === "disponible"), [cuentas]);
   const inversiones = useMemo(() => cuentas.filter((c) => c.tipo === "inversion"), [cuentas]);
 
-  // Compute totals for each snapshot
   const snapshotsComputed = useMemo(() => {
     return snapshots.map((snap, idx) => {
       const dispUsd = disponibles.reduce((a, c) => {
@@ -553,7 +625,6 @@ export default function ActivosPage() {
 
       const deltaUsd = prev ? totalUsd - prevTotalUsd : 0;
       const deltaPct = prev && prevTotalUsd > 0 ? (deltaUsd / prevTotalUsd) * 100 : 0;
-
       const dispArs = dispUsd * snap.usd_rate;
       const invArs = invUsd * snap.usd_rate;
 
@@ -561,7 +632,6 @@ export default function ActivosPage() {
     });
   }, [snapshots, disponibles, inversiones]);
 
-  // Chart data (chronological)
   const chartData = useMemo(() =>
     snapshotsComputed.map((s) => ({
       label: new Date(s.fecha + "T12:00:00").toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "2-digit" }),
@@ -575,8 +645,8 @@ export default function ActivosPage() {
   // ── Auth guard ──────────────────────────────────────────────────────────
 
   if (authLoading) return (
-    <div className="min-h-screen bg-gray-950 flex items-center justify-center">
-      <Loader2 className="w-8 h-8 animate-spin text-blue-400" />
+    <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--bg)' }}>
+      <Loader2 className="w-8 h-8 animate-spin" style={{ color: 'var(--accent)' }} />
     </div>
   );
   if (!user) { navigate("/", { replace: true }); return null; }
@@ -586,32 +656,36 @@ export default function ActivosPage() {
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <div className="min-h-screen bg-gray-950 flex flex-col">
-
+    <AppShell user={user}>
       {/* ── Top bar ── */}
-      <div className="bg-gray-900 border-b border-gray-800 sticky top-0 z-10">
+      <div
+        className="sticky top-0 z-10"
+        style={{ background: 'var(--surface)', borderBottom: '1px solid var(--line)' }}
+      >
         <div className="max-w-screen-2xl mx-auto flex items-center gap-4 px-4 py-3">
-          <button onClick={() => navigate("/")} className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-white transition-colors">
-            <ArrowLeft className="w-4 h-4" />
-            Volver
-          </button>
-          <div className="w-px h-5 bg-gray-700" />
           <div className="flex items-center gap-2">
-            <Wallet className="w-4 h-4 text-emerald-400" />
-            <h1 className="text-sm font-semibold text-white">Activos</h1>
+            <Wallet className="w-4 h-4" style={{ color: 'var(--accent)' }} />
+            <h1 className="text-sm font-semibold" style={{ color: 'var(--ink)' }}>Activos</h1>
           </div>
 
           <div className="ml-auto flex items-center gap-2">
             <button
               onClick={() => setShowSettings((v) => !v)}
-              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-medium transition-colors ${showSettings ? "bg-gray-700 text-white" : "text-gray-400 hover:text-white hover:bg-gray-800"}`}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-medium transition-colors"
+              style={{
+                background: showSettings ? 'var(--surface-alt)' : 'transparent',
+                color: showSettings ? 'var(--ink)' : 'var(--ink-3)',
+                border: showSettings ? '1px solid var(--line)' : '1px solid transparent',
+                cursor: 'pointer',
+              }}
             >
               <Settings2 className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">Cuentas</span>
             </button>
             <button
               onClick={() => { setEditingSnapshot(null); setModalOpen(true); }}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-medium bg-emerald-600 hover:bg-emerald-500 text-white transition-colors"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-medium transition-colors"
+              style={{ background: 'var(--accent)', color: 'var(--accent-ink)', border: 'none', cursor: 'pointer', borderRadius: 7 }}
             >
               <Plus className="w-4 h-4" />
               Nuevo registro
@@ -624,7 +698,6 @@ export default function ActivosPage() {
       <main className="flex-1 overflow-auto scrollbar-thin">
         <div className="max-w-screen-2xl mx-auto p-4 lg:p-6 space-y-5">
 
-          {/* ── Accounts manager (collapsible) ── */}
           {showSettings && (
             <CuentasManager
               cuentas={cuentas}
@@ -635,20 +708,21 @@ export default function ActivosPage() {
           )}
 
           {loading ? (
-            <div className="flex items-center justify-center h-64 gap-3 text-gray-400">
-              <Loader2 className="w-6 h-6 animate-spin text-emerald-400" />
+            <div className="flex items-center justify-center h-64 gap-3" style={{ color: 'var(--ink-2)' }}>
+              <Loader2 className="w-6 h-6 animate-spin" style={{ color: 'var(--accent)' }} />
               <span className="text-sm">Cargando activos...</span>
             </div>
           ) : snapshots.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-24 gap-4 text-gray-600">
+            <div className="flex flex-col items-center justify-center py-24 gap-4" style={{ color: 'var(--ink-3)' }}>
               <Wallet className="w-10 h-10" />
               <p className="text-sm">No hay registros todavía</p>
-              <p className="text-xs text-gray-700 max-w-xs text-center">
+              <p className="text-xs max-w-xs text-center" style={{ color: 'var(--ink-3)' }}>
                 Primero agregá tus cuentas usando el botón "Cuentas", luego cargá tu primer registro.
               </p>
               <button
                 onClick={() => { setEditingSnapshot(null); setModalOpen(true); }}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium bg-emerald-600 hover:bg-emerald-500 text-white transition-colors"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium"
+                style={{ background: 'var(--accent)', color: 'var(--accent-ink)', border: 'none', borderRadius: 7, cursor: 'pointer' }}
               >
                 <Plus className="w-3.5 h-3.5" />
                 Primer registro
@@ -659,28 +733,46 @@ export default function ActivosPage() {
               {/* ── Latest snapshot stat cards ── */}
               {latestSnapshot && (
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                  <div className="bg-gray-900 ring-1 ring-emerald-800/40 rounded-2xl p-4">
-                    <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Portafolio total</p>
-                    <p className="text-2xl font-bold tabular-nums text-emerald-300">{fmtUsd(latestSnapshot.totalUsd)}</p>
-                    <p className="text-xs text-gray-600 mt-1 tabular-nums">{fmtArs(latestSnapshot.totalArs)}</p>
+                  <div
+                    className="rounded-2xl p-4"
+                    style={{ background: 'var(--surface)', border: '1px solid var(--line)' }}
+                  >
+                    <p className="text-xs uppercase tracking-wider mb-1" style={{ color: 'var(--ink-3)' }}>Portafolio total</p>
+                    <p className="text-2xl font-bold num" style={{ color: 'var(--positive)' }}>{fmtUsd(latestSnapshot.totalUsd)}</p>
+                    <p className="text-xs mt-1 num" style={{ color: 'var(--ink-3)' }}>{fmtArs(latestSnapshot.totalArs)}</p>
                   </div>
-                  <div className="bg-gray-900 ring-1 ring-blue-800/40 rounded-2xl p-4">
-                    <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Disponible</p>
-                    <p className="text-2xl font-bold tabular-nums text-blue-300">{fmtUsd(latestSnapshot.dispUsd)}</p>
-                    <p className="text-xs text-gray-600 mt-1 tabular-nums">{fmtArs(latestSnapshot.dispArs)}</p>
+                  <div
+                    className="rounded-2xl p-4"
+                    style={{ background: 'var(--surface)', border: '1px solid var(--line)' }}
+                  >
+                    <p className="text-xs uppercase tracking-wider mb-1" style={{ color: 'var(--ink-3)' }}>Disponible</p>
+                    <p className="text-2xl font-bold num" style={{ color: 'var(--accent)' }}>{fmtUsd(latestSnapshot.dispUsd)}</p>
+                    <p className="text-xs mt-1 num" style={{ color: 'var(--ink-3)' }}>{fmtArs(latestSnapshot.dispArs)}</p>
                   </div>
-                  <div className="bg-gray-900 ring-1 ring-purple-800/40 rounded-2xl p-4">
-                    <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Inversiones</p>
-                    <p className="text-2xl font-bold tabular-nums text-purple-300">{fmtUsd(latestSnapshot.invUsd)}</p>
-                    <p className="text-xs text-gray-600 mt-1 tabular-nums">{fmtArs(latestSnapshot.invArs)}</p>
+                  <div
+                    className="rounded-2xl p-4"
+                    style={{ background: 'var(--surface)', border: '1px solid var(--line)' }}
+                  >
+                    <p className="text-xs uppercase tracking-wider mb-1" style={{ color: 'var(--ink-3)' }}>Inversiones</p>
+                    <p className="text-2xl font-bold num" style={{ color: 'var(--warn)' }}>{fmtUsd(latestSnapshot.invUsd)}</p>
+                    <p className="text-xs mt-1 num" style={{ color: 'var(--ink-3)' }}>{fmtArs(latestSnapshot.invArs)}</p>
                   </div>
-                  <div className={`bg-gray-900 ring-1 rounded-2xl p-4 ${latestSnapshot.deltaUsd >= 0 ? "ring-emerald-800/40" : "ring-red-800/40"}`}>
-                    <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Variación (vs anterior)</p>
-                    <p className={`text-2xl font-bold tabular-nums ${latestSnapshot.deltaUsd >= 0 ? "text-emerald-300" : "text-red-400"}`}>
+                  <div
+                    className="rounded-2xl p-4"
+                    style={{ background: 'var(--surface)', border: '1px solid var(--line)' }}
+                  >
+                    <p className="text-xs uppercase tracking-wider mb-1" style={{ color: 'var(--ink-3)' }}>Variación (vs anterior)</p>
+                    <p
+                      className="text-2xl font-bold num"
+                      style={{ color: latestSnapshot.deltaUsd >= 0 ? 'var(--positive)' : 'var(--negative)' }}
+                    >
                       {latestSnapshot.deltaUsd >= 0 ? "+" : ""}{fmtUsd(latestSnapshot.deltaUsd)}
                     </p>
                     {latestSnapshot.deltaPct !== 0 && (
-                      <p className={`text-xs mt-1 tabular-nums ${latestSnapshot.deltaPct >= 0 ? "text-emerald-600" : "text-red-600"}`}>
+                      <p
+                        className="text-xs mt-1 num"
+                        style={{ color: latestSnapshot.deltaPct >= 0 ? 'var(--positive)' : 'var(--negative)' }}
+                      >
                         {fmtPct(latestSnapshot.deltaPct)}
                       </p>
                     )}
@@ -690,23 +782,31 @@ export default function ActivosPage() {
 
               {/* ── Evolution chart ── */}
               {chartData.length > 1 && (
-                <div className="bg-gray-900 ring-1 ring-gray-800 rounded-2xl p-4">
-                  <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">Evolución del portafolio (USD)</h2>
+                <div
+                  className="rounded-2xl p-4"
+                  style={{ background: 'var(--surface)', border: '1px solid var(--line)' }}
+                >
+                  <h2 className="text-xs font-semibold uppercase tracking-wider mb-4" style={{ color: 'var(--ink-3)' }}>
+                    Evolución del portafolio (USD)
+                  </h2>
                   <div style={{ height: 220 }}>
                     <ResponsiveContainer width="100%" height="100%">
                       <LineChart data={chartData} margin={{ top: 4, right: 8, left: 0, bottom: 4 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#1F2937" vertical={false} />
-                        <XAxis dataKey="label" tick={{ fill: "#6B7280", fontSize: 10 }} axisLine={false} tickLine={false} />
+                        <CartesianGrid strokeDasharray="3 3" stroke="var(--line)" vertical={false} />
+                        <XAxis dataKey="label" tick={{ fill: 'var(--ink-3)', fontSize: 10 }} axisLine={false} tickLine={false} />
                         <YAxis
-                          tick={{ fill: "#6B7280", fontSize: 10 }}
+                          tick={{ fill: 'var(--ink-3)', fontSize: 10 }}
                           tickFormatter={(v) => v >= 1000 ? `$${(v / 1000).toFixed(0)}k` : `$${v}`}
                           width={52} axisLine={false} tickLine={false}
                         />
                         <Tooltip content={<ChartTooltipActivos />} />
-                        <Legend wrapperStyle={{ fontSize: 11, paddingTop: 8 }} formatter={(v) => <span style={{ color: "#9CA3AF" }}>{v}</span>} />
-                        <Line type="monotone" dataKey="Portafolio USD" stroke="#10B981" strokeWidth={2.5} dot={{ fill: "#10B981", r: 3 }} activeDot={{ r: 5 }} />
-                        <Line type="monotone" dataKey="Disponible" stroke="#3B82F6" strokeWidth={1.5} dot={false} strokeDasharray="4 2" />
-                        <Line type="monotone" dataKey="Inversiones" stroke="#A855F7" strokeWidth={1.5} dot={false} strokeDasharray="4 2" />
+                        <Legend
+                          wrapperStyle={{ fontSize: 11, paddingTop: 8 }}
+                          formatter={(v) => <span style={{ color: 'var(--ink-2)' }}>{v}</span>}
+                        />
+                        <Line type="monotone" dataKey="Portafolio USD" stroke="var(--positive)" strokeWidth={2.5} dot={{ fill: 'var(--positive)', r: 3 }} activeDot={{ r: 5 }} />
+                        <Line type="monotone" dataKey="Disponible" stroke="var(--accent)" strokeWidth={1.5} dot={false} strokeDasharray="4 2" />
+                        <Line type="monotone" dataKey="Inversiones" stroke="var(--warn)" strokeWidth={1.5} dot={false} strokeDasharray="4 2" />
                       </LineChart>
                     </ResponsiveContainer>
                   </div>
@@ -714,30 +814,38 @@ export default function ActivosPage() {
               )}
 
               {/* ── Snapshots table ── */}
-              <div className="bg-gray-900 ring-1 ring-gray-800 rounded-2xl overflow-hidden">
-                <div className="px-4 py-3 border-b border-gray-800">
-                  <h2 className="text-sm font-semibold text-white">Historial de registros</h2>
+              <div
+                className="rounded-2xl overflow-hidden"
+                style={{ background: 'var(--surface)', border: '1px solid var(--line)' }}
+              >
+                <div className="px-4 py-3" style={{ borderBottom: '1px solid var(--line)' }}>
+                  <h2 className="text-sm font-semibold" style={{ color: 'var(--ink)' }}>Historial de registros</h2>
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm min-w-max">
                     <thead>
-                      <tr className="border-b border-gray-800 bg-gray-900/60">
-                        <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-500 uppercase tracking-wider sticky left-0 bg-gray-900/95">Fecha</th>
+                      <tr style={{ borderBottom: '1px solid var(--line)', background: 'var(--surface-alt)' }}>
+                        <th
+                          className="text-left px-4 py-2.5 text-xs font-semibold uppercase tracking-wider sticky left-0"
+                          style={{ color: 'var(--ink-3)', background: 'var(--surface-alt)' }}
+                        >
+                          Fecha
+                        </th>
                         {disponibles.map((c) => (
-                          <th key={c.id} className="text-right px-3 py-2.5 text-xs font-semibold text-blue-600/70 uppercase tracking-wider whitespace-nowrap">{c.nombre}</th>
+                          <th key={c.id} className="text-right px-3 py-2.5 text-xs font-semibold uppercase tracking-wider whitespace-nowrap" style={{ color: 'var(--accent)' }}>{c.nombre}</th>
                         ))}
-                        <th className="text-right px-3 py-2.5 text-xs font-semibold text-blue-500/70 uppercase tracking-wider whitespace-nowrap">Disponible</th>
+                        <th className="text-right px-3 py-2.5 text-xs font-semibold uppercase tracking-wider whitespace-nowrap" style={{ color: 'var(--accent)' }}>Disponible</th>
                         {inversiones.map((c) => (
-                          <th key={c.id} className="text-right px-3 py-2.5 text-xs font-semibold text-purple-600/70 uppercase tracking-wider whitespace-nowrap">{c.nombre}</th>
+                          <th key={c.id} className="text-right px-3 py-2.5 text-xs font-semibold uppercase tracking-wider whitespace-nowrap" style={{ color: 'var(--warn)' }}>{c.nombre}</th>
                         ))}
-                        <th className="text-right px-3 py-2.5 text-xs font-semibold text-purple-500/70 uppercase tracking-wider whitespace-nowrap">Inversiones</th>
-                        <th className="text-right px-3 py-2.5 text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">Dólar</th>
-                        <th className="text-right px-4 py-2.5 text-xs font-semibold text-emerald-500/80 uppercase tracking-wider whitespace-nowrap">Total USD</th>
-                        <th className="text-right px-3 py-2.5 text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">Δ</th>
+                        <th className="text-right px-3 py-2.5 text-xs font-semibold uppercase tracking-wider whitespace-nowrap" style={{ color: 'var(--warn)' }}>Inversiones</th>
+                        <th className="text-right px-3 py-2.5 text-xs font-semibold uppercase tracking-wider whitespace-nowrap" style={{ color: 'var(--ink-3)' }}>Dólar</th>
+                        <th className="text-right px-4 py-2.5 text-xs font-semibold uppercase tracking-wider whitespace-nowrap" style={{ color: 'var(--positive)' }}>Total USD</th>
+                        <th className="text-right px-3 py-2.5 text-xs font-semibold uppercase tracking-wider whitespace-nowrap" style={{ color: 'var(--ink-3)' }}>Δ</th>
                         <th className="px-4 py-2.5 w-20" />
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-800/60">
+                    <tbody>
                       {[...snapshotsComputed].reverse().map((snap) => {
                         const isConfirming = confirmDeleteId === snap.id;
                         const isDeleting = deletingId === snap.id;
@@ -745,78 +853,86 @@ export default function ActivosPage() {
                           day: "2-digit", month: "2-digit", year: "numeric",
                         });
                         return (
-                          <tr key={snap.id} className={`transition-colors ${isConfirming ? "bg-red-950/20" : "hover:bg-gray-800/30"}`}>
-                            <td className="px-4 py-3 text-gray-300 text-xs tabular-nums whitespace-nowrap font-medium sticky left-0 bg-gray-900/80">
+                          <tr
+                            key={snap.id}
+                            className={isConfirming ? "" : "row-hover"}
+                            style={{
+                              transition: 'background 0.15s',
+                              background: isConfirming ? 'var(--neg-soft)' : undefined,
+                              borderTop: '1px solid var(--line-soft)',
+                            }}
+                          >
+                            <td
+                              className="px-4 py-3 text-xs num whitespace-nowrap font-medium sticky left-0"
+                              style={{ color: 'var(--ink-2)', background: 'var(--surface)' }}
+                            >
                               {fechaLabel}
                             </td>
 
-                            {/* Disponible per-account values */}
                             {disponibles.map((c) => {
                               const item = snap.activos_items.find((i) => i.cuenta_id === c.id);
                               return (
-                                <td key={c.id} className="px-3 py-3 text-right text-gray-400 text-xs tabular-nums whitespace-nowrap">
-                                  {item ? fmtUsd(item.valor) : <span className="text-gray-700">—</span>}
+                                <td key={c.id} className="px-3 py-3 text-right text-xs num whitespace-nowrap" style={{ color: 'var(--ink-2)' }}>
+                                  {item ? fmtUsd(item.valor) : <span style={{ color: 'var(--line)' }}>—</span>}
                                 </td>
                               );
                             })}
 
-                            {/* Disponible total */}
-                            <td className="px-3 py-3 text-right text-blue-300 font-semibold text-xs tabular-nums whitespace-nowrap">
+                            <td className="px-3 py-3 text-right font-semibold text-xs num whitespace-nowrap" style={{ color: 'var(--accent)' }}>
                               {fmtUsd(snap.dispUsd)}
                             </td>
 
-                            {/* Inversion per-account values (in ARS) */}
                             {inversiones.map((c) => {
                               const item = snap.activos_items.find((i) => i.cuenta_id === c.id);
                               return (
-                                <td key={c.id} className="px-3 py-3 text-right text-gray-400 text-xs tabular-nums whitespace-nowrap">
-                                  {item ? fmtArs(item.valor) : <span className="text-gray-700">—</span>}
+                                <td key={c.id} className="px-3 py-3 text-right text-xs num whitespace-nowrap" style={{ color: 'var(--ink-2)' }}>
+                                  {item ? fmtArs(item.valor) : <span style={{ color: 'var(--line)' }}>—</span>}
                                 </td>
                               );
                             })}
 
-                            {/* Inversion total in USD */}
-                            <td className="px-3 py-3 text-right text-purple-300 font-semibold text-xs tabular-nums whitespace-nowrap">
+                            <td className="px-3 py-3 text-right font-semibold text-xs num whitespace-nowrap" style={{ color: 'var(--warn)' }}>
                               {fmtUsd(snap.invUsd)}
                             </td>
 
-                            {/* Dollar rate */}
-                            <td className="px-3 py-3 text-right text-gray-500 text-xs tabular-nums whitespace-nowrap">
+                            <td className="px-3 py-3 text-right text-xs num whitespace-nowrap" style={{ color: 'var(--ink-3)' }}>
                               {snap.usd_rate.toLocaleString("es-AR")}
                             </td>
 
-                            {/* Grand total */}
-                            <td className="px-4 py-3 text-right text-emerald-300 font-bold text-sm tabular-nums whitespace-nowrap">
+                            <td className="px-4 py-3 text-right font-bold text-sm num whitespace-nowrap" style={{ color: 'var(--positive)' }}>
                               {fmtUsd(snap.totalUsd)}
                             </td>
 
-                            {/* Delta */}
-                            <td className="px-3 py-3 text-right text-xs tabular-nums whitespace-nowrap">
+                            <td className="px-3 py-3 text-right text-xs num whitespace-nowrap">
                               {snap.deltaUsd !== 0 ? (
-                                <span className={`flex items-center justify-end gap-0.5 font-semibold ${snap.deltaUsd > 0 ? "text-emerald-400" : "text-red-400"}`}>
+                                <span
+                                  className="flex items-center justify-end gap-0.5 font-semibold"
+                                  style={{ color: snap.deltaUsd > 0 ? 'var(--positive)' : 'var(--negative)' }}
+                                >
                                   {snap.deltaUsd > 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
                                   {fmtPct(snap.deltaPct)}
                                 </span>
                               ) : (
-                                <span className="text-gray-700">—</span>
+                                <span style={{ color: 'var(--line)' }}>—</span>
                               )}
                             </td>
 
-                            {/* Actions */}
                             <td className="px-4 py-3">
                               {isConfirming ? (
                                 <div className="flex items-center justify-end gap-1">
                                   <button
                                     onClick={() => handleDeleteSnapshot(snap.id)}
                                     disabled={isDeleting}
-                                    className="px-2 py-1 rounded-lg text-xs font-semibold bg-red-600 hover:bg-red-500 text-white transition-colors disabled:opacity-50 flex items-center gap-1"
+                                    className="px-2 py-1 rounded-lg text-xs font-semibold flex items-center gap-1 disabled:opacity-50 transition-colors"
+                                    style={{ background: 'var(--negative)', color: '#fff', border: 'none', cursor: 'pointer' }}
                                   >
                                     {isDeleting && <Loader2 className="w-3 h-3 animate-spin" />}
                                     Eliminar
                                   </button>
                                   <button
                                     onClick={() => setConfirmDeleteId(null)}
-                                    className="px-2 py-1 rounded-lg text-xs font-semibold bg-gray-700 hover:bg-gray-600 text-gray-300 transition-colors"
+                                    className="px-2 py-1 rounded-lg text-xs font-semibold transition-colors"
+                                    style={{ background: 'var(--surface-alt)', color: 'var(--ink-2)', border: '1px solid var(--line)', cursor: 'pointer' }}
                                   >
                                     Cancelar
                                   </button>
@@ -825,14 +941,16 @@ export default function ActivosPage() {
                                 <div className="flex items-center justify-end gap-1">
                                   <button
                                     onClick={() => { setEditingSnapshot(snap); setModalOpen(true); }}
-                                    className="p-1.5 rounded-lg text-gray-500 hover:text-blue-400 hover:bg-gray-700 transition-colors"
+                                    className="p-1.5 rounded-lg transition-colors"
+                                    style={{ color: 'var(--ink-3)', background: 'transparent', border: 'none', cursor: 'pointer' }}
                                     title="Editar"
                                   >
                                     <Pencil className="w-3.5 h-3.5" />
                                   </button>
                                   <button
                                     onClick={() => setConfirmDeleteId(snap.id)}
-                                    className="p-1.5 rounded-lg text-gray-500 hover:text-red-400 hover:bg-gray-700 transition-colors"
+                                    className="p-1.5 rounded-lg transition-colors"
+                                    style={{ color: 'var(--ink-3)', background: 'transparent', border: 'none', cursor: 'pointer' }}
                                     title="Eliminar"
                                   >
                                     <Trash2 className="w-3.5 h-3.5" />
@@ -852,7 +970,6 @@ export default function ActivosPage() {
         </div>
       </main>
 
-      {/* ── Snapshot modal ── */}
       {modalOpen && (
         <SnapshotModal
           snapshot={editingSnapshot}
@@ -862,6 +979,6 @@ export default function ActivosPage() {
           onSave={handleSaveSnapshot}
         />
       )}
-    </div>
+    </AppShell>
   );
 }
