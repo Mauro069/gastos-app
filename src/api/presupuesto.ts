@@ -28,13 +28,15 @@ export async function fetchPresupuesto(
   } as Presupuesto;
 }
 
+type ItemPayload = Omit<PresupuestoItem, "id" | "presupuesto_id">
+
 /** Create a new presupuesto with its items. */
 export async function createPresupuesto(payload: {
   year: number;
   month: number;
   total_usd: number;
   usd_rate: number;
-  items: Omit<PresupuestoItem, "id" | "presupuesto_id">[];
+  items: ItemPayload[];
 }): Promise<Presupuesto> {
   const {
     data: { user },
@@ -74,7 +76,7 @@ export async function updatePresupuesto(
   payload: {
     total_usd?: number;
     usd_rate?: number;
-    items: Omit<PresupuestoItem, "id" | "presupuesto_id">[];
+    items: ItemPayload[];
   },
 ): Promise<Presupuesto> {
   // Update header fields

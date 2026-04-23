@@ -1,8 +1,15 @@
 export interface PresupuestoItem {
   id?: string
   presupuesto_id?: string
-  concepto: string      // matches concepto string used in gastos
+  /** Single category. Null when the item is a group or destino without a linked category. */
+  concepto?: string | null
+  /** Display name for groups and destinos (required when conceptos is set or es_destino is true). */
+  alias?: string | null
+  /** List of categories for a group line. Null for single-category lines and destinos. */
+  conceptos?: string[] | null
   monto_usd: number
+  /** True for "destino" items (Ahorro, Inversiones, etc.) shown in the priority section. */
+  es_destino?: boolean | null
 }
 
 export interface Presupuesto {
