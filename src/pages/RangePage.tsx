@@ -313,9 +313,23 @@ function DayGroup({
             </span>
 
             {/* Nota */}
-            <span className="text-xs truncate px-3" style={{ color: g.nota ? "var(--ink-2)" : "var(--ink-3)" }}>
-              {g.nota || "—"}
-            </span>
+            <div className="flex items-center gap-2 px-3 min-w-0">
+              <span className="text-xs truncate" style={{ color: g.nota ? "var(--ink-2)" : "var(--ink-3)" }}>
+                {g.nota || "—"}
+              </span>
+              {g.fijo && (
+                <span
+                  className="flex-shrink-0 text-[9px] font-semibold px-1.5 py-0.5 rounded uppercase tracking-wider"
+                  style={{
+                    background: "rgba(184,208,107,0.12)",
+                    color: "var(--accent)",
+                    border: "1px solid rgba(184,208,107,0.3)",
+                  }}
+                >
+                  Fijo
+                </span>
+              )}
+            </div>
 
             {/* Actions */}
             <div className="flex items-center justify-end gap-0.5">
@@ -389,6 +403,7 @@ export default function RangePage() {
   const [search, setSearch] = useState("");
   const [selectedFormas, setSelectedFormas] = useState<Set<string>>(new Set());
   const [selectedConceptos, setSelectedConceptos] = useState<Set<string>>(new Set());
+  const [tipoFilter, setTipoFilter] = useState<"todos" | "fijos" | "variables">("todos");
   const [collapsedMonths, setCollapsedMonths] = useState<Set<string>>(new Set());
   const [editingGasto, setEditingGasto] = useState<Gasto | null>(null);
   const [showModal, setShowModal] = useState(false);
@@ -448,6 +463,8 @@ export default function RangePage() {
     return gastos.filter((g) => {
       if (selectedFormas.size > 0 && !selectedFormas.has(g.forma)) return false;
       if (selectedConceptos.size > 0 && !selectedConceptos.has(g.concepto)) return false;
+      if (tipoFilter === "fijos" && !g.fijo) return false;
+      if (tipoFilter === "variables" && g.fijo) return false;
       if (search.trim()) {
         const q = search.toLowerCase();
         return (
@@ -459,7 +476,7 @@ export default function RangePage() {
       }
       return true;
     });
-  }, [gastos, search, selectedFormas, selectedConceptos]);
+  }, [gastos, search, selectedFormas, selectedConceptos, tipoFilter]);
 
   // ── Group by month → day ──────────────────────────────────────────────────
   const byMonth = useMemo(() => {
@@ -577,6 +594,34 @@ export default function RangePage() {
               />
             </div>
 
+            {/* Tipo filter (Fijos / Variables) */}
+            <div className="flex flex-col gap-1">
+              <span className="text-xs uppercase tracking-wider" style={{ color: 'var(--ink-3)' }}>Tipo</span>
+              <div className="flex items-center rounded-lg overflow-hidden" style={{ border: '1px solid var(--line)', background: 'var(--surface)' }}>
+                {(["todos", "fijos", "variables"] as const).map((opt) => {
+                  const active = tipoFilter === opt;
+                  const label = opt === "todos" ? "Todos" : opt === "fijos" ? "🔁 Fijos" : "Variable";
+                  return (
+                    <button
+                      key={opt}
+                      type="button"
+                      onClick={() => setTipoFilter(opt)}
+                      className="px-3 py-1.5 text-xs font-medium transition-colors whitespace-nowrap"
+                      style={{
+                        background: active ? 'var(--accent-soft)' : 'transparent',
+                        color: active ? 'var(--accent)' : 'var(--ink-2)',
+                        border: 'none',
+                        cursor: 'pointer',
+                        borderRight: opt !== "variables" ? '1px solid var(--line)' : 'none',
+                      }}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
             {/* Divider */}
             <div className="w-px h-8 hidden sm:block" style={{ background: 'var(--line)' }} />
 
@@ -637,7 +682,7 @@ export default function RangePage() {
               <div className="flex flex-col items-center justify-center h-40 gap-2" style={{ color: 'var(--ink-3)' }}>
                 <CalendarRange className="w-8 h-8" />
                 <p className="text-sm">
-                  {search || selectedFormas.size > 0 || selectedConceptos.size > 0
+                  {search || selectedFormas.size > 0 || selectedConceptos.size > 0 || tipoFilter !== "todos"
                     ? "Sin resultados para los filtros aplicados"
                     : "No hay gastos en este período"}
                 </p>

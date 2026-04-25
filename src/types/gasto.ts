@@ -30,6 +30,7 @@ export interface Gasto {
   forma: Forma
   concepto: Concepto
   nota?: string
+  fijo?: boolean
   user_id?: string
   created_at?: string
   createdAt?: string
@@ -44,4 +45,5 @@ export interface GastoFormState {
   forma: Forma
   concepto: Concepto
   nota: string
+  fijo: boolean
 }

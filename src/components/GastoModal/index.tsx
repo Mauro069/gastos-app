@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { X, Delete } from "lucide-react";
+import { X, Delete, RefreshCw } from "lucide-react";
 import type { GastoModalProps } from "@/types";
 import { useUserSettings } from "@/contexts";
 import { useAsyncSubmit } from "@/hooks";
@@ -83,6 +83,7 @@ export default function GastoModal({
   const [concepto, setConcepto] = useState<string>("Salidas");
   const [nota, setNota] = useState("");
   const [fecha, setFecha] = useState(today());
+  const [fijo, setFijo] = useState(false);
   const [catManager, setCatManager] = useState<"formas" | "conceptos" | null>(null);
 
   // Populate when editing
@@ -93,12 +94,14 @@ export default function GastoModal({
       setConcepto(gasto.concepto);
       setNota(gasto.nota ?? "");
       setFecha(gasto.fecha);
+      setFijo(gasto.fijo ?? false);
     } else {
       setAmountStr("0");
       setForma("Lemon");
       setConcepto("Salidas");
       setNota("");
       setFecha(defaultDate || today());
+      setFijo(false);
     }
   }, [gasto, defaultDate]);
 
@@ -135,7 +138,7 @@ export default function GastoModal({
       return;
     }
     await execute(async () => {
-      await onSave({ fecha, cantidad: numericAmount, forma: forma as never, concepto: concepto as never, nota: nota.trim() || undefined });
+      await onSave({ fecha, cantidad: numericAmount, forma: forma as never, concepto: concepto as never, nota: nota.trim() || undefined, fijo });
       onClose();
     });
   };
@@ -271,6 +274,50 @@ export default function GastoModal({
                   }}
                 />
               </div>
+
+              {/* Toggle Fijo */}
+              <button
+                type="button"
+                onClick={() => setFijo((v) => !v)}
+                className="w-full flex items-center justify-between rounded-xl px-4 py-3 transition-all"
+                style={{
+                  background: fijo ? "rgba(184,208,107,0.08)" : "var(--surface-alt)",
+                  border: `1px solid ${fijo ? "var(--accent)" : "var(--line)"}`,
+                  cursor: "pointer",
+                }}
+              >
+                <div className="flex items-center gap-2.5">
+                  <RefreshCw size={15} style={{ color: fijo ? "var(--accent)" : "var(--ink-3)", flexShrink: 0 }} />
+                  <div className="text-left">
+                    <p className="text-sm font-medium" style={{ color: fijo ? "var(--accent)" : "var(--ink)" }}>
+                      Gasto fijo
+                    </p>
+                    <p className="text-[11px]" style={{ color: "var(--ink-3)" }}>
+                      Se repite todos los meses (gym, Spotify, etc.)
+                    </p>
+                  </div>
+                </div>
+                {/* Toggle pill */}
+                <div
+                  className="relative flex-shrink-0 rounded-full transition-all"
+                  style={{
+                    width: 40,
+                    height: 22,
+                    background: fijo ? "var(--accent)" : "var(--line)",
+                  }}
+                >
+                  <div
+                    className="absolute top-[3px] rounded-full transition-all"
+                    style={{
+                      width: 16,
+                      height: 16,
+                      background: "#fff",
+                      left: fijo ? 21 : 3,
+                      boxShadow: "0 1px 3px rgba(0,0,0,0.3)",
+                    }}
+                  />
+                </div>
+              </button>
 
               {/* FORMA DE PAGO */}
               <div>

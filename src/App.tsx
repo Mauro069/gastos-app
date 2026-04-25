@@ -16,6 +16,7 @@ import {
   ArrowUpRight,
   Search,
   Receipt,
+  RefreshCw,
 } from "lucide-react";
 import { GastosTable, Landing, ImportModal, AppShell, MonthPicker } from "@/components";
 import { fetchGastosByYear, fetchUsdRates, fetchPresupuesto } from "@/api";
@@ -368,6 +369,18 @@ export default function App() {
         .reduce((acc, g) => acc + Number(g.cantidad), 0),
     [gastosDelMes],
   );
+
+  const gastosFijosDelMes = useMemo(
+    () => gastosDelMes.filter((g) => g.fijo),
+    [gastosDelMes],
+  );
+
+  const totalFijosMes = useMemo(
+    () => gastosFijosDelMes.reduce((acc, g) => acc + Number(g.cantidad), 0),
+    [gastosFijosDelMes],
+  );
+
+  const pctFijosDeTotales = totalMes > 0 ? (totalFijosMes / totalMes) * 100 : 0;
 
   const delta =
     prevTotalMes > 0 ? ((totalMes - prevTotalMes) / prevTotalMes) * 100 : null;
@@ -740,6 +753,68 @@ export default function App() {
                 </button>
               );
             })()}
+            {/* ── Gastos fijos del mes ── */}
+            {gastosFijosDelMes.length > 0 && (
+              <div
+                className="rounded-xl overflow-hidden"
+                style={{ background: "var(--surface)", border: "1px solid var(--line)" }}
+              >
+                <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: "1px solid var(--line)" }}>
+                  <div className="flex items-center gap-2">
+                    <RefreshCw size={13} style={{ color: "var(--accent)", flexShrink: 0 }} />
+                    <h2 className="text-sm font-medium" style={{ color: "var(--ink)" }}>
+                      Gastos fijos
+                      <span className="num ml-2 text-xs" style={{ color: "var(--ink-3)" }}>
+                        {MONTH_FULL[selectedMonth]}
+                      </span>
+                    </h2>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs" style={{ color: "var(--ink-3)" }}>
+                      {gastosFijosDelMes.length} {gastosFijosDelMes.length === 1 ? "gasto" : "gastos"} · {pctFijosDeTotales.toFixed(0)}% del total
+                    </span>
+                    <span className="num text-sm font-semibold" style={{ color: "var(--accent)" }}>
+                      {fmtArs(totalFijosMes)}
+                    </span>
+                  </div>
+                </div>
+                <div className="px-4 py-3 flex flex-col gap-2">
+                  {gastosFijosDelMes
+                    .sort((a, b) => Number(b.cantidad) - Number(a.cantidad))
+                    .map((g) => {
+                      const pct = totalFijosMes > 0 ? (Number(g.cantidad) / totalFijosMes) * 100 : 0;
+                      return (
+                        <div key={g.id} className="flex items-center gap-3">
+                          <span className="text-xs truncate flex-1" style={{ color: "var(--ink-2)" }}>
+                            {g.nota || g.concepto}
+                          </span>
+                          <div
+                            className="rounded-full overflow-hidden"
+                            style={{ width: 60, height: 3, background: "var(--surface-alt)", flexShrink: 0 }}
+                          >
+                            <div style={{ width: `${pct}%`, height: "100%", background: "var(--accent)", opacity: 0.6, borderRadius: 99 }} />
+                          </div>
+                          <span className="num text-xs font-medium text-right" style={{ color: "var(--ink)", minWidth: 80 }}>
+                            {fmtArs(Number(g.cantidad))}
+                          </span>
+                        </div>
+                      );
+                    })}
+                </div>
+                <div
+                  className="flex items-center justify-between px-4 py-2.5"
+                  style={{ borderTop: "1px solid var(--line)", background: "var(--surface-alt)" }}
+                >
+                  <span className="text-[11px] uppercase tracking-wider" style={{ color: "var(--ink-3)" }}>
+                    Comprometido este mes
+                  </span>
+                  <span className="num text-sm font-bold" style={{ color: "var(--accent)" }}>
+                    {fmtArs(totalFijosMes)}
+                  </span>
+                </div>
+              </div>
+            )}
+
             {/* ── Charts row ── */}
             <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-4">
               {/* Daily evolution bar chart */}

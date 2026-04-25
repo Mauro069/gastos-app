@@ -71,3 +71,10 @@ export async function deleteManyGastos(ids: string[]): Promise<{ ok: boolean }> 
   if (error) throw error;
   return { ok: true };
 }
+
+export async function setFijoManyGastos(ids: string[], fijo: boolean): Promise<{ ok: boolean }> {
+  if (ids.length === 0) return { ok: true };
+  const { error } = await supabase.from("gastos").update({ fijo }).in("id", ids);
+  if (error) throw error;
+  return { ok: true };
+}

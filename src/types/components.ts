@@ -39,6 +39,7 @@ export interface GastoModalProps {
       forma: string;
       concepto: string;
       nota?: string;
+      fijo?: boolean;
     },
   ) => Promise<void>;
 }
