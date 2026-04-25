@@ -210,6 +210,7 @@ export default function GastosTable({
               <div key={date}>
                 {/* Day header — same style as Categorías column dividers */}
                 <div
+                  id={`day-${date}`}
                   className="flex items-center justify-between px-4 py-2 sticky top-0"
                   style={{ background: "var(--surface-alt)", borderBottom: "1px solid var(--line)", zIndex: 5 }}
                 >

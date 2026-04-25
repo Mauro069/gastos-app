@@ -813,7 +813,17 @@ export default function App() {
                         content={<DayBarTooltip />}
                         cursor={{ fill: "var(--surface-alt)", radius: 4 }}
                       />
-                      <Bar dataKey="total" radius={[4, 4, 0, 0]}>
+                      <Bar
+                        dataKey="total"
+                        radius={[4, 4, 0, 0]}
+                        cursor="pointer"
+                        onClick={(data: { day: number; total: number }) => {
+                          if (!data?.day) return;
+                          const dateStr = `${selectedYear}-${String(selectedMonth + 1).padStart(2, "0")}-${String(data.day).padStart(2, "0")}`;
+                          const el = document.getElementById(`day-${dateStr}`);
+                          el?.scrollIntoView({ behavior: "smooth", block: "start" });
+                        }}
+                      >
                         {dailyData
                           .filter((d) => d.total > 0 || d.isToday)
                           .map((d) => (
