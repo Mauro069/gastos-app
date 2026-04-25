@@ -8,8 +8,6 @@ import {
   Trash2,
   TrendingUp,
   DollarSign,
-  TrendingDown,
-  Minus,
 } from "lucide-react";
 import {
   BarChart,
@@ -118,27 +116,6 @@ function ChartTooltip({
   );
 }
 
-function StatCard({ label, value, sub, colorVar, icon }: {
-  label: string;
-  value: string;
-  sub?: string;
-  colorVar: string;
-  icon?: React.ReactNode;
-}) {
-  return (
-    <div
-      className="rounded-2xl p-4"
-      style={{ background: 'var(--surface)', border: '1px solid var(--line)' }}
-    >
-      <div className="flex items-center gap-1.5 mb-1">
-        {icon && <span style={{ color: colorVar, opacity: 0.7 }}>{icon}</span>}
-        <p className="text-xs uppercase tracking-wider" style={{ color: 'var(--ink-3)' }}>{label}</p>
-      </div>
-      <p className="text-2xl font-bold num" style={{ color: colorVar }}>{value}</p>
-      {sub && <p className="text-xs mt-1 num" style={{ color: 'var(--ink-3)' }}>{sub}</p>}
-    </div>
-  );
-}
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 
@@ -251,7 +228,8 @@ export default function IngresosPage() {
       map[m].push(i);
     }
     return Array.from({ length: 12 }, (_, idx) => ({ month: idx, items: map[idx] ?? [] }))
-      .filter((g) => g.items.length > 0);
+      .filter((g) => g.items.length > 0)
+      .reverse();
   }, [ingresos]);
 
   const totalYearUsd = ingresos.reduce((a, i) => a + i.monto_usd, 0);
@@ -304,9 +282,55 @@ export default function IngresosPage() {
         </button>
       </header>
 
+      {/* ── KPI grid ── */}
+      <div
+        className="grid grid-cols-3 flex-shrink-0"
+        style={{ gap: 1, background: "var(--line)", borderBottom: "1px solid var(--line)" }}
+      >
+        {[
+          {
+            label: "Ingresos",
+            value: fmtUsd(totalYearUsd),
+            sub: fmtArs(totalYearArs),
+            valueColor: "var(--accent)" as const,
+            subColor: "var(--ink-3)" as const,
+          },
+          {
+            label: "Gastos",
+            value: fmtUsd(totalGasUsd),
+            sub: fmtArs(totalGasArs),
+            valueColor: "var(--negative)" as const,
+            subColor: "var(--ink-3)" as const,
+          },
+          {
+            label: "Restante",
+            value: `${restanteUsd >= 0 ? "+" : ""}${fmtUsd(restanteUsd)}`,
+            sub: `${restanteArs >= 0 ? "+" : ""}${fmtArs(restanteArs)}`,
+            valueColor: (restanteUsd >= 0 ? "var(--positive)" : "var(--negative)") as string,
+            subColor: "var(--ink-3)" as const,
+          },
+        ].map((k, i) => (
+          <div key={i} style={{ background: "var(--surface)", padding: "18px 20px" }}>
+            <p
+              className="text-[10px] uppercase tracking-widest"
+              style={{ color: "var(--ink-3)", marginBottom: 8 }}
+            >
+              {k.label}
+            </p>
+            <p
+              className="num font-semibold leading-none"
+              style={{ fontSize: 22, letterSpacing: "-0.03em", color: k.valueColor, marginBottom: 6 }}
+            >
+              {k.value}
+            </p>
+            <p className="text-[11px] num" style={{ color: k.subColor }}>{k.sub}</p>
+          </div>
+        ))}
+      </div>
+
       {/* ── Content ── */}
-      <main className="flex-1 overflow-auto scrollbar-thin">
-        <div className="max-w-screen-2xl mx-auto p-4 lg:p-6 space-y-6">
+      <main className="flex-1 overflow-y-auto min-h-0">
+        <div className="p-4 lg:p-5 space-y-4">
 
           {loading ? (
             <div className="flex items-center justify-center h-64 gap-3" style={{ color: 'var(--ink-2)' }}>
@@ -315,30 +339,6 @@ export default function IngresosPage() {
             </div>
           ) : (
             <>
-              {/* ── Stats ── */}
-              <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
-                <StatCard
-                  label="Ingresos"
-                  value={fmtUsd(totalYearUsd)}
-                  sub={fmtArs(totalYearArs)}
-                  colorVar="var(--accent)"
-                  icon={<TrendingUp className="w-3.5 h-3.5" />}
-                />
-                <StatCard
-                  label="Gastos"
-                  value={fmtUsd(totalGasUsd)}
-                  sub={fmtArs(totalGasArs)}
-                  colorVar="var(--negative)"
-                  icon={<TrendingDown className="w-3.5 h-3.5" />}
-                />
-                <StatCard
-                  label="Restante"
-                  value={`${restanteUsd >= 0 ? "+" : ""}${fmtUsd(restanteUsd)}`}
-                  sub={`${restanteArs >= 0 ? "+" : ""}${fmtArs(restanteArs)}`}
-                  colorVar={restanteUsd >= 0 ? 'var(--positive)' : 'var(--negative)'}
-                  icon={<Minus className="w-3.5 h-3.5" />}
-                />
-              </div>
 
               {/* ── Ingresos vs Gastos chart ── */}
               {(ingresos.length > 0 || gastos.length > 0) && (

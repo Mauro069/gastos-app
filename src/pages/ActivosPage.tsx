@@ -657,46 +657,109 @@ export default function ActivosPage() {
 
   return (
     <AppShell user={user}>
-      {/* ── Top bar ── */}
-      <div
-        className="sticky top-0 z-10"
-        style={{ background: 'var(--surface)', borderBottom: '1px solid var(--line)' }}
+      {/* ── Header ── */}
+      <header
+        className="flex-shrink-0 flex items-center gap-3 px-5"
+        style={{ height: 56, background: "var(--surface)", borderBottom: "1px solid var(--line)" }}
       >
-        <div className="max-w-screen-2xl mx-auto flex items-center gap-4 px-4 py-3">
-          <div className="flex items-center gap-2">
-            <Wallet className="w-4 h-4" style={{ color: 'var(--accent)' }} />
-            <h1 className="text-sm font-semibold" style={{ color: 'var(--ink)' }}>Activos</h1>
-          </div>
+        <Wallet className="w-4 h-4 hidden sm:block" style={{ color: "var(--accent)" }} />
+        <h1 className="text-sm font-semibold hidden sm:block" style={{ color: "var(--ink)" }}>Activos</h1>
 
-          <div className="ml-auto flex items-center gap-2">
-            <button
-              onClick={() => setShowSettings((v) => !v)}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-medium transition-colors"
-              style={{
-                background: showSettings ? 'var(--surface-alt)' : 'transparent',
-                color: showSettings ? 'var(--ink)' : 'var(--ink-3)',
-                border: showSettings ? '1px solid var(--line)' : '1px solid transparent',
-                cursor: 'pointer',
-              }}
-            >
-              <Settings2 className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Cuentas</span>
-            </button>
-            <button
-              onClick={() => { setEditingSnapshot(null); setModalOpen(true); }}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-medium transition-colors"
-              style={{ background: 'var(--accent)', color: 'var(--accent-ink)', border: 'none', cursor: 'pointer', borderRadius: 7 }}
-            >
-              <Plus className="w-4 h-4" />
-              Nuevo registro
-            </button>
+        <div className="flex-1" />
+
+        <button
+          onClick={() => setShowSettings((v) => !v)}
+          className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors"
+          style={{
+            background: showSettings ? "var(--surface-alt)" : "var(--surface)",
+            color: showSettings ? "var(--ink)" : "var(--ink-3)",
+            border: "1px solid var(--line)",
+            cursor: "pointer",
+          }}
+        >
+          <Settings2 className="w-3.5 h-3.5" />
+          <span className="hidden sm:inline">Cuentas</span>
+        </button>
+        <button
+          onClick={() => { setEditingSnapshot(null); setModalOpen(true); }}
+          className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold"
+          style={{ background: "var(--accent)", color: "var(--accent-ink)", border: "none", cursor: "pointer" }}
+        >
+          <Plus size={14} strokeWidth={2.5} />
+          <span>Nuevo registro</span>
+        </button>
+      </header>
+
+      {/* ── KPI grid ── */}
+      <div
+        className="grid grid-cols-2 lg:grid-cols-4 flex-shrink-0"
+        style={{ gap: 1, background: "var(--line)", borderBottom: "1px solid var(--line)" }}
+      >
+        {[
+          {
+            label: "Portafolio total",
+            value: latestSnapshot ? fmtUsd(latestSnapshot.totalUsd) : "—",
+            sub: latestSnapshot ? fmtArs(latestSnapshot.totalArs) : "",
+            subLabel: "ARS",
+            valueColor: "var(--positive)" as string,
+            subColor: "var(--ink-3)" as const,
+          },
+          {
+            label: "Disponible",
+            value: latestSnapshot ? fmtUsd(latestSnapshot.dispUsd) : "—",
+            sub: latestSnapshot ? fmtArs(latestSnapshot.dispArs) : "",
+            subLabel: "ARS",
+            valueColor: "var(--accent)" as string,
+            subColor: "var(--ink-3)" as const,
+          },
+          {
+            label: "Inversiones",
+            value: latestSnapshot ? fmtUsd(latestSnapshot.invUsd) : "—",
+            sub: latestSnapshot ? fmtArs(latestSnapshot.invArs) : "",
+            subLabel: "ARS",
+            valueColor: "var(--warn)" as string,
+            subColor: "var(--ink-3)" as const,
+          },
+          {
+            label: "Variación",
+            value: latestSnapshot && latestSnapshot.deltaUsd !== 0
+              ? `${latestSnapshot.deltaUsd >= 0 ? "+" : ""}${fmtUsd(latestSnapshot.deltaUsd)}`
+              : "—",
+            sub: latestSnapshot && latestSnapshot.deltaPct !== 0 ? fmtPct(latestSnapshot.deltaPct) : "",
+            subLabel: "vs anterior",
+            valueColor: latestSnapshot
+              ? latestSnapshot.deltaUsd >= 0 ? "var(--positive)" : "var(--negative)"
+              : "var(--ink-3)" as string,
+            subColor: latestSnapshot
+              ? latestSnapshot.deltaPct >= 0 ? "var(--positive)" : "var(--negative)"
+              : "var(--ink-3)" as string,
+          },
+        ].map((k, i) => (
+          <div key={i} style={{ background: "var(--surface)", padding: "18px 20px" }}>
+            <p className="text-[10px] uppercase tracking-widest" style={{ color: "var(--ink-3)", marginBottom: 8 }}>
+              {k.label}
+            </p>
+            <p className="num font-semibold leading-none" style={{ fontSize: 22, letterSpacing: "-0.03em", color: k.valueColor, marginBottom: 6 }}>
+              {k.value}
+            </p>
+            {k.sub && (
+              <p className="text-[11px] num flex items-center gap-1" style={{ color: k.subColor }}>
+                <span
+                  className="text-[9px] uppercase tracking-widest font-medium px-1 py-0.5 rounded"
+                  style={{ background: "var(--surface-alt)", color: "var(--ink-3)", border: "1px solid var(--line)" }}
+                >
+                  {k.subLabel}
+                </span>
+                {k.sub}
+              </p>
+            )}
           </div>
-        </div>
+        ))}
       </div>
 
       {/* ── Content ── */}
-      <main className="flex-1 overflow-auto scrollbar-thin">
-        <div className="max-w-screen-2xl mx-auto p-4 lg:p-6 space-y-5">
+      <main className="flex-1 overflow-y-auto min-h-0">
+        <div className="p-4 lg:p-5 space-y-4">
 
           {showSettings && (
             <CuentasManager
@@ -730,55 +793,6 @@ export default function ActivosPage() {
             </div>
           ) : (
             <>
-              {/* ── Latest snapshot stat cards ── */}
-              {latestSnapshot && (
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                  <div
-                    className="rounded-2xl p-4"
-                    style={{ background: 'var(--surface)', border: '1px solid var(--line)' }}
-                  >
-                    <p className="text-xs uppercase tracking-wider mb-1" style={{ color: 'var(--ink-3)' }}>Portafolio total</p>
-                    <p className="text-2xl font-bold num" style={{ color: 'var(--positive)' }}>{fmtUsd(latestSnapshot.totalUsd)}</p>
-                    <p className="text-xs mt-1 num" style={{ color: 'var(--ink-3)' }}>{fmtArs(latestSnapshot.totalArs)}</p>
-                  </div>
-                  <div
-                    className="rounded-2xl p-4"
-                    style={{ background: 'var(--surface)', border: '1px solid var(--line)' }}
-                  >
-                    <p className="text-xs uppercase tracking-wider mb-1" style={{ color: 'var(--ink-3)' }}>Disponible</p>
-                    <p className="text-2xl font-bold num" style={{ color: 'var(--accent)' }}>{fmtUsd(latestSnapshot.dispUsd)}</p>
-                    <p className="text-xs mt-1 num" style={{ color: 'var(--ink-3)' }}>{fmtArs(latestSnapshot.dispArs)}</p>
-                  </div>
-                  <div
-                    className="rounded-2xl p-4"
-                    style={{ background: 'var(--surface)', border: '1px solid var(--line)' }}
-                  >
-                    <p className="text-xs uppercase tracking-wider mb-1" style={{ color: 'var(--ink-3)' }}>Inversiones</p>
-                    <p className="text-2xl font-bold num" style={{ color: 'var(--warn)' }}>{fmtUsd(latestSnapshot.invUsd)}</p>
-                    <p className="text-xs mt-1 num" style={{ color: 'var(--ink-3)' }}>{fmtArs(latestSnapshot.invArs)}</p>
-                  </div>
-                  <div
-                    className="rounded-2xl p-4"
-                    style={{ background: 'var(--surface)', border: '1px solid var(--line)' }}
-                  >
-                    <p className="text-xs uppercase tracking-wider mb-1" style={{ color: 'var(--ink-3)' }}>Variación (vs anterior)</p>
-                    <p
-                      className="text-2xl font-bold num"
-                      style={{ color: latestSnapshot.deltaUsd >= 0 ? 'var(--positive)' : 'var(--negative)' }}
-                    >
-                      {latestSnapshot.deltaUsd >= 0 ? "+" : ""}{fmtUsd(latestSnapshot.deltaUsd)}
-                    </p>
-                    {latestSnapshot.deltaPct !== 0 && (
-                      <p
-                        className="text-xs mt-1 num"
-                        style={{ color: latestSnapshot.deltaPct >= 0 ? 'var(--positive)' : 'var(--negative)' }}
-                      >
-                        {fmtPct(latestSnapshot.deltaPct)}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              )}
 
               {/* ── Evolution chart ── */}
               {chartData.length > 1 && (
