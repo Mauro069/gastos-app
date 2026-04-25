@@ -39,6 +39,7 @@ createRoot(document.getElementById("root")!).render(
               <Route path="/historial" element={<RangePage />} />
               <Route path="/perfil" element={<ProfilePage />} />
               <Route path="/presupuesto" element={<PresupuestoPage />} />
+              <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </BrowserRouter>
         </UserSettingsProvider>
