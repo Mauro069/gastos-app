@@ -9,8 +9,6 @@ import {
   YAxis,
   Cell,
   Tooltip as RechartTooltip,
-  PieChart,
-  Pie,
 } from "recharts";
 import {
   Loader2,
@@ -45,12 +43,6 @@ const fmtUsd = (n: number) =>
     currency: "USD",
     maximumFractionDigits: 0,
   }).format(n);
-
-const fmtShort = (n: number) => {
-  if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000) return `$${(n / 1_000).toFixed(0)}k`;
-  return `$${n}`;
-};
 
 // ── KPI card ───────────────────────────────────────────────────────────────
 function KPICard({
@@ -201,27 +193,29 @@ function RatePill({
   return (
     <button
       onClick={() => setEditing(true)}
-      className="flex items-center gap-1.5 rounded-lg px-2.5 py-1 transition-colors"
+      className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs transition-colors"
       style={{
         background: "var(--surface-alt)",
         border: "1px solid var(--line)",
         cursor: "pointer",
       }}
     >
+      <span style={{ color: "var(--ink-3)" }}>USD</span>
       <span
-        className="text-[10px] uppercase tracking-widest"
-        style={{ color: "var(--ink-3)" }}
-      >
-        USD
-      </span>
-      <span
-        className="num text-xs font-medium"
-        style={{ color: hasCustom ? "var(--warn)" : "var(--ink-2)" }}
+        className="num font-semibold"
+        style={{ color: hasCustom ? "var(--warn)" : "var(--ink)" }}
       >
         ${rate.toLocaleString("es-AR")}
       </span>
       {!hasCustom && (
-        <span className="text-[9px]" style={{ color: "var(--ink-3)" }}>
+        <span
+          className="text-[9px] font-medium px-1 py-0.5 rounded"
+          style={{
+            background: "var(--bg)",
+            color: "var(--ink-3)",
+            border: "1px solid var(--line)",
+          }}
+        >
           est.
         </span>
       )}
@@ -255,32 +249,6 @@ function DayBarTooltip({
   );
 }
 
-// ── Donut tooltip ──────────────────────────────────────────────────────────
-function DonutTooltip({
-  active,
-  payload,
-}: {
-  active?: boolean;
-  payload?: { name: string; value: number; payload: { pct: string } }[];
-}) {
-  if (!active || !payload?.length) return null;
-  const d = payload[0];
-  return (
-    <div
-      className="rounded-lg px-3 py-2 text-xs shadow-xl"
-      style={{
-        background: "var(--surface)",
-        border: "1px solid var(--line)",
-        color: "var(--ink)",
-      }}
-    >
-      <p className="font-medium">{d.name}</p>
-      <p className="num" style={{ color: "var(--ink-3)" }}>
-        {fmtArs(d.value)} · {d.payload.pct}%
-      </p>
-    </div>
-  );
-}
 
 // ── Main App ───────────────────────────────────────────────────────────────
 export default function App() {
@@ -771,7 +739,7 @@ export default function App() {
               );
             })()}
             {/* ── Charts row ── */}
-            <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-4">
+            <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-4">
               {/* Daily evolution bar chart */}
               <div
                 className="rounded-xl p-4"
@@ -867,107 +835,83 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Forma de pago donut */}
+              {/* Forma de pago */}
               <div
-                className="rounded-xl p-4"
+                className="rounded-xl overflow-hidden"
                 style={{
                   background: "var(--surface)",
                   border: "1px solid var(--line)",
                 }}
               >
-                <div className="flex items-center justify-between mb-3">
-                  <h2
-                    className="text-sm font-medium"
-                    style={{ color: "var(--ink)" }}
-                  >
+                <div
+                  className="flex items-center justify-between px-4 py-3"
+                  style={{ borderBottom: "1px solid var(--line)" }}
+                >
+                  <h2 className="text-sm font-medium" style={{ color: "var(--ink)" }}>
                     Forma de pago
                   </h2>
-                  <span
-                    className="num text-xs"
-                    style={{ color: "var(--ink-3)" }}
-                  >
+                  <span className="num text-xs" style={{ color: "var(--ink-3)" }}>
                     {byForma.length}
                   </span>
                 </div>
                 {byForma.length > 0 ? (
-                  <>
-                    <div className="relative" style={{ height: 160 }}>
-                      <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                          <Pie
-                            data={byForma}
-                            dataKey="total"
-                            nameKey="name"
-                            cx="50%"
-                            cy="50%"
-                            innerRadius={48}
-                            outerRadius={68}
-                            paddingAngle={2}
-                          >
-                            {byForma.map((d) => (
-                              <Cell
-                                key={d.name}
-                                fill={formaColorMap[d.name] ?? "#6B7280"}
-                              />
-                            ))}
-                          </Pie>
-                          <RechartTooltip content={<DonutTooltip />} />
-                        </PieChart>
-                      </ResponsiveContainer>
-                      {/* Center label */}
-                      <div
-                        className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none"
-                        style={{ top: 0 }}
-                      >
-                        <span
-                          className="num font-semibold"
-                          style={{
-                            fontSize: 15,
-                            color: "var(--ink)",
-                            letterSpacing: "-0.02em",
-                          }}
-                        >
-                          {fmtShort(totalMes)}
-                        </span>
-                        <span
-                          className="text-[9px] uppercase tracking-widest mt-0.5"
-                          style={{ color: "var(--ink-3)" }}
-                        >
-                          Total
-                        </span>
-                      </div>
-                    </div>
-                    <div className="space-y-1.5 mt-3">
-                      {byForma.map((d) => (
-                        <div key={d.name} className="flex items-center gap-2">
-                          <span
-                            className="w-2 h-2 rounded-full flex-shrink-0"
+                  <div className="px-4 py-3 flex flex-col gap-3">
+                    {byForma.map((d) => {
+                      const color = formaColorMap[d.name] ?? "#6B7280";
+                      return (
+                        <div key={d.name}>
+                          <div className="flex items-center gap-2 mb-1.5">
+                            <span
+                              className="w-2 h-2 rounded-full flex-shrink-0"
+                              style={{ background: color }}
+                            />
+                            <span
+                              className="flex-1 text-[12px] truncate"
+                              style={{ color: "var(--ink-2)" }}
+                            >
+                              {d.name}
+                            </span>
+                            <span
+                              className="num text-[10px]"
+                              style={{ color: "var(--ink-3)" }}
+                            >
+                              {d.count} mov
+                            </span>
+                            <span
+                              className="num text-[12px] font-medium"
+                              style={{ color: "var(--ink)" }}
+                            >
+                              {fmtArs(d.total, true)}
+                            </span>
+                          </div>
+                          <div
                             style={{
-                              background: formaColorMap[d.name] ?? "#6B7280",
+                              height: 3,
+                              background: "var(--surface-alt)",
+                              borderRadius: 99,
+                              overflow: "hidden",
                             }}
-                          />
-                          <span
-                            className="flex-1 text-[11px] truncate"
-                            style={{ color: "var(--ink-2)" }}
                           >
-                            {d.name}
-                          </span>
-                          <span
-                            className="num text-[10px]"
+                            <div
+                              style={{
+                                width: `${d.pct}%`,
+                                height: "100%",
+                                background: color,
+                                borderRadius: 99,
+                                opacity: 0.7,
+                              }}
+                            />
+                          </div>
+                          <div
+                            className="num text-right text-[10px] mt-0.5"
                             style={{ color: "var(--ink-3)" }}
                           >
-                            {d.count}
-                          </span>
-                          <span
-                            className="num text-[11px] font-medium"
-                            style={{ color: "var(--ink)" }}
-                          >
-                            {fmtShort(d.total)}
-                          </span>
+                            {d.pct}%
+                          </div>
                         </div>
-                      ))}
-                    </div>
-                  </>
+                      );
+                    })}
+                  </div>
                 ) : (
                   <div
                     className="flex items-center justify-center h-32 text-xs"
