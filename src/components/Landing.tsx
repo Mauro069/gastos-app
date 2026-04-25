@@ -37,7 +37,7 @@ export default function Landing() {
   const [showLogin, setShowLogin] = useState(false);
   const [activeTab, setActiveTab] = useState<"tabla" | "charts" | "promedios">("tabla");
   const [promediosTab, setPromediosTab] = useState<
-    "resumen" | "meses" | "categorias" | "comparacion"
+    "resumen" | "categorias" | "comparacion"
   >("resumen");
   const [selectedYear, setSelectedYear] = useState(2026);
   const [selectedMonth, setSelectedMonth] = useState(0);

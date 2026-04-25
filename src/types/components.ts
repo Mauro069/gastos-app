@@ -50,7 +50,7 @@ export interface ChartsProps {
   prevMonthLabel: string;
 }
 
-export type PromediosTab = 'resumen' | 'meses' | 'categorias' | 'comparacion';
+export type PromediosTab = 'resumen' | 'categorias' | 'comparacion';
 
 export interface PromediosProps {
   gastos: Gasto[];

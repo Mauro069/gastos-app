@@ -6,8 +6,6 @@ import {
   Plus,
   Pencil,
   Trash2,
-  ChevronLeft,
-  ChevronRight,
   TrendingUp,
   DollarSign,
   TrendingDown,
@@ -33,7 +31,7 @@ import {
   fetchUsdRates,
 } from "@/api";
 import IngresoModal from "@/components/IngresoModal";
-import { AppShell } from "@/components";
+import { AppShell, YearPicker } from "@/components";
 import { useAuth } from "@/contexts";
 import { useYearParam } from "@/hooks";
 import { MONTH_NAMES, MONTH_FULL } from "@/constants";
@@ -278,50 +276,33 @@ export default function IngresosPage() {
 
   return (
     <AppShell user={user}>
-      {/* ── Top bar ── */}
-      <div
-        className="sticky top-0 z-10"
-        style={{ background: 'var(--surface)', borderBottom: '1px solid var(--line)' }}
+      {/* ── Header ── */}
+      <header
+        className="flex-shrink-0 flex items-center gap-3 px-5"
+        style={{
+          height: 56,
+          background: "var(--surface)",
+          borderBottom: "1px solid var(--line)",
+        }}
       >
-        <div className="max-w-screen-2xl mx-auto flex items-center gap-4 px-4 py-3">
-          <div className="flex items-center gap-2">
-            <TrendingUp className="w-4 h-4" style={{ color: 'var(--accent)' }} />
-            <h1 className="text-sm font-semibold" style={{ color: 'var(--ink)' }}>Ingresos</h1>
-          </div>
+        <TrendingUp className="w-4 h-4 hidden sm:block" style={{ color: "var(--accent)" }} />
+        <h1 className="text-sm font-semibold hidden sm:block" style={{ color: "var(--ink)" }}>
+          Ingresos
+        </h1>
 
-          <div
-            className="flex items-center gap-1 rounded-lg px-2 py-1.5 ml-auto"
-            style={{ background: 'var(--surface-alt)' }}
-          >
-            <button
-              onClick={() => setYear(selectedYear - 1)}
-              className="p-0.5 transition-colors"
-              style={{ color: 'var(--ink-3)' }}
-            >
-              <ChevronLeft className="w-3.5 h-3.5" />
-            </button>
-            <span className="font-bold text-sm w-12 text-center num" style={{ color: 'var(--ink)' }}>
-              {selectedYear}
-            </span>
-            <button
-              onClick={() => setYear(selectedYear + 1)}
-              className="p-0.5 transition-colors"
-              style={{ color: 'var(--ink-3)' }}
-            >
-              <ChevronRight className="w-3.5 h-3.5" />
-            </button>
-          </div>
+        <div className="flex-1" />
 
-          <button
-            onClick={openNew}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-medium transition-colors"
-            style={{ background: 'var(--accent)', color: 'var(--accent-ink)', border: 'none', cursor: 'pointer', borderRadius: 7 }}
-          >
-            <Plus className="w-4 h-4" />
-            Nuevo ingreso
-          </button>
-        </div>
-      </div>
+        <YearPicker year={selectedYear} onChange={setYear} />
+
+        <button
+          onClick={openNew}
+          className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold"
+          style={{ background: "var(--accent)", color: "var(--accent-ink)", border: "none", cursor: "pointer" }}
+        >
+          <Plus size={14} strokeWidth={2.5} />
+          <span>Nuevo ingreso</span>
+        </button>
+      </header>
 
       {/* ── Content ── */}
       <main className="flex-1 overflow-auto scrollbar-thin">

@@ -15,6 +15,7 @@ import {
   Plus,
   ArrowUpRight,
   Search,
+  Receipt,
 } from "lucide-react";
 import { GastosTable, Landing, ImportModal, AppShell, MonthPicker } from "@/components";
 import { fetchGastosByYear, fetchUsdRates, fetchPresupuesto } from "@/api";
@@ -546,15 +547,16 @@ export default function App() {
     <AppShell user={user} onQuickAdd={() => setShowAddGasto(true)}>
       {/* ── Topbar ────────────────────────────────────────────────────── */}
       <header
-        className="sticky top-0 z-20 flex items-center gap-2 px-5 py-3"
+        className="flex-shrink-0 flex items-center gap-2 px-5"
         style={{
-          background: "color-mix(in srgb, var(--bg) 90%, transparent)",
-          backdropFilter: "blur(10px)",
+          height: 56,
+          background: "var(--surface)",
           borderBottom: "1px solid var(--line)",
         }}
       >
+        <Receipt className="w-4 h-4 hidden sm:block" style={{ color: "var(--accent)" }} />
         <h1
-          className="text-sm font-semibold mr-1 hidden sm:block"
+          className="text-sm font-semibold hidden sm:block"
           style={{ color: "var(--ink)" }}
         >
           Gastos

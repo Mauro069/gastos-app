@@ -56,18 +56,8 @@ export default function Promedios({
   const totalAnoUSD = monthlyData.reduce((a, m) => a + (m.rate > 0 ? m.total / m.rate : 0), 0)
   const monthsWithData = monthlyData.filter(m => m.total > 0).length
   const promedio = monthsWithData > 0 ? totalAno / monthsWithData : 0
-  const maxMonth = monthlyData.reduce((a, b) => (b.total > a.total ? b : a), {
-    name: '', short: '', total: 0, count: 0, rate: 0, hasCustomRate: false,
-  })
-  const minMonth = monthlyData
-    .filter(m => m.total > 0)
-    .reduce((a, b) => (b.total < a.total ? b : a), {
-      name: '', short: '', total: Infinity, count: 0, rate: 0, hasCustomRate: false,
-    })
-
   const TABS: { id: PromediosTab; label: string }[] = [
     { id: 'resumen', label: 'Resumen' },
-    { id: 'meses', label: 'Por mes' },
     { id: 'categorias', label: 'Categorías' },
     { id: 'comparacion', label: 'Comparación' },
   ]
@@ -82,46 +72,6 @@ export default function Promedios({
 
   return (
     <div className="space-y-6">
-
-      {/* ── KPI cards ── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-px rounded-2xl overflow-hidden" style={{ background: 'var(--line)', border: '1px solid var(--line)' }}>
-        {[
-          {
-            label: `Total ${selectedYear}`,
-            value: fmt(totalAno),
-            sub: fmtUSD(totalAnoUSD),
-            subColor: 'var(--positive)',
-          },
-          {
-            label: 'Promedio mensual',
-            value: fmt(promedio),
-            sub: `${monthsWithData} mes${monthsWithData !== 1 ? 'es' : ''} con datos`,
-            subColor: 'var(--ink-3)',
-          },
-          {
-            label: 'Mes más caro',
-            value: maxMonth.total > 0 ? fmt(maxMonth.total) : '—',
-            sub: maxMonth.name || '—',
-            subColor: 'var(--ink-3)',
-            valueColor: maxMonth.total > 0 ? 'var(--negative)' : 'var(--ink-3)',
-          },
-          {
-            label: 'Mes más barato',
-            value: minMonth.total !== Infinity ? fmt(minMonth.total) : '—',
-            sub: minMonth.total !== Infinity ? minMonth.name : '—',
-            subColor: 'var(--ink-3)',
-            valueColor: minMonth.total !== Infinity ? 'var(--positive)' : 'var(--ink-3)',
-          },
-        ].map((kpi, i) => (
-          <div key={i} className="px-5 py-4" style={{ background: 'var(--surface)' }}>
-            <p className="text-[10px] uppercase tracking-widest mb-2" style={{ color: 'var(--ink-3)' }}>{kpi.label}</p>
-            <p className="num font-semibold" style={{ fontSize: 22, letterSpacing: '-0.03em', color: kpi.valueColor ?? 'var(--ink)' }}>
-              {kpi.value}
-            </p>
-            <p className="text-xs mt-1 num" style={{ color: kpi.subColor }}>{kpi.sub}</p>
-          </div>
-        ))}
-      </div>
 
       {/* ── Tabs ── */}
       <div className="flex gap-0.5 p-1 rounded-xl" style={{ background: 'var(--surface-alt)', width: 'fit-content' }}>
@@ -147,100 +97,96 @@ export default function Promedios({
       {activeTab === 'resumen' && (
         <div className="space-y-4">
           <Tendencia monthlyData={monthlyData} promedio={promedio} selectedYear={selectedYear} />
-          {gastosAno.length === 0 && (
+
+          {gastosAno.length === 0 ? (
             <div className="py-16 text-center" style={{ color: 'var(--ink-3)' }}>
               <p className="text-sm">No hay datos para {selectedYear}</p>
               <p className="text-xs mt-1">Agregá gastos en los meses del año</p>
             </div>
-          )}
-        </div>
-      )}
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
 
-      {/* ── Tab: Por mes ── */}
-      {activeTab === 'meses' && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-
-          {/* List */}
-          <div style={card}>
-            <div className="px-5 py-4" style={{ borderBottom: '1px solid var(--line)' }}>
-              <h3 className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--ink-3)' }}>
-                Totales {selectedYear}
-              </h3>
-            </div>
-            {/* Column headers */}
-            <div
-              className="grid text-[10px] uppercase tracking-widest font-medium px-5 py-2"
-              style={{ color: 'var(--ink-3)', borderBottom: '1px solid var(--line)', gridTemplateColumns: '80px 1fr 100px' }}
-            >
-              <span>Mes</span>
-              <span className="text-right">ARS</span>
-              <span className="text-right">USD</span>
-            </div>
-            {monthlyData.map((m, i) => (
-              <div
-                key={i}
-                className="grid items-center px-5 py-2.5 transition-colors"
-                style={{
-                  gridTemplateColumns: '80px 1fr 100px',
-                  borderBottom: '1px solid var(--line)',
-                  opacity: m.total > 0 ? 1 : 0.35,
-                }}
-                onMouseEnter={e => { if (m.total > 0) (e.currentTarget as HTMLElement).style.background = 'var(--surface-alt)' }}
-                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent' }}
-              >
-                <span className="text-sm" style={{ color: 'var(--ink-2)' }}>{m.name}</span>
-                <span className="num text-sm font-semibold text-right" style={{ color: 'var(--ink)' }}>
-                  {m.total > 0 ? fmt(m.total) : '—'}
-                </span>
-                <span
-                  className="num text-xs text-right"
-                  style={{ color: m.hasCustomRate ? 'var(--positive)' : 'var(--ink-3)' }}
+              {/* Monthly list */}
+              <div style={card}>
+                <div className="px-5 py-4" style={{ borderBottom: '1px solid var(--line)' }}>
+                  <h3 className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--ink-3)' }}>
+                    Totales {selectedYear}
+                  </h3>
+                </div>
+                <div
+                  className="grid text-[10px] uppercase tracking-widest font-medium px-5 py-2"
+                  style={{ color: 'var(--ink-3)', borderBottom: '1px solid var(--line)', gridTemplateColumns: '80px 1fr 100px' }}
                 >
-                  {m.total > 0 ? (
-                    <>
-                      {fmtUSD(m.total / m.rate)}
-                      {!m.hasCustomRate && <span style={{ color: 'var(--warn)', marginLeft: 2 }}>*</span>}
-                    </>
-                  ) : '—'}
-                </span>
+                  <span>Mes</span>
+                  <span className="text-right">ARS</span>
+                  <span className="text-right">USD</span>
+                </div>
+                {monthlyData.map((m, i) => (
+                  <div
+                    key={i}
+                    className="grid items-center px-5 py-2.5 transition-colors"
+                    style={{
+                      gridTemplateColumns: '80px 1fr 100px',
+                      borderBottom: '1px solid var(--line)',
+                      opacity: m.total > 0 ? 1 : 0.35,
+                    }}
+                    onMouseEnter={e => { if (m.total > 0) (e.currentTarget as HTMLElement).style.background = 'var(--surface-alt)' }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent' }}
+                  >
+                    <span className="text-sm" style={{ color: 'var(--ink-2)' }}>{m.name}</span>
+                    <span className="num text-sm font-semibold text-right" style={{ color: 'var(--ink)' }}>
+                      {m.total > 0 ? fmt(m.total) : '—'}
+                    </span>
+                    <span
+                      className="num text-xs text-right"
+                      style={{ color: m.hasCustomRate ? 'var(--positive)' : 'var(--ink-3)' }}
+                    >
+                      {m.total > 0 ? (
+                        <>
+                          {fmtUSD(m.total / m.rate)}
+                          {!m.hasCustomRate && <span style={{ color: 'var(--warn)', marginLeft: 2 }}>*</span>}
+                        </>
+                      ) : '—'}
+                    </span>
+                  </div>
+                ))}
+                <div
+                  className="grid items-center px-5 py-3"
+                  style={{ gridTemplateColumns: '80px 1fr 100px', background: 'var(--surface-alt)' }}
+                >
+                  <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--ink-3)' }}>Total</span>
+                  <span className="num text-sm font-bold text-right" style={{ color: 'var(--accent)' }}>{fmt(totalAno)}</span>
+                  <span className="num text-xs font-bold text-right" style={{ color: 'var(--positive)' }}>{fmtUSD(totalAnoUSD)}</span>
+                </div>
+                <p className="text-[10px] px-5 py-2" style={{ color: 'var(--ink-3)' }}>* Rate estimado del mes anterior</p>
               </div>
-            ))}
-            {/* Total */}
-            <div
-              className="grid items-center px-5 py-3"
-              style={{ gridTemplateColumns: '80px 1fr 100px', background: 'var(--surface-alt)' }}
-            >
-              <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--ink-3)' }}>Total</span>
-              <span className="num text-sm font-bold text-right" style={{ color: 'var(--accent)' }}>{fmt(totalAno)}</span>
-              <span className="num text-xs font-bold text-right" style={{ color: 'var(--positive)' }}>{fmtUSD(totalAnoUSD)}</span>
-            </div>
-            <p className="text-[10px] px-5 py-2" style={{ color: 'var(--ink-3)' }}>* Rate estimado del mes anterior</p>
-          </div>
 
-          {/* Bar chart */}
-          <div className="lg:col-span-2" style={card}>
-            <div className="px-5 py-4" style={{ borderBottom: '1px solid var(--line)' }}>
-              <h3 className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--ink-3)' }}>
-                Gasto mensual {selectedYear}
-              </h3>
+              {/* Bar chart */}
+              <div className="lg:col-span-2" style={card}>
+                <div className="px-5 py-4" style={{ borderBottom: '1px solid var(--line)' }}>
+                  <h3 className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--ink-3)' }}>
+                    Gasto mensual {selectedYear}
+                  </h3>
+                </div>
+                <div className="px-4 pt-4 pb-2" style={{ height: 300 }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={monthlyData} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="var(--line)" vertical={false} />
+                      <XAxis dataKey="short" tick={{ fill: 'var(--ink-3)', fontSize: 11 }} axisLine={false} tickLine={false} />
+                      <YAxis tick={{ fill: 'var(--ink-3)', fontSize: 10 }} tickFormatter={fmtShort} width={68} axisLine={false} tickLine={false} />
+                      <Tooltip content={<BarTooltipMonth />} cursor={{ fill: 'var(--surface-alt)' }} />
+                      <ReferenceLine y={promedio} stroke="var(--warn)" strokeDasharray="4 3" strokeWidth={1.5} />
+                      <Bar dataKey="total" radius={[4, 4, 0, 0]}>
+                        {monthlyData.map((m, i) => (
+                          <Cell key={i} fill={m.total > 0 ? 'var(--accent)' : 'var(--surface-alt)'} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
             </div>
-            <div className="px-4 pt-4 pb-2" style={{ height: 300 }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={monthlyData} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--line)" vertical={false} />
-                  <XAxis dataKey="short" tick={{ fill: 'var(--ink-3)', fontSize: 11 }} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fill: 'var(--ink-3)', fontSize: 10 }} tickFormatter={fmtShort} width={68} axisLine={false} tickLine={false} />
-                  <Tooltip content={<BarTooltipMonth />} cursor={{ fill: 'var(--surface-alt)' }} />
-                  <ReferenceLine y={promedio} stroke="var(--warn)" strokeDasharray="4 3" strokeWidth={1.5} />
-                  <Bar dataKey="total" radius={[4, 4, 0, 0]}>
-                    {monthlyData.map((m, i) => (
-                      <Cell key={i} fill={m.total > 0 ? 'var(--accent)' : 'var(--surface-alt)'} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
+          )}
         </div>
       )}
 
