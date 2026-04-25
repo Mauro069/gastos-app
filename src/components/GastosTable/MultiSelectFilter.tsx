@@ -76,13 +76,16 @@ export default function MultiSelectFilter({
 
       {open && (
         <div
-          className="absolute top-full mt-1 left-0 rounded-xl shadow-xl z-30 overflow-hidden"
+          className="absolute top-full mt-1 left-0 rounded-xl shadow-xl z-30 flex flex-col"
           style={{
             background: 'var(--surface)',
             border: '1px solid var(--line)',
             minWidth: 180,
+            maxHeight: 280,
+            overflow: 'hidden',
           }}
         >
+          <div className="overflow-y-auto flex-1" style={{ overscrollBehavior: 'contain' }}>
           {options.map(opt => {
             const isSel = selected.has(opt)
             return (
@@ -115,14 +118,16 @@ export default function MultiSelectFilter({
               </button>
             )
           })}
+          </div>{/* end scrollable list */}
           {isActive && (
             <button
               type="button"
               onClick={() => { onChange(new Set()); setOpen(false); }}
-              className="w-full text-center py-2 text-xs transition-colors"
+              className="w-full text-center py-2 text-xs transition-colors flex-shrink-0"
               style={{
-                background: 'transparent',
+                background: 'var(--surface)',
                 border: 'none',
+                borderTop: '1px solid var(--line)',
                 cursor: 'pointer',
                 color: 'var(--ink-3)',
               }}
