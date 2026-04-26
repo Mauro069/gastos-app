@@ -10,11 +10,12 @@ const tooltipStyle: React.CSSProperties = {
 }
 
 export function TrendTooltip({
-  active, payload, label,
+  active, payload, label, formatter = fmt,
 }: {
   active?: boolean
   payload?: Array<{ dataKey: string; name: string; value: number; color: string }>
   label?: string
+  formatter?: (n: number) => string
 }) {
   if (!active || !payload?.length) return null
   return (
@@ -22,7 +23,7 @@ export function TrendTooltip({
       <p className="font-semibold mb-1" style={{ color: 'var(--ink)' }}>{label}</p>
       {payload.map(p => (
         <p key={p.dataKey} className="num" style={{ color: p.color }}>
-          {p.name}: {fmt(p.value)}
+          {p.name}: {formatter(p.value)}
         </p>
       ))}
     </div>
@@ -30,33 +31,35 @@ export function TrendTooltip({
 }
 
 export function BarTooltipMonth({
-  active, payload, label,
+  active, payload, label, formatter = fmt,
 }: {
   active?: boolean
   payload?: Array<{ value: number }>
   label?: string
+  formatter?: (n: number) => string
 }) {
   if (!active || !payload?.length) return null
   return (
     <div style={tooltipStyle}>
       <p className="font-semibold mb-1" style={{ color: 'var(--ink)' }}>{label}</p>
-      <p className="num" style={{ color: 'var(--accent)' }}>{fmt(payload[0].value)}</p>
+      <p className="num" style={{ color: 'var(--accent)' }}>{formatter(payload[0].value)}</p>
     </div>
   )
 }
 
 export function BarTooltipCat({
-  active, payload, label,
+  active, payload, label, formatter = fmt,
 }: {
   active?: boolean
   payload?: Array<{ value: number }>
   label?: string
+  formatter?: (n: number) => string
 }) {
   if (!active || !payload?.length) return null
   return (
     <div style={tooltipStyle}>
       <p className="font-semibold mb-1" style={{ color: 'var(--ink)' }}>{label}</p>
-      <p className="num" style={{ color: 'var(--ink-2)' }}>{fmt(payload[0].value)}</p>
+      <p className="num" style={{ color: 'var(--ink-2)' }}>{formatter(payload[0].value)}</p>
     </div>
   )
 }

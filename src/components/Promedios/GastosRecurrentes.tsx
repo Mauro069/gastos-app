@@ -1,18 +1,23 @@
 import { useMemo } from 'react'
 import { RefreshCw } from 'lucide-react'
-import type { Gasto } from '@/types'
+import type { Gasto, UsdRates } from '@/types'
 import { useUserSettings } from '@/contexts'
 import { getChipHex } from '@/utils/chipColor'
-import { fmt } from './utils'
+import { fmt, fmtUSD, getRateForMonth } from './utils'
+import type { Currency } from './utils'
 
 interface GastosRecurrentesProps {
   gastosAno: Gasto[]
   allGastos: Gasto[]
   selectedYear: number
+  usdRates: UsdRates
+  currency: Currency
 }
 
-export default function GastosRecurrentes({ gastosAno, selectedYear }: GastosRecurrentesProps) {
+export default function GastosRecurrentes({ gastosAno, selectedYear, usdRates, currency }: GastosRecurrentesProps) {
   const { settings } = useUserSettings()
+  const isUSD = currency === 'USD'
+  const formatter = isUSD ? fmtUSD : fmt
 
   const recurrentes = useMemo(() => {
     const map: Record<string, {
@@ -20,17 +25,24 @@ export default function GastosRecurrentes({ gastosAno, selectedYear }: GastosRec
       concepto: string
       months: Set<number>
       amounts: number[]
+      amountsUsd: number[]
       total: number
+      totalUsd: number
     }> = {}
 
     gastosAno.forEach(g => {
       const key = (g.nota || g.concepto).toLowerCase().trim()
       if (!map[key])
-        map[key] = { nota: g.nota || g.concepto, concepto: g.concepto, months: new Set(), amounts: [], total: 0 }
+        map[key] = { nota: g.nota || g.concepto, concepto: g.concepto, months: new Set(), amounts: [], amountsUsd: [], total: 0, totalUsd: 0 }
       const month = new Date(g.fecha + 'T12:00:00').getMonth()
+      const rate = getRateForMonth(usdRates, selectedYear, month)
+      const ars = Number(g.cantidad)
+      const usd = rate > 0 ? ars / rate : 0
       map[key].months.add(month)
-      map[key].amounts.push(Number(g.cantidad))
-      map[key].total += Number(g.cantidad)
+      map[key].amounts.push(ars)
+      map[key].amountsUsd.push(usd)
+      map[key].total += ars
+      map[key].totalUsd += usd
     })
 
     return Object.values(map)
@@ -39,12 +51,15 @@ export default function GastosRecurrentes({ gastosAno, selectedYear }: GastosRec
         ...d,
         monthCount: d.months.size,
         avg: d.total / d.amounts.length,
+        avgUsd: d.totalUsd / d.amountsUsd.length,
         minAmt: Math.min(...d.amounts),
         maxAmt: Math.max(...d.amounts),
+        minAmtUsd: Math.min(...d.amountsUsd),
+        maxAmtUsd: Math.max(...d.amountsUsd),
       }))
       .sort((a, b) => b.monthCount - a.monthCount || b.total - a.total)
       .slice(0, 15)
-  }, [gastosAno])
+  }, [gastosAno, usdRates, selectedYear])
 
   return (
     <div className="rounded-2xl overflow-hidden" style={{ background: 'var(--surface)', border: '1px solid var(--line)' }}>
@@ -85,6 +100,11 @@ export default function GastosRecurrentes({ gastosAno, selectedYear }: GastosRec
               ? 'var(--positive)' : r.monthCount >= 3
               ? 'var(--accent)' : 'var(--ink-3)'
 
+            const avgDisplay = isUSD ? r.avgUsd : r.avg
+            const totalDisplay = isUSD ? r.totalUsd : r.total
+            const minDisplay = isUSD ? r.minAmtUsd : r.minAmt
+            const maxDisplay = isUSD ? r.maxAmtUsd : r.maxAmt
+
             return (
               <div
                 key={i}
@@ -120,17 +140,17 @@ export default function GastosRecurrentes({ gastosAno, selectedYear }: GastosRec
 
                 {/* Promedio */}
                 <div className="text-right">
-                  <p className="num text-sm font-medium" style={{ color: 'var(--ink-2)' }}>{fmt(r.avg)}</p>
-                  {r.minAmt !== r.maxAmt && (
+                  <p className="num text-sm font-medium" style={{ color: 'var(--ink-2)' }}>{formatter(avgDisplay)}</p>
+                  {minDisplay !== maxDisplay && (
                     <p className="num text-[10px]" style={{ color: 'var(--ink-3)' }}>
-                      {fmt(r.minAmt)} – {fmt(r.maxAmt)}
+                      {formatter(minDisplay)} – {formatter(maxDisplay)}
                     </p>
                   )}
                 </div>
 
                 {/* Total */}
                 <span className="num text-sm font-semibold text-right" style={{ color: 'var(--ink)' }}>
-                  {fmt(r.total)}
+                  {formatter(totalDisplay)}
                 </span>
               </div>
             )
