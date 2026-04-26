@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Loader2, CalendarRange, ChevronDown, ChevronUp,
-  Pencil, Trash2, Search, X,
+  Pencil, Trash2, Search, X, RefreshCw,
 } from "lucide-react";
 import { fetchGastosByRange, deleteGasto, updateGasto } from "@/api";
 import { useAuth } from "@/contexts";
@@ -216,7 +216,7 @@ function MonthPicker({
 }
 
 // ── Grid columns shared between header and rows ────────────────────────────
-const GRID_COLS = "130px 130px 110px 1fr 56px";
+const GRID_COLS = "130px 130px 110px 1fr 84px";
 
 // ── Day group ──────────────────────────────────────────────────────────────────
 
@@ -226,8 +226,10 @@ function DayGroup({
   settings,
   onEdit,
   onDelete,
+  onToggleFijo,
   deletingId,
   confirmDeleteId,
+  togglingFijoId,
   onConfirmDelete,
   onCancelDelete,
 }: {
@@ -236,8 +238,10 @@ function DayGroup({
   settings: Pick<UserSettings, "formaColors" | "conceptoColors">;
   onEdit: (g: Gasto) => void;
   onDelete: (id: string) => void;
+  onToggleFijo: (g: Gasto) => void;
   deletingId: string | null;
   confirmDeleteId: string | null;
+  togglingFijoId: string | null;
   onConfirmDelete: (id: string) => void;
   onCancelDelete: () => void;
 }) {
@@ -355,6 +359,33 @@ function DayGroup({
               ) : (
                 <>
                   <button
+                    onClick={() => onToggleFijo(g)}
+                    title={g.fijo ? "Marcar como variable" : "Marcar como fijo"}
+                    disabled={togglingFijoId === g.id}
+                    className="p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
+                    style={{
+                      background: g.fijo ? "rgba(184,208,107,0.12)" : "transparent",
+                      border: "none",
+                      cursor: togglingFijoId === g.id ? "default" : "pointer",
+                      color: g.fijo ? "var(--accent)" : "var(--ink-3)",
+                    }}
+                    onMouseEnter={(e) => {
+                      if (togglingFijoId === g.id) return;
+                      e.currentTarget.style.color = "var(--accent)";
+                      e.currentTarget.style.background = "rgba(184,208,107,0.12)";
+                    }}
+                    onMouseLeave={(e) => {
+                      if (togglingFijoId === g.id) return;
+                      e.currentTarget.style.color = g.fijo ? "var(--accent)" : "var(--ink-3)";
+                      e.currentTarget.style.background = g.fijo ? "rgba(184,208,107,0.12)" : "transparent";
+                    }}
+                  >
+                    {togglingFijoId === g.id
+                      ? <Loader2 size={13} className="animate-spin" />
+                      : <RefreshCw size={13} />
+                    }
+                  </button>
+                  <button
                     onClick={() => onEdit(g)}
                     className="p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
                     style={{ color: "var(--ink-3)", background: "transparent", border: "none", cursor: "pointer" }}
@@ -409,6 +440,7 @@ export default function RangePage() {
   const [showModal, setShowModal] = useState(false);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [togglingFijoId, setTogglingFijoId] = useState<string | null>(null);
 
   // ── Range strings ─────────────────────────────────────────────────────────
   const fromDate = `${fromYear}-${String(fromMonth + 1).padStart(2, "0")}-01`;
@@ -456,6 +488,18 @@ export default function RangePage() {
   const handleSaveEdit = async (form: Omit<Gasto, "id" | "user_id" | "created_at">) => {
     if (!editingGasto) return;
     await updateMut.mutateAsync({ id: editingGasto.id, data: { ...editingGasto, ...form } });
+  };
+
+  const handleToggleFijo = async (g: Gasto) => {
+    if (togglingFijoId) return;
+    setTogglingFijoId(g.id);
+    try {
+      await updateGasto(g.id, { ...g, fijo: !g.fijo });
+      invalidate();
+      queryClient.invalidateQueries({ queryKey: ["gastos"] });
+    } finally {
+      setTogglingFijoId(null);
+    }
   };
 
   // ── Filters ───────────────────────────────────────────────────────────────
@@ -755,8 +799,10 @@ export default function RangePage() {
                               settings={settings}
                               onEdit={(g) => { setEditingGasto(g); setShowModal(true); }}
                               onDelete={handleDelete}
+                              onToggleFijo={handleToggleFijo}
                               deletingId={deletingId}
                               confirmDeleteId={confirmDeleteId}
+                              togglingFijoId={togglingFijoId}
                               onConfirmDelete={setConfirmDeleteId}
                               onCancelDelete={() => setConfirmDeleteId(null)}
                             />
