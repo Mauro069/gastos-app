@@ -41,7 +41,7 @@ function getRate(usdRates: UsdRates, date: string): number | undefined {
 /** USD value of a snapshot item given cuentas list and snapshot's usd_rate */
 function itemToUsd(item: ActivoItem, cuenta: ActivoCuenta | undefined, usdRate: number): number {
   if (!cuenta) return 0;
-  if (cuenta.tipo === "disponible") return item.valor; // already USD
+  if (cuenta.tipo === "disponible" || cuenta.tipo === "inversion_usd") return item.valor; // already USD
   return usdRate > 0 ? item.valor / usdRate : 0;       // ARS → USD
 }
 
@@ -120,6 +120,7 @@ function SnapshotModal({ snapshot, cuentas, defaultRate, onClose, onSave }: Snap
   const [error, setError] = useState("");
 
   const disponibles = cuentas.filter((c) => c.tipo === "disponible");
+  const inversionesUsd = cuentas.filter((c) => c.tipo === "inversion_usd");
   const inversiones = cuentas.filter((c) => c.tipo === "inversion");
 
   const [valores, setValores] = useState<Record<string, number | "">>(() => {
@@ -139,8 +140,10 @@ function SnapshotModal({ snapshot, cuentas, defaultRate, onClose, onSave }: Snap
   }, []);
 
   const totalDispUsd = disponibles.reduce((a, c) => a + (Number(valores[c.id]) || 0), 0);
+  const totalInvUsdDirect = inversionesUsd.reduce((a, c) => a + (Number(valores[c.id]) || 0), 0);
   const totalInvArs = inversiones.reduce((a, c) => a + (Number(valores[c.id]) || 0), 0);
-  const totalInvUsd = usdRate > 0 ? totalInvArs / usdRate : 0;
+  const totalInvArsToUsd = usdRate > 0 ? totalInvArs / usdRate : 0;
+  const totalInvUsd = totalInvUsdDirect + totalInvArsToUsd;
   const grandTotalUsd = totalDispUsd + totalInvUsd;
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -243,6 +246,33 @@ function SnapshotModal({ snapshot, cuentas, defaultRate, onClose, onSave }: Snap
             </div>
           )}
 
+          {inversionesUsd.length > 0 && (
+            <div>
+              <div className="flex items-center gap-2 mb-2.5">
+                <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--ink-3)' }}>Inversiones</span>
+                <span className="text-xs" style={{ color: 'var(--line)' }}>(USD)</span>
+              </div>
+              <div className="space-y-2">
+                {inversionesUsd.map((c) => (
+                  <div key={c.id} className="flex items-center gap-3">
+                    <span className="text-sm w-28 flex-shrink-0" style={{ color: 'var(--ink-2)' }}>{c.nombre}</span>
+                    <AmountField
+                      initialValue={typeof valores[c.id] === "number" ? (valores[c.id] as number) : undefined}
+                      onValueChange={(v) => setValor(c.id, v)}
+                      prefix="$"
+                      placeholder="0"
+                    />
+                  </div>
+                ))}
+              </div>
+              {totalInvUsdDirect > 0 && (
+                <div className="mt-2 text-right text-xs" style={{ color: 'var(--ink-3)' }}>
+                  Subtotal inv. USD: <span className="font-semibold num" style={{ color: 'var(--warn)' }}>{fmtUsd(totalInvUsdDirect)}</span>
+                </div>
+              )}
+            </div>
+          )}
+
           {inversiones.length > 0 && (
             <div>
               <div className="flex items-center gap-2 mb-2.5">
@@ -272,11 +302,17 @@ function SnapshotModal({ snapshot, cuentas, defaultRate, onClose, onSave }: Snap
                   );
                 })}
               </div>
-              {totalInvUsd > 0 && (
+              {totalInvArsToUsd > 0 && (
                 <div className="mt-2 text-right text-xs" style={{ color: 'var(--ink-3)' }}>
-                  Total inversión: <span className="font-semibold num" style={{ color: 'var(--positive)' }}>{fmtUsd(totalInvUsd)}</span>
+                  Subtotal inv. ARS: <span className="font-semibold num" style={{ color: 'var(--warn)' }}>{fmtUsd(totalInvArsToUsd)}</span>
                 </div>
               )}
+            </div>
+          )}
+
+          {totalInvUsd > 0 && (inversionesUsd.length > 0 || inversiones.length > 0) && (
+            <div className="text-right text-xs" style={{ color: 'var(--ink-3)' }}>
+              Total inversiones: <span className="font-semibold num" style={{ color: 'var(--positive)' }}>{fmtUsd(totalInvUsd)}</span>
             </div>
           )}
 
@@ -340,6 +376,7 @@ function CuentasManager({
   const [renameVal, setRenameVal] = useState("");
 
   const disponibles = cuentas.filter((c) => c.tipo === "disponible");
+  const inversionesUsd = cuentas.filter((c) => c.tipo === "inversion_usd");
   const inversiones = cuentas.filter((c) => c.tipo === "inversion");
 
   const handleAdd = () => {
@@ -356,10 +393,10 @@ function CuentasManager({
     setRenamingId(null);
   };
 
-  const Section = ({ titulo, tipo, items }: { titulo: string; tipo: CuentaTipo; items: ActivoCuenta[] }) => (
+  const Section = ({ titulo, tipo, items, moneda }: { titulo: string; tipo: CuentaTipo; items: ActivoCuenta[]; moneda?: string }) => (
     <div>
       <p className="text-xs uppercase tracking-wider mb-2" style={{ color: 'var(--ink-3)' }}>
-        {titulo} <span style={{ color: 'var(--line)' }}>(USD)</span>
+        {titulo} {moneda && <span style={{ color: 'var(--line)' }}>({moneda})</span>}
       </p>
       <div className="flex flex-wrap gap-2">
         {items.map((c) => (
@@ -470,8 +507,9 @@ function CuentasManager({
       className="rounded-2xl p-4 space-y-4"
       style={{ background: 'var(--surface)', border: '1px solid var(--line)' }}
     >
-      <Section titulo="Dinero disponible" tipo="disponible" items={disponibles} />
-      <Section titulo="Inversiones" tipo="inversion" items={inversiones} />
+      <Section titulo="Dinero disponible" tipo="disponible" items={disponibles} moneda="USD" />
+      <Section titulo="Inversiones en USD" tipo="inversion_usd" items={inversionesUsd} moneda="USD" />
+      <Section titulo="Inversiones en ARS" tipo="inversion" items={inversiones} moneda="ARS → USD" />
     </div>
   );
 }
@@ -594,7 +632,9 @@ export default function ActivosPage() {
   // ── Derived data ──────────────────────────────────────────────────────────
 
   const disponibles = useMemo(() => cuentas.filter((c) => c.tipo === "disponible"), [cuentas]);
+  const inversionesUsd = useMemo(() => cuentas.filter((c) => c.tipo === "inversion_usd"), [cuentas]);
   const inversiones = useMemo(() => cuentas.filter((c) => c.tipo === "inversion"), [cuentas]);
+  const todasLasInversiones = useMemo(() => [...inversionesUsd, ...inversiones], [inversionesUsd, inversiones]);
 
   const snapshotsComputed = useMemo(() => {
     return snapshots.map((snap, idx) => {
@@ -602,7 +642,7 @@ export default function ActivosPage() {
         const item = snap.activos_items.find((i) => i.cuenta_id === c.id);
         return a + (item ? itemToUsd(item, c, snap.usd_rate) : 0);
       }, 0);
-      const invUsd = inversiones.reduce((a, c) => {
+      const invUsd = todasLasInversiones.reduce((a, c) => {
         const item = snap.activos_items.find((i) => i.cuenta_id === c.id);
         return a + (item ? itemToUsd(item, c, snap.usd_rate) : 0);
       }, 0);
@@ -616,7 +656,7 @@ export default function ActivosPage() {
           const item = prev.activos_items.find((i) => i.cuenta_id === c.id);
           return a + (item ? itemToUsd(item, c, prev.usd_rate) : 0);
         }, 0);
-        const pInv = inversiones.reduce((a, c) => {
+        const pInv = todasLasInversiones.reduce((a, c) => {
           const item = prev.activos_items.find((i) => i.cuenta_id === c.id);
           return a + (item ? itemToUsd(item, c, prev.usd_rate) : 0);
         }, 0);
@@ -630,7 +670,7 @@ export default function ActivosPage() {
 
       return { ...snap, dispUsd, invUsd, totalUsd, totalArs, dispArs, invArs, deltaUsd, deltaPct };
     });
-  }, [snapshots, disponibles, inversiones]);
+  }, [snapshots, disponibles, todasLasInversiones]);
 
   const chartData = useMemo(() =>
     snapshotsComputed.map((s) => ({
@@ -849,6 +889,9 @@ export default function ActivosPage() {
                           <th key={c.id} className="text-right px-3 py-2.5 text-xs font-semibold uppercase tracking-wider whitespace-nowrap" style={{ color: 'var(--accent)' }}>{c.nombre}</th>
                         ))}
                         <th className="text-right px-3 py-2.5 text-xs font-semibold uppercase tracking-wider whitespace-nowrap" style={{ color: 'var(--accent)' }}>Disponible</th>
+                        {inversionesUsd.map((c) => (
+                          <th key={c.id} className="text-right px-3 py-2.5 text-xs font-semibold uppercase tracking-wider whitespace-nowrap" style={{ color: 'var(--warn)' }}>{c.nombre}</th>
+                        ))}
                         {inversiones.map((c) => (
                           <th key={c.id} className="text-right px-3 py-2.5 text-xs font-semibold uppercase tracking-wider whitespace-nowrap" style={{ color: 'var(--warn)' }}>{c.nombre}</th>
                         ))}
@@ -895,6 +938,15 @@ export default function ActivosPage() {
                             <td className="px-3 py-3 text-right font-semibold text-xs num whitespace-nowrap" style={{ color: 'var(--accent)' }}>
                               {fmtUsd(snap.dispUsd)}
                             </td>
+
+                            {inversionesUsd.map((c) => {
+                              const item = snap.activos_items.find((i) => i.cuenta_id === c.id);
+                              return (
+                                <td key={c.id} className="px-3 py-3 text-right text-xs num whitespace-nowrap" style={{ color: 'var(--ink-2)' }}>
+                                  {item ? fmtUsd(item.valor) : <span style={{ color: 'var(--line)' }}>—</span>}
+                                </td>
+                              );
+                            })}
 
                             {inversiones.map((c) => {
                               const item = snap.activos_items.find((i) => i.cuenta_id === c.id);

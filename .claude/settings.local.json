@@ -1,0 +1,30 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx tsc:*)",
+      "Bash(./node_modules/.bin/tsc:*)",
+      "Bash(bun run:*)",
+      "Bash(npm run:*)",
+      "Bash(git add -A)",
+      "Bash(git commit:*)",
+      "Bash(git push origin main)",
+      "Bash(git push)",
+      "Bash(git config:*)",
+      "Bash(rm -f .git/index.lock)",
+      "Bash(lsof -i :5173 -i :3000 -i :4173)",
+      "Bash(npx --yes playwright --version)",
+      "Read(//private/tmp/**)",
+      "Bash(node -e \":*)",
+      "Bash(npx playwright@latest screenshot http://localhost:5173 /tmp/landing.png --viewport-size=1440,900 --wait-for-timeout=3000)",
+      "Bash(npx playwright install chromium)",
+      "Bash(npx playwright screenshot http://localhost:5173 /tmp/landing.png --viewport-size=1440,900 --wait-for-timeout=3000)",
+      "Bash(curl -s -F \"file=@/tmp/landing.png\" https://0x0.st)",
+      "Bash(curl -s -F \"file=@/tmp/landing.png\" https://tmpfiles.org/api/v1/upload)",
+      "Bash(mkdir -p /tmp/pw-test)",
+      "Bash(npm init -y)",
+      "Bash(npm install playwright)",
+      "Bash(curl -s -F \"file=@/tmp/after_click.png\" https://tmpfiles.org/api/v1/upload)",
+      "Bash(npx jest:*)"
+    ]
+  }
+}

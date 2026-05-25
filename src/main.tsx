@@ -10,6 +10,8 @@ import ActivosPage from "./pages/ActivosPage";
 import RangePage from "./pages/RangePage";
 import ProfilePage from "./pages/ProfilePage";
 import PresupuestoPage from "./pages/PresupuestoPage";
+import MetasPage from "./pages/MetasPage";
+import RecordatoriosPage from "./pages/RecordatoriosPage";
 import { AuthProvider, UserSettingsProvider } from "@/contexts";
 import { SpeedInsights } from "@vercel/speed-insights/react";
 import { Analytics } from "@vercel/analytics/react";
@@ -39,6 +41,8 @@ createRoot(document.getElementById("root")!).render(
               <Route path="/historial" element={<RangePage />} />
               <Route path="/perfil" element={<ProfilePage />} />
               <Route path="/presupuesto" element={<PresupuestoPage />} />
+              <Route path="/metas" element={<MetasPage />} />
+              <Route path="/recordatorios" element={<RecordatoriosPage />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </BrowserRouter>

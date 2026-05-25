@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react"
+import { useNavigate } from "react-router-dom"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import {
   Plus,
@@ -11,6 +12,8 @@ import {
   Trash2,
   Save,
   X,
+  Pencil,
+  ArrowUpRight,
 } from "lucide-react"
 import { AppShell, MonthPicker } from "@/components"
 import { useUserSettings } from "@/contexts"
@@ -126,6 +129,7 @@ interface BudgetPanelProps {
 }
 
 function BudgetPanel({ year, month, existing, defaultRate, conceptos, onSave, onDelete, deleting }: BudgetPanelProps) {
+  const [isEditing, setIsEditing] = useState(!existing) // read-only when budget exists
   const [totalUsd, setTotalUsd] = useState(existing ? String(existing.total_usd) : "")
   const [usdRate, setUsdRate] = useState(existing ? String(existing.usd_rate) : defaultRate > 0 ? String(defaultRate) : "")
   const [items, setItems] = useState<ModalItem[]>(existing?.presupuesto_items.map(itemFromExisting) ?? [])
@@ -200,6 +204,7 @@ function BudgetPanel({ year, month, existing, defaultRate, conceptos, onSave, on
             return { concepto: null, alias: i.alias.trim(), conceptos: i.conceptos, monto_usd: parseFloat(i.monto_usd), es_destino: false }
           }),
       })
+      setIsEditing(false)
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Error al guardar")
     } finally {
@@ -209,16 +214,122 @@ function BudgetPanel({ year, month, existing, defaultRate, conceptos, onSave, on
 
   const tipoLabel: Record<ModalItem["tipo"], string> = { destino: "Destino", categoria: "Categoría", grupo: "Grupo" }
 
+  // ── Read-only view ────────────────────────────────────────────────────────
+  if (!isEditing && existing) {
+    const tipoLabel: Record<ModalItem["tipo"], string> = { destino: "Destino", categoria: "Categoría", grupo: "Grupo" }
+    const readItems = existing.presupuesto_items.map(itemFromExisting)
+    return (
+      <div className="flex flex-col h-full">
+        {/* Header */}
+        <div className="px-4 py-3 flex-shrink-0 flex items-center justify-between" style={{ borderBottom: "1px solid var(--line)", background: "var(--surface-alt)" }}>
+          <div>
+            <p className="text-[10px] uppercase tracking-widest" style={{ color: "var(--ink-3)", marginBottom: 2 }}>Presupuesto</p>
+            <p className="text-sm font-semibold" style={{ color: "var(--ink)" }}>{MONTH_FULL[month]} {year}</p>
+          </div>
+          <button
+            onClick={() => setIsEditing(true)}
+            className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-opacity hover:opacity-70"
+            style={{ background: "var(--surface)", border: "1px solid var(--line)", color: "var(--ink-2)", cursor: "pointer" }}
+          >
+            <Pencil size={12} /> Editar
+          </button>
+        </div>
+
+        {/* Summary */}
+        <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
+          {/* Total */}
+          <div className="flex items-center justify-between px-3 py-2.5 rounded-lg" style={{ background: "var(--surface-alt)", border: "1px solid var(--line)" }}>
+            <span className="text-xs" style={{ color: "var(--ink-3)" }}>Total</span>
+            <div className="text-right">
+              <div className="num font-bold text-sm" style={{ color: "var(--ink)" }}>{fmtUsd(existing.total_usd)}</div>
+              <div className="num text-[10px]" style={{ color: "var(--ink-3)" }}>{fmtArs(existing.total_usd * existing.usd_rate)} · TC ${existing.usd_rate.toLocaleString("es-AR")}</div>
+            </div>
+          </div>
+
+          {/* Items */}
+          {readItems.length > 0 && (
+            <div style={{ border: "1px solid var(--line)", borderRadius: 12, overflow: "hidden" }}>
+              {readItems.map((item, idx) => {
+                const isLast = idx === readItems.length - 1
+                const label = item.alias || item.concepto || "Sin nombre"
+                const { icon: tipoIcon, color: tipoColor } = item.tipo === "destino"
+                  ? destinoIcon(item.alias || item.concepto || "")
+                  : { icon: null, color: "var(--ink-3)" }
+                return (
+                  <div
+                    key={idx}
+                    style={{
+                      padding: "10px 14px",
+                      borderBottom: isLast ? "none" : "1px solid var(--line)",
+                      display: "grid",
+                      gridTemplateColumns: "1fr auto",
+                      gap: 12,
+                      alignItems: "flex-start",
+                    }}
+                  >
+                    <div>
+                      <div className="flex items-center gap-2 mb-0.5">
+                        {tipoIcon && <span style={{ color: tipoColor }}>{tipoIcon}</span>}
+                        <span className="text-sm font-medium" style={{ color: "var(--ink)" }}>{label}</span>
+                        <span
+                          className="text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded"
+                          style={{ background: "var(--surface-alt)", color: "var(--ink-3)", border: "1px solid var(--line)" }}
+                        >
+                          {tipoLabel[item.tipo]}
+                        </span>
+                      </div>
+                      {item.tipo === "grupo" && item.conceptos.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-1.5">
+                          {item.conceptos.map((c) => (
+                            <span key={c} className="text-[10px] px-1.5 py-0.5 rounded-full" style={{ background: "var(--surface-alt)", color: "var(--ink-3)", border: "1px solid var(--line)" }}>{c}</span>
+                          ))}
+                        </div>
+                      )}
+                      {item.tipo === "categoria" && item.concepto && (
+                        <span className="text-[10px] mt-1 block" style={{ color: "var(--ink-3)" }}>{item.concepto}</span>
+                      )}
+                      {item.tipo === "destino" && item.concepto && (
+                        <span className="text-[10px] mt-0.5 block" style={{ color: "var(--ink-3)" }}>{item.concepto}</span>
+                      )}
+                    </div>
+                    <div className="text-right">
+                      <div className="num text-sm font-semibold" style={{ color: item.tipo === "destino" ? tipoColor : "var(--ink-2)" }}>{fmtUsd(parseFloat(item.monto_usd) || 0)}</div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+
+          {readItems.length === 0 && (
+            <p className="text-xs text-center py-6" style={{ color: "var(--ink-3)" }}>Sin ítems configurados</p>
+          )}
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="flex flex-col h-full">
       {/* Panel header */}
-      <div className="px-4 py-3 flex-shrink-0" style={{ borderBottom: "1px solid var(--line)", background: "var(--surface-alt)" }}>
-        <p className="text-[10px] uppercase tracking-widest" style={{ color: "var(--ink-3)", marginBottom: 2 }}>
-          {existing ? "Editar presupuesto" : "Nuevo presupuesto"}
-        </p>
-        <p className="text-sm font-semibold" style={{ color: "var(--ink)" }}>
-          {MONTH_FULL[month]} {year}
-        </p>
+      <div className="px-4 py-3 flex-shrink-0 flex items-center justify-between" style={{ borderBottom: "1px solid var(--line)", background: "var(--surface-alt)" }}>
+        <div>
+          <p className="text-[10px] uppercase tracking-widest" style={{ color: "var(--ink-3)", marginBottom: 2 }}>
+            {existing ? "Editar presupuesto" : "Nuevo presupuesto"}
+          </p>
+          <p className="text-sm font-semibold" style={{ color: "var(--ink)" }}>
+            {MONTH_FULL[month]} {year}
+          </p>
+        </div>
+        {existing && (
+          <button
+            onClick={() => setIsEditing(false)}
+            className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs transition-opacity hover:opacity-70"
+            style={{ background: "transparent", border: "1px solid var(--line)", color: "var(--ink-3)", cursor: "pointer" }}
+          >
+            <X size={11} /> Cancelar
+          </button>
+        )}
       </div>
 
       {/* Form body */}
@@ -441,8 +552,18 @@ export default function PresupuestoPage() {
   const [year, setYear] = useState(now.getFullYear())
   const [month, setMonth] = useState(now.getMonth()) // 0-indexed
 
+  const navigate = useNavigate()
   const queryClient = useQueryClient()
   const { settings } = useUserSettings()
+
+  // Navigate to historial with category filters pre-applied for this month
+  function goToHistorialWithCats(cats: string[]) {
+    const params = new URLSearchParams()
+    params.set("year", String(year))
+    params.set("month", String(month + 1))
+    if (cats.length > 0) params.set("conceptos", cats.join(","))
+    navigate(`/?${params.toString()}`)
+  }
 
   const month1 = month + 1
   const mk = `${year}-${pad(month1)}`
@@ -534,41 +655,106 @@ export default function PresupuestoPage() {
         <div className="flex flex-col flex-1 min-h-0 overflow-hidden" style={{ borderRight: "1px solid var(--line)" }}>
 
           {/* KPI grid */}
-          <div
-            className="grid grid-cols-3 flex-shrink-0"
-            style={{ gap: 1, background: "var(--line)", borderBottom: "1px solid var(--line)" }}
-          >
-            {[
-              {
-                label: "Presupuesto",
-                value: presupuesto ? fmtUsd(presupuesto.total_usd) : "—",
-                sub: presupuesto ? fmtArs(presupuesto.total_usd * rate) : "",
-                valueColor: "var(--ink)",
-              },
-              {
-                label: "Gastado",
-                value: presupuesto ? fmtUsd(totalGastadoUsd) : "—",
-                sub: presupuesto ? fmtArs(totalGastadoUsd * rate) : "",
-                valueColor: "var(--ink)",
-              },
-              {
-                label: "Disponible",
-                value: presupuesto ? fmtUsd(disponible) : "—",
-                sub: presupuesto ? fmtArs(disponible * rate) : "",
-                valueColor: overBudget ? "var(--negative)" : "var(--positive)",
-              },
-            ].map((k, i) => (
-              <div key={i} style={{ background: "var(--surface)", padding: "18px 20px" }}>
-                <p className="text-[10px] uppercase tracking-widest" style={{ color: "var(--ink-3)", marginBottom: 8 }}>
-                  {k.label}
-                </p>
-                <p className="num font-semibold leading-none" style={{ fontSize: 22, letterSpacing: "-0.03em", color: k.valueColor, marginBottom: 6 }}>
-                  {k.value}
-                </p>
-                {k.sub && <p className="text-[11px] num" style={{ color: "var(--ink-3)" }}>{k.sub}</p>}
+          {(() => {
+            const hasDestinos = destinoItems.length > 0
+            // When there are destinos, we show 4 KPIs: Presupuesto | Gastado (consumo) | Destinos | Disponible
+            // When no destinos, show 3 KPIs: Presupuesto | Gastado | Disponible
+            const kpis = hasDestinos
+              ? [
+                  {
+                    label: "Presupuesto",
+                    value: presupuesto ? fmtUsd(presupuesto.total_usd) : "—",
+                    sub: presupuesto ? fmtArs(presupuesto.total_usd * rate) : "",
+                    valueColor: "var(--ink)",
+                    detail: null as null | { items: { name: string; color: string; value: number }[] },
+                  },
+                  {
+                    label: "Gastos",
+                    value: presupuesto ? fmtUsd(gastadoParaGastos) : "—",
+                    sub: presupuesto ? fmtArs(gastadoParaGastos * rate) : "",
+                    valueColor: "var(--ink)",
+                    detail: null,
+                  },
+                  {
+                    label: "Destinos",
+                    value: presupuesto ? fmtUsd(gastadoDestinosTotal) : "—",
+                    sub: presupuesto ? `de ${fmtUsd(sumDestinosUsd)}` : "",
+                    valueColor: gastadoDestinosTotal > sumDestinosUsd ? "var(--negative)" : "var(--positive)",
+                    detail: {
+                      items: destinoItems.map((d) => {
+                        const label = d.alias || d.concepto || "Destino"
+                        const lower = label.toLowerCase()
+                        const color = lower.includes("ahorro") ? "var(--positive)" : lower.includes("invers") ? "var(--accent)" : "var(--warn)"
+                        return { name: label, color, value: d.monto_usd }
+                      }),
+                    },
+                  },
+                  {
+                    label: "Disponible",
+                    value: presupuesto ? fmtUsd(disponible) : "—",
+                    sub: presupuesto ? fmtArs(disponible * rate) : "",
+                    valueColor: overBudget ? "var(--negative)" : "var(--positive)",
+                    detail: null,
+                  },
+                ]
+              : [
+                  {
+                    label: "Presupuesto",
+                    value: presupuesto ? fmtUsd(presupuesto.total_usd) : "—",
+                    sub: presupuesto ? fmtArs(presupuesto.total_usd * rate) : "",
+                    valueColor: "var(--ink)",
+                    detail: null as null | { items: { name: string; color: string; value: number }[] },
+                  },
+                  {
+                    label: "Gastado",
+                    value: presupuesto ? fmtUsd(totalGastadoUsd) : "—",
+                    sub: presupuesto ? fmtArs(totalGastadoUsd * rate) : "",
+                    valueColor: "var(--ink)",
+                    detail: null,
+                  },
+                  {
+                    label: "Disponible",
+                    value: presupuesto ? fmtUsd(disponible) : "—",
+                    sub: presupuesto ? fmtArs(disponible * rate) : "",
+                    valueColor: overBudget ? "var(--negative)" : "var(--positive)",
+                    detail: null,
+                  },
+                ]
+            return (
+              <div
+                className={`grid flex-shrink-0`}
+                style={{
+                  gridTemplateColumns: `repeat(${kpis.length}, 1fr)`,
+                  gap: 1,
+                  background: "var(--line)",
+                  borderBottom: "1px solid var(--line)",
+                }}
+              >
+                {kpis.map((k, i) => (
+                  <div key={i} style={{ background: "var(--surface)", padding: "18px 20px" }}>
+                    <p className="text-[10px] uppercase tracking-widest" style={{ color: "var(--ink-3)", marginBottom: 8 }}>
+                      {k.label}
+                    </p>
+                    <p className="num font-semibold leading-none" style={{ fontSize: 22, letterSpacing: "-0.03em", color: k.valueColor, marginBottom: 6 }}>
+                      {k.value}
+                    </p>
+                    {k.sub && <p className="text-[11px] num" style={{ color: "var(--ink-3)" }}>{k.sub}</p>}
+                    {k.detail && k.detail.items.length > 0 && (
+                      <div className="mt-2 space-y-0.5">
+                        {k.detail.items.map((d, j) => (
+                          <div key={j} className="flex items-center gap-1.5 text-[10px]">
+                            <span style={{ width: 5, height: 5, borderRadius: "50%", background: d.color, flexShrink: 0, display: "inline-block" }} />
+                            <span style={{ color: "var(--ink-3)" }} className="truncate">{d.name}</span>
+                            <span className="num ml-auto" style={{ color: d.color, flexShrink: 0 }}>{fmtUsd(d.value)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
+            )
+          })()}
 
           {/* Budget view */}
           <main className="flex-1 overflow-y-auto min-h-0 p-4 lg:p-5 space-y-4">
@@ -625,7 +811,17 @@ export default function PresupuestoPage() {
                         <div style={{ display: "grid", gridTemplateColumns: "1fr 100px 100px", gap: 12, alignItems: "flex-start", marginBottom: hasTracking ? 10 : 0 }}>
                           <div style={{ display: "flex", alignItems: "center", gap: 8, paddingTop: 2, flexWrap: "wrap" }}>
                             <span style={{ color: iconColor, display: "flex", alignItems: "center" }}>{icon}</span>
-                            <span style={{ fontSize: 13, fontWeight: 600, color: "var(--ink)" }}>{label}</span>
+                            <button
+                              onClick={() => item.concepto ? goToHistorialWithCats([item.concepto]) : undefined}
+                              className="flex items-center gap-1 transition-opacity hover:opacity-70"
+                              style={{ background: "none", border: "none", cursor: item.concepto ? "pointer" : "default", padding: 0 }}
+                              title={item.concepto ? `Ver gastos de ${label}` : undefined}
+                            >
+                              <span style={{ fontSize: 13, fontWeight: 600, color: "var(--ink)" }}>{label}</span>
+                              {item.concepto && (
+                                <ArrowUpRight size={12} style={{ color: "var(--ink-3)", flexShrink: 0 }} />
+                              )}
+                            </button>
                             {item.concepto && (
                               <span style={{ fontSize: 10, color: "var(--ink-3)", background: "var(--surface-alt)", padding: "1px 6px", borderRadius: 10, border: "1px solid var(--line)" }}>
                                 {item.concepto}
@@ -700,10 +896,20 @@ export default function PresupuestoPage() {
                   const isLast = idx === gastoItems.length - 1 && restoPres <= 0
                   return (
                     <div key={idx} style={{ padding: "14px 16px", borderBottom: isLast ? "none" : "1px solid var(--line)" }}>
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr 100px 100px", gap: 12, alignItems: "flex-start", marginBottom: isGroup ? 6 : 10 }}>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 100px 100px", gap: 12, alignItems: "flex-start", marginBottom: 10 }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 7, paddingTop: 2 }}>
                           <span style={{ width: 7, height: 7, borderRadius: "50%", background: dotColor, flexShrink: 0 }} />
-                          <span style={{ fontSize: 13, fontWeight: 500, color: "var(--ink)" }}>{label}</span>
+                          <button
+                            onClick={() => goToHistorialWithCats(cats)}
+                            className="group flex items-center gap-1 transition-opacity hover:opacity-70"
+                            style={{ background: "none", border: "none", cursor: cats.length > 0 ? "pointer" : "default", padding: 0 }}
+                            title={cats.length > 0 ? `Ver gastos de ${label}` : undefined}
+                          >
+                            <span style={{ fontSize: 13, fontWeight: 500, color: "var(--ink)" }}>{label}</span>
+                            {cats.length > 0 && (
+                              <ArrowUpRight size={12} style={{ color: "var(--ink-3)", flexShrink: 0 }} />
+                            )}
+                          </button>
                         </div>
                         <div style={{ textAlign: "right" }}>
                           <div className="num" style={{ fontSize: 13, color: "var(--ink-2)" }}>{fmtUsd(item.monto_usd)}</div>
@@ -714,23 +920,35 @@ export default function PresupuestoPage() {
                           <div className="num" style={{ fontSize: 10, color: over ? "var(--negative)" : "var(--ink-3)", marginTop: 1, opacity: 0.8 }}>{fmtArs(gastado * rate)}</div>
                         </div>
                       </div>
-                      {isGroup && (
-                        <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginBottom: 10, paddingLeft: 14 }}>
-                          {cats.map((c) => {
-                            const hex = getChipHex(c, "concepto", settings)
-                            return (
-                              <span key={c} style={{ fontSize: 10, padding: "2px 7px", borderRadius: 20, background: `${hex}18`, color: hex, border: `1px solid ${hex}30` }}>{c}</span>
-                            )
-                          })}
-                        </div>
-                      )}
                       <ProgressBar pct={pct} />
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 6 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 6, marginBottom: isGroup && cats.length > 0 ? 10 : 0 }}>
                         <span style={{ fontSize: 10, color: "var(--ink-3)" }}>{Math.round(pct)}% del presupuesto</span>
                         <span className="num" style={{ fontSize: 10, color: over ? "var(--negative)" : "var(--ink-3)" }}>
                           {over ? "+" : ""}{fmtUsd(diffUsd)} ({fmtArs(diffUsd * rate)}) {over ? "pasado" : "restante"}
                         </span>
                       </div>
+                      {/* Desglose por categoría dentro del grupo */}
+                      {isGroup && cats.length > 0 && (
+                        <div style={{ paddingLeft: 14, borderLeft: "2px solid var(--line)", marginLeft: 3, display: "flex", flexDirection: "column", gap: 5 }}>
+                          {cats.map((c) => {
+                            const hex = getChipHex(c, "concepto", settings)
+                            const catGastado = spendByConcepto[c] ?? 0
+                            return (
+                              <div key={c} style={{ display: "grid", gridTemplateColumns: "1fr 80px", gap: 8, alignItems: "center" }}>
+                                <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                                  <span style={{ width: 5, height: 5, borderRadius: "50%", background: hex, flexShrink: 0 }} />
+                                  <span style={{ fontSize: 11, color: "var(--ink-2)" }}>{c}</span>
+                                </div>
+                                <div style={{ textAlign: "right" }}>
+                                  <span className="num" style={{ fontSize: 11, color: catGastado > 0 ? hex : "var(--ink-3)", fontWeight: catGastado > 0 ? 600 : 400 }}>
+                                    {catGastado > 0 ? fmtUsd(catGastado) : "—"}
+                                  </span>
+                                </div>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      )}
                     </div>
                   )
                 })}

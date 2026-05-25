@@ -1,6 +1,6 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Search, X, Trash2, Pencil, RefreshCw, Loader2 } from "lucide-react";
+import { Search, X, Trash2, Pencil, RefreshCw, Loader2, ChevronDown, Check } from "lucide-react";
 import { getChipHex } from "@/utils/chipColor";
 import GastoModal from "../GastoModal";
 import {
@@ -53,6 +53,29 @@ export default function GastosTable({
   const [search, setSearch] = useState("");
   const [filterFormas, setFilterFormas] = useSetQueryParam("formas");
   const [filterConceptos, setFilterConceptos] = useSetQueryParam("conceptos");
+  const validSorts = ["fecha", "monto_desc", "monto_asc"] as const;
+  const rawSort = new URLSearchParams(window.location.search).get("sort") ?? "fecha";
+  const [sortBy, _setSortBy] = useState<"fecha" | "monto_desc" | "monto_asc">(
+    validSorts.includes(rawSort as never) ? (rawSort as "fecha" | "monto_desc" | "monto_asc") : "fecha"
+  );
+  const setSortBy = (next: "fecha" | "monto_desc" | "monto_asc") => {
+    _setSortBy(next);
+    const params = new URLSearchParams(window.location.search);
+    if (next === "fecha") params.delete("sort");
+    else params.set("sort", next);
+    window.history.replaceState(null, "", `${window.location.pathname}${params.toString() ? "?" + params.toString() : ""}`);
+  };
+  const [sortOpen, setSortOpen] = useState(false);
+  const sortRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!sortOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (sortRef.current && !sortRef.current.contains(e.target as Node)) setSortOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [sortOpen]);
 
   const queryKey = ["gastos", user?.id, selectedYear];
 
@@ -155,12 +178,18 @@ export default function GastosTable({
       result = result.filter((g) => filterFormas.has(g.forma));
     if (filterConceptos.size > 0)
       result = result.filter((g) => filterConceptos.has(g.concepto));
+    if (sortBy === "monto_desc") {
+      return result.sort((a, b) => Number(b.cantidad) - Number(a.cantidad));
+    }
+    if (sortBy === "monto_asc") {
+      return result.sort((a, b) => Number(a.cantidad) - Number(b.cantidad));
+    }
     return result.sort(
       (a, b) =>
         b.fecha.localeCompare(a.fecha) ||
         Number(b.cantidad) - Number(a.cantidad),
     );
-  }, [gastos, search, filterFormas, filterConceptos]);
+  }, [gastos, search, filterFormas, filterConceptos, sortBy]);
 
   const hasFilters =
     search || filterFormas.size > 0 || filterConceptos.size > 0;
@@ -169,8 +198,12 @@ export default function GastosTable({
     .filter((g) => selectedIds.has(g.id))
     .reduce((acc, g) => acc + Number(g.cantidad), 0);
 
-  // Group by date
+  // Group by date (flat when sorting by amount)
   const groups = useMemo(() => {
+    if (sortBy !== "fecha") {
+      // Flat list — one virtual group, no date header
+      return [{ date: null as null | string, items: filtered }];
+    }
     const map: Record<string, Gasto[]> = {};
     const order: string[] = [];
     for (const g of filtered) {
@@ -181,7 +214,7 @@ export default function GastosTable({
       map[g.fecha].push(g);
     }
     return order.map((date) => ({ date, items: map[date] }));
-  }, [filtered]);
+  }, [filtered, sortBy]);
 
   // ── Render ───────────────────────────────────────────────────────────────────
   return (
@@ -237,6 +270,97 @@ export default function GastosTable({
           selected={filterConceptos}
           onChange={setFilterConceptos}
         />
+
+        {/* Sort selector */}
+        {(() => {
+          const sortOptions: { value: typeof sortBy; label: string }[] = [
+            { value: "fecha", label: "Fecha" },
+            { value: "monto_desc", label: "Mayor monto" },
+            { value: "monto_asc", label: "Menor monto" },
+          ];
+          const isActive = sortBy !== "fecha";
+          const currentLabel = sortOptions.find((o) => o.value === sortBy)!.label;
+          return (
+            <div ref={sortRef} className="relative">
+              <button
+                type="button"
+                onClick={() => setSortOpen((o) => !o)}
+                className="flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors whitespace-nowrap"
+                style={{
+                  background: isActive ? "var(--accent-soft)" : "var(--surface)",
+                  color: isActive ? "var(--accent)" : "var(--ink-2)",
+                  border: `1px solid ${isActive ? "var(--accent)" : "var(--line)"}`,
+                  cursor: "pointer",
+                }}
+              >
+                <span>{currentLabel}</span>
+                {isActive ? (
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); setSortBy("fecha"); setSortOpen(false); }}
+                    style={{ background: "none", border: "none", cursor: "pointer", color: "var(--accent)", display: "flex", padding: 0 }}
+                  >
+                    <X size={11} />
+                  </button>
+                ) : (
+                  <ChevronDown
+                    size={11}
+                    style={{
+                      color: "var(--ink-3)",
+                      transform: sortOpen ? "rotate(180deg)" : "none",
+                      transition: "transform 0.15s",
+                    }}
+                  />
+                )}
+              </button>
+
+              {sortOpen && (
+                <div
+                  className="absolute top-full mt-1 right-0 rounded-xl shadow-xl z-50 flex flex-col"
+                  style={{
+                    background: "var(--surface)",
+                    border: "1px solid var(--line)",
+                    minWidth: 150,
+                    overflow: "hidden",
+                  }}
+                >
+                  {sortOptions.map((opt) => {
+                    const isSel = sortBy === opt.value;
+                    return (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => { setSortBy(opt.value); setSortOpen(false); }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2.5 text-left text-sm transition-colors"
+                        style={{
+                          background: isSel ? "var(--accent-soft)" : "transparent",
+                          color: isSel ? "var(--accent)" : "var(--ink-2)",
+                          border: "none",
+                          borderBottom: "1px solid var(--line)",
+                          cursor: "pointer",
+                        }}
+                        onMouseEnter={(e) => { if (!isSel) (e.currentTarget as HTMLElement).style.background = "var(--surface-alt)"; }}
+                        onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = isSel ? "var(--accent-soft)" : "transparent"; }}
+                      >
+                        <span
+                          className="flex-shrink-0 flex items-center justify-center rounded"
+                          style={{
+                            width: 14, height: 14,
+                            background: isSel ? "var(--accent)" : "var(--surface-alt)",
+                            border: isSel ? "none" : "1px solid var(--line)",
+                          }}
+                        >
+                          {isSel && <Check size={9} style={{ color: "var(--accent-ink)", strokeWidth: 3 }} />}
+                        </span>
+                        <span className="flex-1">{opt.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        })()}
       </div>
 
       {/* ── Selection bar (shows only when something is selected) ── */}
@@ -349,13 +473,14 @@ export default function GastosTable({
       ) : (
         <div>
           {groups.map(({ date, items }) => {
-            const d = new Date(date + "T12:00:00");
-            const dayLabel = `${DAYS_SHORT[d.getDay()]} ${d.getDate()}`;
+            const d = date ? new Date(date + "T12:00:00") : null;
+            const dayLabel = d ? `${DAYS_SHORT[d.getDay()]} ${d.getDate()}` : null;
             const dayTotal = items.reduce((a, g) => a + Number(g.cantidad), 0);
 
             return (
-              <div key={date}>
-                {/* Day header — same style as Categorías column dividers */}
+              <div key={date ?? "flat"}>
+                {/* Day header — omitted in flat (amount) sort mode */}
+                {date && (
                 <div
                   id={`day-${date}`}
                   className="flex items-center justify-between px-4 py-2 sticky top-0"
@@ -378,6 +503,7 @@ export default function GastosTable({
                     {fmt(dayTotal)}
                   </span>
                 </div>
+                )}
 
                 {/* Day rows — same grid as column headers */}
                 {items.map((g) => {

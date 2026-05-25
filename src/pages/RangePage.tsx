@@ -442,6 +442,32 @@ export default function RangePage() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [togglingFijoId, setTogglingFijoId] = useState<string | null>(null);
 
+  // ── Sort state (URL-persisted) ────────────────────────────────────────────
+  const validSorts = ["fecha", "monto_desc", "monto_asc"] as const;
+  type SortBy = typeof validSorts[number];
+  const rawSort = new URLSearchParams(window.location.search).get("sort") ?? "fecha";
+  const [sortBy, _setSortBy] = useState<SortBy>(
+    validSorts.includes(rawSort as SortBy) ? (rawSort as SortBy) : "fecha"
+  );
+  const setSortBy = (next: SortBy) => {
+    _setSortBy(next);
+    const params = new URLSearchParams(window.location.search);
+    if (next === "fecha") params.delete("sort");
+    else params.set("sort", next);
+    window.history.replaceState(null, "", `${window.location.pathname}${params.toString() ? "?" + params.toString() : ""}`);
+  };
+  const [sortOpen, setSortOpen] = useState(false);
+  const sortRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!sortOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (sortRef.current && !sortRef.current.contains(e.target as Node)) setSortOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [sortOpen]);
+
   // ── Range strings ─────────────────────────────────────────────────────────
   const fromDate = `${fromYear}-${String(fromMonth + 1).padStart(2, "0")}-01`;
   const toDate = lastDayOfMonth(toYear, toMonth);
@@ -504,7 +530,7 @@ export default function RangePage() {
 
   // ── Filters ───────────────────────────────────────────────────────────────
   const filtered = useMemo(() => {
-    return gastos.filter((g) => {
+    const result = gastos.filter((g) => {
       if (selectedFormas.size > 0 && !selectedFormas.has(g.forma)) return false;
       if (selectedConceptos.size > 0 && !selectedConceptos.has(g.concepto)) return false;
       if (tipoFilter === "fijos" && !g.fijo) return false;
@@ -520,10 +546,19 @@ export default function RangePage() {
       }
       return true;
     });
-  }, [gastos, search, selectedFormas, selectedConceptos, tipoFilter]);
+    if (sortBy === "monto_desc") return [...result].sort((a, b) => Number(b.cantidad) - Number(a.cantidad));
+    if (sortBy === "monto_asc") return [...result].sort((a, b) => Number(a.cantidad) - Number(b.cantidad));
+    return result;
+  }, [gastos, search, selectedFormas, selectedConceptos, tipoFilter, sortBy]);
 
   // ── Group by month → day ──────────────────────────────────────────────────
   const byMonth = useMemo(() => {
+    if (sortBy !== "fecha") {
+      // flat mode: single pseudo-group with null mk
+      return filtered.length > 0
+        ? [{ mk: "__flat__", days: [["__flat__", filtered] as [string, Gasto[]]] }]
+        : [];
+    }
     const map = new Map<string, Map<string, Gasto[]>>();
     for (const g of filtered) {
       const mk = g.fecha.slice(0, 7);
@@ -538,7 +573,7 @@ export default function RangePage() {
         mk,
         days: [...dayMap.entries()].sort(([a], [b]) => b.localeCompare(a)),
       }));
-  }, [filtered]);
+  }, [filtered, sortBy]);
 
   // ── Summary stats ─────────────────────────────────────────────────────────
   const totalRange = useMemo(
@@ -702,6 +737,92 @@ export default function RangePage() {
               )}
             </div>
 
+            {/* Sort dropdown */}
+            <div ref={sortRef} className="relative flex flex-col gap-1">
+              <span className="text-xs uppercase tracking-wider" style={{ color: 'var(--ink-3)' }}>Orden</span>
+              <button
+                type="button"
+                onClick={() => setSortOpen(o => !o)}
+                className="flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors whitespace-nowrap"
+                style={{
+                  background: sortBy !== "fecha" ? 'var(--accent-soft)' : 'var(--surface)',
+                  color: sortBy !== "fecha" ? 'var(--accent)' : 'var(--ink-2)',
+                  border: `1px solid ${sortBy !== "fecha" ? 'var(--accent)' : 'var(--line)'}`,
+                  cursor: 'pointer',
+                }}
+              >
+                <span>
+                  {sortBy === "fecha" ? "Fecha" : sortBy === "monto_desc" ? "Mayor monto" : "Menor monto"}
+                </span>
+                {sortBy !== "fecha" ? (
+                  <button
+                    type="button"
+                    onClick={e => { e.stopPropagation(); setSortBy("fecha"); }}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--accent)', display: 'flex', padding: 0 }}
+                  >
+                    <X size={11} />
+                  </button>
+                ) : (
+                  <ChevronDown
+                    size={11}
+                    style={{
+                      color: 'var(--ink-3)',
+                      transform: sortOpen ? 'rotate(180deg)' : 'none',
+                      transition: 'transform 0.15s',
+                    }}
+                  />
+                )}
+              </button>
+              {sortOpen && (
+                <div
+                  className="absolute top-full mt-1 right-0 rounded-xl shadow-xl z-50 flex flex-col"
+                  style={{
+                    background: 'var(--surface)',
+                    border: '1px solid var(--line)',
+                    minWidth: 160,
+                    overflow: 'hidden',
+                  }}
+                >
+                  {([
+                    { value: "fecha", label: "Fecha" },
+                    { value: "monto_desc", label: "Mayor monto" },
+                    { value: "monto_asc", label: "Menor monto" },
+                  ] as { value: SortBy; label: string }[]).map(({ value, label }) => {
+                    const isSel = sortBy === value;
+                    return (
+                      <button
+                        key={value}
+                        type="button"
+                        onClick={() => { setSortBy(value); setSortOpen(false); }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2.5 text-left text-sm transition-colors"
+                        style={{
+                          background: isSel ? 'var(--accent-soft)' : 'transparent',
+                          color: isSel ? 'var(--accent)' : 'var(--ink-2)',
+                          border: 'none',
+                          cursor: 'pointer',
+                          borderBottom: '1px solid var(--line)',
+                        }}
+                        onMouseEnter={e => { if (!isSel) (e.currentTarget as HTMLElement).style.background = 'var(--surface-alt)'; }}
+                        onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = isSel ? 'var(--accent-soft)' : 'transparent'; }}
+                      >
+                        <span
+                          className="flex-shrink-0 flex items-center justify-center rounded"
+                          style={{
+                            width: 14, height: 14,
+                            background: isSel ? 'var(--accent)' : 'var(--surface-alt)',
+                            border: isSel ? 'none' : '1px solid var(--line)',
+                          }}
+                        >
+                          {isSel && <Check size={9} style={{ color: 'var(--accent-ink)', strokeWidth: 3 }} />}
+                        </span>
+                        <span className="flex-1">{label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
             {/* Summary */}
             <div className="ml-auto text-right">
               <p className="text-[10px] uppercase tracking-wider" style={{ color: 'var(--ink-3)' }}>{rangeLabel}</p>
@@ -734,6 +855,50 @@ export default function RangePage() {
             ) : (
               <div className="space-y-4">
                 {byMonth.map(({ mk, days }) => {
+                  const isFlat = mk === "__flat__";
+
+                  if (isFlat) {
+                    // Flat sort mode: no month header, no day headers
+                    return (
+                      <div
+                        key="flat"
+                        style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 10, overflow: 'hidden' }}
+                      >
+                        {/* Column headers */}
+                        <div
+                          className="grid text-[10px] uppercase tracking-widest font-medium px-4 py-2"
+                          style={{
+                            color: "var(--ink-3)",
+                            borderBottom: "1px solid var(--line)",
+                            gridTemplateColumns: GRID_COLS,
+                          }}
+                        >
+                          <span>Forma</span>
+                          <span>Concepto</span>
+                          <span className="text-right">Monto</span>
+                          <span className="pl-3">Nota</span>
+                          <span />
+                        </div>
+                        {days[0][1].map((g) => (
+                          <DayGroup
+                            key={g.fecha + g.id}
+                            fecha={g.fecha}
+                            gastos={[g]}
+                            settings={settings}
+                            onEdit={(g) => { setEditingGasto(g); setShowModal(true); }}
+                            onDelete={handleDelete}
+                            onToggleFijo={handleToggleFijo}
+                            deletingId={deletingId}
+                            confirmDeleteId={confirmDeleteId}
+                            togglingFijoId={togglingFijoId}
+                            onConfirmDelete={setConfirmDeleteId}
+                            onCancelDelete={() => setConfirmDeleteId(null)}
+                          />
+                        ))}
+                      </div>
+                    );
+                  }
+
                   const [y, m] = mk.split("-").map(Number);
                   const collapsed = collapsedMonths.has(mk);
                   const monthTotal = monthTotals[mk] ?? 0;

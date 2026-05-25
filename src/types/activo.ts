@@ -1,4 +1,4 @@
-export type CuentaTipo = 'disponible' | 'inversion'
+export type CuentaTipo = 'disponible' | 'inversion' | 'inversion_usd'
 
 export interface ActivoCuenta {
   id: string
