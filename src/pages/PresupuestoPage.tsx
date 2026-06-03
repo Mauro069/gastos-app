@@ -689,7 +689,7 @@ export default function PresupuestoPage() {
                 detail: null,
               },
               {
-                label: "Disponible",
+                label: "Ahorrado",
                 value: presupuesto ? fmtUsd(disponibleFinal) : "—",
                 sub: presupuesto ? fmtArs(disponibleFinal * rate) : "",
                 valueColor: disponibleFinal < 0 ? "var(--negative)" : "var(--positive)",
