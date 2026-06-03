@@ -606,6 +606,20 @@ export default function PresupuestoPage() {
   const presupuestoParaGastos = (presupuesto?.total_usd ?? 0) - sumDestinosUsd
   const gastadoParaGastos = totalGastadoUsd - gastadoDestinosTotal
 
+  // New KPI calcs: PRESUPUESTO | INVERTIDO | GASTOS | DISPONIBLE
+  const destinosConTracking = destinoItems.filter((i): i is typeof i & { concepto: string } => !!i.concepto) // solo destinos con concepto
+  const invertidoDestinos = destinosConTracking.filter((d) => {
+    const label = (d.alias || d.concepto || "").toLowerCase()
+    return label.includes("invers")
+  })
+
+  const sumInvertidoUsd = invertidoDestinos.reduce((s, i) => s + i.monto_usd, 0)
+  const gastadoInvertidoTotal = invertidoDestinos.reduce((s, i) => s + (spendByConcepto[i.concepto] ?? 0), 0)
+
+  const gastosNormales = totalGastadoUsd - gastadoInvertidoTotal
+  const disponibleFinal = (presupuesto?.total_usd ?? 0) - gastadoInvertidoTotal - gastosNormales
+
+  // Old calcs (keep for detail section)
   const destinoConceptos = new Set(destinoItems.map((i) => i.concepto).filter(Boolean) as string[])
   const budgetedConceptosGastos = new Set(gastoItems.flatMap((i) => i.conceptos && i.conceptos.length > 0 ? i.conceptos : i.concepto ? [i.concepto] : []))
   const allBudgetedConceptos = new Set([...destinoConceptos, ...budgetedConceptosGastos])
@@ -631,9 +645,6 @@ export default function PresupuestoPage() {
 
   // ── Render ────────────────────────────────────────────────────────────────
 
-  const disponible = (presupuesto?.total_usd ?? 0) - totalGastadoUsd
-  const overBudget = totalGastadoUsd > (presupuesto?.total_usd ?? 0)
-
   return (
     <AppShell>
       {/* ── Header ── */}
@@ -655,70 +666,37 @@ export default function PresupuestoPage() {
 
           {/* KPI grid */}
           {(() => {
-            const hasDestinos = destinoItems.length > 0
-            // When there are destinos, we show 4 KPIs: Presupuesto | Gastado (consumo) | Destinos | Disponible
-            // When no destinos, show 3 KPIs: Presupuesto | Gastado | Disponible
-            const kpis = hasDestinos
-              ? [
-                  {
-                    label: "Presupuesto",
-                    value: presupuesto ? fmtUsd(presupuesto.total_usd) : "—",
-                    sub: presupuesto ? fmtArs(presupuesto.total_usd * rate) : "",
-                    valueColor: "var(--ink)",
-                    detail: null as null | { items: { name: string; color: string; value: number }[] },
-                  },
-                  {
-                    label: "Gastos",
-                    value: presupuesto ? fmtUsd(gastadoParaGastos) : "—",
-                    sub: presupuesto ? fmtArs(gastadoParaGastos * rate) : "",
-                    valueColor: "var(--ink)",
-                    detail: null,
-                  },
-                  {
-                    label: "Destinos",
-                    value: presupuesto ? fmtUsd(gastadoDestinosTotal) : "—",
-                    sub: presupuesto ? `de ${fmtUsd(sumDestinosUsd)}` : "",
-                    valueColor: gastadoDestinosTotal > sumDestinosUsd ? "var(--negative)" : "var(--positive)",
-                    detail: {
-                      items: destinoItems.map((d) => {
-                        const label = d.alias || d.concepto || "Destino"
-                        const lower = label.toLowerCase()
-                        const color = lower.includes("ahorro") ? "var(--positive)" : lower.includes("invers") ? "var(--accent)" : "var(--warn)"
-                        return { name: label, color, value: d.monto_usd }
-                      }),
-                    },
-                  },
-                  {
-                    label: "Disponible",
-                    value: presupuesto ? fmtUsd(disponible) : "—",
-                    sub: presupuesto ? fmtArs(disponible * rate) : "",
-                    valueColor: overBudget ? "var(--negative)" : "var(--positive)",
-                    detail: null,
-                  },
-                ]
-              : [
-                  {
-                    label: "Presupuesto",
-                    value: presupuesto ? fmtUsd(presupuesto.total_usd) : "—",
-                    sub: presupuesto ? fmtArs(presupuesto.total_usd * rate) : "",
-                    valueColor: "var(--ink)",
-                    detail: null as null | { items: { name: string; color: string; value: number }[] },
-                  },
-                  {
-                    label: "Gastado",
-                    value: presupuesto ? fmtUsd(totalGastadoUsd) : "—",
-                    sub: presupuesto ? fmtArs(totalGastadoUsd * rate) : "",
-                    valueColor: "var(--ink)",
-                    detail: null,
-                  },
-                  {
-                    label: "Disponible",
-                    value: presupuesto ? fmtUsd(disponible) : "—",
-                    sub: presupuesto ? fmtArs(disponible * rate) : "",
-                    valueColor: overBudget ? "var(--negative)" : "var(--positive)",
-                    detail: null,
-                  },
-                ]
+            // Always 4 KPIs: PRESUPUESTO | INVERTIDO | GASTOS | DISPONIBLE
+            const kpis = [
+              {
+                label: "Presupuesto",
+                value: presupuesto ? fmtUsd(presupuesto.total_usd) : "—",
+                sub: presupuesto ? fmtArs(presupuesto.total_usd * rate) : "",
+                valueColor: "var(--ink)",
+                detail: null as null | { items: { name: string; color: string; value: number }[] },
+              },
+              {
+                label: "Invertido",
+                value: presupuesto ? fmtUsd(gastadoInvertidoTotal) : "—",
+                sub: presupuesto ? fmtArs(gastadoInvertidoTotal * rate) : "",
+                valueColor: "var(--accent)",
+                detail: null,
+              },
+              {
+                label: "Gastos",
+                value: presupuesto ? fmtUsd(gastosNormales) : "—",
+                sub: presupuesto ? fmtArs(gastosNormales * rate) : "",
+                valueColor: "var(--ink)",
+                detail: null,
+              },
+              {
+                label: "Disponible",
+                value: presupuesto ? fmtUsd(disponibleFinal) : "—",
+                sub: presupuesto ? fmtArs(disponibleFinal * rate) : "",
+                valueColor: disponibleFinal < 0 ? "var(--negative)" : "var(--positive)",
+                detail: null,
+              },
+            ]
             return (
               <div
                 className={`grid flex-shrink-0`}
@@ -789,87 +767,72 @@ export default function PresupuestoPage() {
                 </p>
               </div>
 
-              {/* Destinos prioritarios */}
-              {destinoItems.length > 0 && (
+              {/* Destinos prioritarios (solo con tracking) */}
+              {destinosConTracking.length > 0 && (
                 <div style={card}>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 100px 100px", gap: 12, padding: "10px 16px", borderBottom: "1px solid var(--line)", background: "var(--surface-alt)" }}>
-                    <span style={{ fontSize: 10, color: "var(--ink-2)", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 600 }}>Destinos prioritarios</span>
+                    <span style={{ fontSize: 10, color: "var(--ink-2)", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 600 }}>Destinos con inversión</span>
                     <span style={{ fontSize: 10, color: "var(--ink-3)", textTransform: "uppercase", letterSpacing: "0.08em", textAlign: "right" }}>Asignado</span>
                     <span style={{ fontSize: 10, color: "var(--ink-3)", textTransform: "uppercase", letterSpacing: "0.08em", textAlign: "right" }}>Ejecutado</span>
                   </div>
 
-                  {destinoItems.map((item, idx) => {
+                  {destinosConTracking.map((item, idx) => {
                     const label = item.alias || item.concepto || "Sin nombre"
-                    const gastado = item.concepto ? (spendByConcepto[item.concepto] ?? 0) : 0
-                    const hasTracking = !!item.concepto
+                    const gastado = spendByConcepto[item.concepto] ?? 0
                     const pct = item.monto_usd > 0 ? (gastado / item.monto_usd) * 100 : 0
                     const over = gastado > item.monto_usd
                     const { icon, color: iconColor } = destinoIcon(label)
                     return (
-                      <div key={idx} style={{ padding: "14px 16px", borderBottom: idx < destinoItems.length - 1 ? "1px solid var(--line)" : "none" }}>
-                        <div style={{ display: "grid", gridTemplateColumns: "1fr 100px 100px", gap: 12, alignItems: "flex-start", marginBottom: hasTracking ? 10 : 0 }}>
+                      <div key={idx} style={{ padding: "14px 16px", borderBottom: idx < destinosConTracking.length - 1 ? "1px solid var(--line)" : "none" }}>
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 100px 100px", gap: 12, alignItems: "flex-start", marginBottom: 10 }}>
                           <div style={{ display: "flex", alignItems: "center", gap: 8, paddingTop: 2, flexWrap: "wrap" }}>
                             <span style={{ color: iconColor, display: "flex", alignItems: "center" }}>{icon}</span>
                             <button
-                              onClick={() => item.concepto ? goToHistorialWithCats([item.concepto]) : undefined}
+                              onClick={() => goToHistorialWithCats([item.concepto])}
                               className="flex items-center gap-1 transition-opacity hover:opacity-70"
-                              style={{ background: "none", border: "none", cursor: item.concepto ? "pointer" : "default", padding: 0 }}
-                              title={item.concepto ? `Ver gastos de ${label}` : undefined}
+                              style={{ background: "none", border: "none", cursor: "pointer", padding: 0 }}
+                              title={`Ver gastos de ${label}`}
                             >
                               <span style={{ fontSize: 13, fontWeight: 600, color: "var(--ink)" }}>{label}</span>
-                              {item.concepto && (
-                                <ArrowUpRight size={12} style={{ color: "var(--ink-3)", flexShrink: 0 }} />
-                              )}
+                              <ArrowUpRight size={12} style={{ color: "var(--ink-3)", flexShrink: 0 }} />
                             </button>
-                            {item.concepto && (
-                              <span style={{ fontSize: 10, color: "var(--ink-3)", background: "var(--surface-alt)", padding: "1px 6px", borderRadius: 10, border: "1px solid var(--line)" }}>
-                                {item.concepto}
-                              </span>
-                            )}
+                            <span style={{ fontSize: 10, color: "var(--ink-3)", background: "var(--surface-alt)", padding: "1px 6px", borderRadius: 10, border: "1px solid var(--line)" }}>
+                              {item.concepto}
+                            </span>
                           </div>
                           <div style={{ textAlign: "right" }}>
                             <div className="num" style={{ fontSize: 13, color: "var(--ink-2)" }}>{fmtUsd(item.monto_usd)}</div>
                             <div className="num" style={{ fontSize: 10, color: "var(--ink-3)", marginTop: 1 }}>{fmtArs(item.monto_usd * rate)}</div>
                           </div>
                           <div style={{ textAlign: "right" }}>
-                            {hasTracking ? (
-                              <>
-                                <div className="num" style={{ fontSize: 13, fontWeight: 700, color: over ? "var(--negative)" : "var(--ink)" }}>{fmtUsd(gastado)}</div>
-                                <div className="num" style={{ fontSize: 10, color: over ? "var(--negative)" : "var(--ink-3)", marginTop: 1, opacity: 0.8 }}>{fmtArs(gastado * rate)}</div>
-                              </>
-                            ) : (
-                              <span style={{ fontSize: 13, color: "var(--ink-3)" }}>—</span>
-                            )}
+                            <div className="num" style={{ fontSize: 13, fontWeight: 700, color: over ? "var(--negative)" : "var(--ink)" }}>{fmtUsd(gastado)}</div>
+                            <div className="num" style={{ fontSize: 10, color: over ? "var(--negative)" : "var(--ink-3)", marginTop: 1, opacity: 0.8 }}>{fmtArs(gastado * rate)}</div>
                           </div>
                         </div>
-                        {hasTracking && (
-                          <>
-                            <ProgressBar pct={pct} />
-                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 6 }}>
-                              <span style={{ fontSize: 10, color: "var(--ink-3)" }}>{Math.round(pct)}% ejecutado</span>
-                              <span className="num" style={{ fontSize: 10, color: over ? "var(--negative)" : "var(--ink-3)" }}>
-                                {over ? "+" : ""}{fmtUsd(Math.abs(item.monto_usd - gastado))} ({fmtArs(Math.abs(item.monto_usd - gastado) * rate)}) {over ? "pasado" : "restante"}
-                              </span>
-                            </div>
-                          </>
-                        )}
+                        <ProgressBar pct={pct} />
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 6 }}>
+                          <span style={{ fontSize: 10, color: "var(--ink-3)" }}>{Math.round(pct)}% ejecutado</span>
+                          <span className="num" style={{ fontSize: 10, color: over ? "var(--negative)" : "var(--ink-3)" }}>
+                            {over ? "+" : ""}{fmtUsd(Math.abs(item.monto_usd - gastado))} ({fmtArs(Math.abs(item.monto_usd - gastado) * rate)}) {over ? "pasado" : "restante"}
+                          </span>
+                        </div>
                       </div>
                     )
                   })}
 
-                  {/* Queda para gastar subtotal */}
+                  {/* Disponible post-inversiones */}
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 100px 100px", gap: 12, padding: "12px 16px", background: "var(--surface-alt)", borderTop: "1px solid var(--line)" }}>
                     <div>
-                      <span style={{ fontSize: 12, fontWeight: 600, color: "var(--ink)" }}>Queda para gastar</span>
-                      <p style={{ fontSize: 10, color: "var(--ink-3)", marginTop: 1 }}>Descontando destinos</p>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: "var(--ink)" }}>Para gastar</span>
+                      <p style={{ fontSize: 10, color: "var(--ink-3)", marginTop: 1 }}>Descontando inversiones</p>
                     </div>
                     <div style={{ textAlign: "right" }}>
-                      <div className="num" style={{ fontSize: 12, fontWeight: 700, color: "var(--ink)" }}>{fmtUsd(presupuestoParaGastos)}</div>
-                      <div className="num" style={{ fontSize: 10, color: "var(--ink-3)", marginTop: 1 }}>{fmtArs(presupuestoParaGastos * rate)}</div>
+                      <div className="num" style={{ fontSize: 12, fontWeight: 700, color: "var(--ink)" }}>{fmtUsd((presupuesto?.total_usd ?? 0) - sumInvertidoUsd)}</div>
+                      <div className="num" style={{ fontSize: 10, color: "var(--ink-3)", marginTop: 1 }}>{fmtArs(((presupuesto?.total_usd ?? 0) - sumInvertidoUsd) * rate)}</div>
                     </div>
                     <div style={{ textAlign: "right" }}>
-                      <div className="num" style={{ fontSize: 12, fontWeight: 700, color: gastadoParaGastos > presupuestoParaGastos ? "var(--negative)" : "var(--ink)" }}>{fmtUsd(gastadoParaGastos)}</div>
-                      <div className="num" style={{ fontSize: 10, color: "var(--ink-3)", marginTop: 1, opacity: 0.8 }}>{fmtArs(gastadoParaGastos * rate)}</div>
+                      <div className="num" style={{ fontSize: 12, fontWeight: 700, color: gastosNormales > (presupuesto?.total_usd ?? 0) - sumInvertidoUsd ? "var(--negative)" : "var(--ink)" }}>{fmtUsd(gastosNormales)}</div>
+                      <div className="num" style={{ fontSize: 10, color: "var(--ink-3)", marginTop: 1, opacity: 0.8 }}>{fmtArs(gastosNormales * rate)}</div>
                     </div>
                   </div>
                 </div>
@@ -878,7 +841,7 @@ export default function PresupuestoPage() {
               {/* Gastos del mes */}
               <div style={card}>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 100px 100px", gap: 12, padding: "10px 16px", borderBottom: "1px solid var(--line)", background: "var(--surface-alt)" }}>
-                  {[destinoItems.length > 0 ? "Gastos del mes" : "Categoría", "Presupuesto", "Gastado"].map((h, i) => (
+                  {["Categorías de gasto", "Presupuesto", "Gastado"].map((h, i) => (
                     <span key={h} style={{ fontSize: 10, color: "var(--ink-3)", textTransform: "uppercase", letterSpacing: "0.08em", textAlign: i > 0 ? "right" : "left" }}>{h}</span>
                   ))}
                 </div>
