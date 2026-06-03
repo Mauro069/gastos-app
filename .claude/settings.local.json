@@ -24,7 +24,8 @@
       "Bash(npm init -y)",
       "Bash(npm install playwright)",
       "Bash(curl -s -F \"file=@/tmp/after_click.png\" https://tmpfiles.org/api/v1/upload)",
-      "Bash(npx jest:*)"
+      "Bash(npx jest:*)",
+      "Bash(git add:*)"
     ]
   }
 }

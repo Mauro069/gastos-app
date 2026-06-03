@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react"
 import { useNavigate } from "react-router-dom"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
+import { useYearMonthParam } from "@/hooks"
 import {
   Plus,
   Loader2,
@@ -546,9 +547,7 @@ function BudgetPanel({ year, month, existing, defaultRate, conceptos, onSave, on
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
 export default function PresupuestoPage() {
-  const now = new Date()
-  const [year, setYear] = useState(now.getFullYear())
-  const [month, setMonth] = useState(now.getMonth()) // 0-indexed
+  const { selectedYear: year, selectedMonth: month, setYearMonth } = useYearMonthParam()
   const [showCopiar, setShowCopiar] = useState(false)
 
   const navigate = useNavigate()
@@ -655,7 +654,7 @@ export default function PresupuestoPage() {
         <LayoutDashboard className="w-4 h-4 hidden sm:block" style={{ color: "var(--accent)" }} />
         <h1 className="text-sm font-semibold hidden sm:block" style={{ color: "var(--ink)" }}>Presupuesto</h1>
         <div className="flex-1" />
-        <MonthPicker year={year} month={month} onChange={(y, m) => { setYear(y); setMonth(m) }} />
+        <MonthPicker year={year} month={month} onChange={(y, m) => setYearMonth(y, m)} />
       </header>
 
       {/* ── Two-column body ── */}
@@ -999,8 +998,7 @@ export default function PresupuestoPage() {
           onClose={() => setShowCopiar(false)}
           onSuccess={(ty, tm) => {
             setShowCopiar(false)
-            setYear(ty)
-            setMonth(tm)
+            setYearMonth(ty, tm)
             queryClient.invalidateQueries({ queryKey: ["presupuesto", ty, tm + 1] })
           }}
         />
