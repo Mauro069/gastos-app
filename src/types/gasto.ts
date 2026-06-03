@@ -23,6 +23,8 @@ export type Concepto =
   | 'Casa'
   | 'Viaje España'
 
+export type Moneda = 'ARS' | 'USD'
+
 export interface Gasto {
   id: string
   fecha: string
@@ -31,6 +33,7 @@ export interface Gasto {
   concepto: Concepto
   nota?: string
   fijo?: boolean
+  moneda?: Moneda
   user_id?: string
   created_at?: string
   createdAt?: string
@@ -46,4 +49,5 @@ export interface GastoFormState {
   concepto: Concepto
   nota: string
   fijo: boolean
+  moneda: Moneda
 }

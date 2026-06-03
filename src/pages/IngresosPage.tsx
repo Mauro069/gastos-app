@@ -29,6 +29,7 @@ import {
   fetchUsdRates,
 } from "@/api";
 import IngresoModal from "@/components/IngresoModal";
+import { toARS } from "@/utils/currency";
 import { AppShell, YearPicker } from "@/components";
 import { useAuth } from "@/contexts";
 import { useYearParam } from "@/hooks";
@@ -206,7 +207,7 @@ export default function IngresosPage() {
 
       const ingUsd = monthIng.reduce((a, i) => a + i.monto_usd, 0);
       const ingArs = monthIng.reduce((a, i) => a + i.monto_ars, 0);
-      const gasArs = monthGas.reduce((a, g) => a + Number(g.cantidad), 0);
+      const gasArs = monthGas.reduce((a, g) => a + toARS(g, usdRates), 0);
       const gasUsd = rate && gasArs > 0 ? gasArs / rate : 0;
 
       return {
@@ -234,7 +235,7 @@ export default function IngresosPage() {
 
   const totalYearUsd = ingresos.reduce((a, i) => a + i.monto_usd, 0);
   const totalYearArs = ingresos.reduce((a, i) => a + i.monto_ars, 0);
-  const totalGasArs  = gastos.reduce((a, g) => a + Number(g.cantidad), 0);
+  const totalGasArs  = gastos.reduce((a, g) => a + toARS(g, usdRates), 0);
   const totalGasUsd  = monthlyData.reduce((a, m) => a + m.gasUsd, 0);
   const restanteUsd  = totalYearUsd - totalGasUsd;
   const restanteArs  = totalYearArs - totalGasArs;

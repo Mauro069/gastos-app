@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect, useRef } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Search, X, Trash2, Pencil, RefreshCw, Loader2, ChevronDown, Check } from "lucide-react";
 import { getChipHex } from "@/utils/chipColor";
+import { toARS } from "@/utils/currency";
 import GastoModal from "../GastoModal";
 import {
   createGasto,
@@ -18,12 +19,20 @@ import MultiSelectFilter from "./MultiSelectFilter";
 
 // ── Formatters ──────────────────────────────────────────────────────────────
 
-const fmt = (n: number) =>
-  new Intl.NumberFormat("es-AR", {
+const fmt = (n: number, moneda?: string) => {
+  if (moneda === "USD") {
+    return new Intl.NumberFormat("es-AR", {
+      style: "currency",
+      currency: "USD",
+      maximumFractionDigits: 2,
+    }).format(n);
+  }
+  return new Intl.NumberFormat("es-AR", {
     style: "currency",
     currency: "ARS",
     maximumFractionDigits: 0,
   }).format(n);
+};
 
 const DAYS_SHORT = ["DOM", "LUN", "MAR", "MIÉ", "JUE", "VIE", "SÁB"];
 
@@ -32,6 +41,7 @@ const DAYS_SHORT = ["DOM", "LUN", "MAR", "MIÉ", "JUE", "VIE", "SÁB"];
 export default function GastosTable({
   gastos,
   selectedYear,
+  usdRates = {},
   demo,
   externalShowAdd,
   onAddClose,
@@ -130,6 +140,7 @@ export default function GastosTable({
       forma: string;
       concepto: string;
       nota?: string;
+      moneda?: 'ARS' | 'USD';
     },
   ) => {
     if (modal && modal !== "new") {
@@ -196,7 +207,7 @@ export default function GastosTable({
 
   const selectedTotal = filtered
     .filter((g) => selectedIds.has(g.id))
-    .reduce((acc, g) => acc + Number(g.cantidad), 0);
+    .reduce((acc, g) => acc + toARS(g, usdRates), 0);
 
   // Group by date (flat when sorting by amount)
   const groups = useMemo(() => {
@@ -475,7 +486,8 @@ export default function GastosTable({
           {groups.map(({ date, items }) => {
             const d = date ? new Date(date + "T12:00:00") : null;
             const dayLabel = d ? `${DAYS_SHORT[d.getDay()]} ${d.getDate()}` : null;
-            const dayTotal = items.reduce((a, g) => a + Number(g.cantidad), 0);
+            const dayTotalARS = items.filter(g => !g.moneda || g.moneda === "ARS").reduce((a, g) => a + Number(g.cantidad), 0);
+            const dayTotalUSD = items.filter(g => g.moneda === "USD").reduce((a, g) => a + Number(g.cantidad), 0);
 
             return (
               <div key={date ?? "flat"}>
@@ -496,12 +508,18 @@ export default function GastosTable({
                   >
                     {dayLabel}
                   </span>
-                  <span
-                    className="num text-[10px]"
-                    style={{ color: "var(--ink-3)" }}
-                  >
-                    {fmt(dayTotal)}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    {dayTotalARS > 0 && (
+                      <span className="num text-[10px]" style={{ color: "var(--ink-3)" }}>
+                        {fmt(dayTotalARS)}
+                      </span>
+                    )}
+                    {dayTotalUSD > 0 && (
+                      <span className="num text-[10px] font-semibold" style={{ color: "#3B82F6" }}>
+                        {fmt(dayTotalUSD, "USD")}
+                      </span>
+                    )}
+                  </div>
                 </div>
                 )}
 
@@ -614,10 +632,18 @@ export default function GastosTable({
 
                       {/* Amount */}
                       <span
-                        className="num text-sm font-semibold text-right pr-2"
+                        className="num text-sm font-semibold text-right pr-2 flex flex-col items-end"
                         style={{ color: "var(--ink)" }}
                       >
-                        {fmt(Number(g.cantidad))}
+                        {fmt(Number(g.cantidad), g.moneda)}
+                        {g.moneda === "USD" && (
+                          <span
+                            className="text-[9px] font-bold uppercase tracking-wide px-1 rounded"
+                            style={{ background: "rgba(59,130,246,0.12)", color: "#3B82F6", border: "1px solid rgba(59,130,246,0.3)", lineHeight: "1.4" }}
+                          >
+                            USD
+                          </span>
+                        )}
                       </span>
 
                       {/* Actions (hover) */}

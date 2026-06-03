@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react"
+import { toARS } from "@/utils/currency"
 import { useNavigate } from "react-router-dom"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { useYearMonthParam } from "@/hooks"
@@ -592,10 +593,10 @@ export default function PresupuestoPage() {
   const { spendByConcepto, totalGastadoUsd } = useMemo(() => {
     const divisor = rate || 1
     const map: Record<string, number> = {}
-    for (const g of gastos) map[g.concepto] = (map[g.concepto] ?? 0) + g.cantidad / divisor
+    for (const g of gastos) map[g.concepto] = (map[g.concepto] ?? 0) + toARS(g, usdRates as Record<string, number>) / divisor
     const total = Object.values(map).reduce((a, b) => a + b, 0)
     return { spendByConcepto: map, totalGastadoUsd: total }
-  }, [gastos, rate])
+  }, [gastos, rate, usdRates])
 
   const destinoItems = presupuesto?.presupuesto_items.filter((i) => i.es_destino) ?? []
   const gastoItems = presupuesto?.presupuesto_items.filter((i) => !i.es_destino) ?? []
@@ -625,7 +626,7 @@ export default function PresupuestoPage() {
 
   const sumBudgetedGastosUsd = gastoItems.reduce((s, i) => s + i.monto_usd, 0)
   const restoPres = presupuestoParaGastos - sumBudgetedGastosUsd
-  const restoGastado = gastos.filter((g) => !allBudgetedConceptos.has(g.concepto)).reduce((s, g) => s + g.cantidad / (rate || 1), 0)
+  const restoGastado = gastos.filter((g) => !allBudgetedConceptos.has(g.concepto)).reduce((s, g) => s + toARS(g, usdRates as Record<string, number>) / (rate || 1), 0)
 
   // ── Mutations ─────────────────────────────────────────────────────────────
 

@@ -84,6 +84,7 @@ export default function GastoModal({
   const [nota, setNota] = useState("");
   const [fecha, setFecha] = useState(today());
   const [fijo, setFijo] = useState(false);
+  const [moneda, setMoneda] = useState<"ARS" | "USD">("ARS");
   const [catManager, setCatManager] = useState<"formas" | "conceptos" | null>(null);
 
   // Populate when editing
@@ -95,6 +96,7 @@ export default function GastoModal({
       setNota(gasto.nota ?? "");
       setFecha(gasto.fecha);
       setFijo(gasto.fijo ?? false);
+      setMoneda(gasto.moneda ?? "ARS");
     } else {
       setAmountStr("0");
       setForma("Lemon");
@@ -102,6 +104,7 @@ export default function GastoModal({
       setNota("");
       setFecha(defaultDate || today());
       setFijo(false);
+      setMoneda("ARS");
     }
   }, [gasto, defaultDate]);
 
@@ -138,7 +141,7 @@ export default function GastoModal({
       return;
     }
     await execute(async () => {
-      await onSave({ fecha, cantidad: numericAmount, forma: forma as never, concepto: concepto as never, nota: nota.trim() || undefined, fijo });
+      await onSave({ fecha, cantidad: numericAmount, forma: forma as never, concepto: concepto as never, nota: nota.trim() || undefined, fijo, moneda });
       onClose();
     });
   };
@@ -186,7 +189,9 @@ export default function GastoModal({
               style={{ borderBottom: "1px solid var(--line)" }}
             >
               <div className="flex items-baseline gap-2">
-                <span className="num text-3xl" style={{ color: "var(--ink-3)", fontWeight: 300 }}>$</span>
+                <span className="num text-3xl" style={{ color: "var(--ink-3)", fontWeight: 300 }}>
+                  {moneda === "USD" ? "US$" : "$"}
+                </span>
                 <span
                   className="num font-semibold"
                   style={{
@@ -199,7 +204,25 @@ export default function GastoModal({
                   {displayAmount}
                 </span>
               </div>
-              <span className="text-[10px] uppercase tracking-widest mt-1" style={{ color: "var(--ink-3)" }}>ARS</span>
+              {/* Currency toggle */}
+              <div className="flex items-center gap-1 mt-3 p-0.5 rounded-lg" style={{ background: "var(--surface-alt)", border: "1px solid var(--line)" }}>
+                {(["ARS", "USD"] as const).map((m) => (
+                  <button
+                    key={m}
+                    type="button"
+                    onClick={() => setMoneda(m)}
+                    className="num rounded-md px-3 py-1 text-xs font-semibold transition-all"
+                    style={{
+                      background: moneda === m ? (m === "USD" ? "#3B82F6" : "var(--accent)") : "transparent",
+                      color: moneda === m ? (m === "USD" ? "#fff" : "var(--accent-ink)") : "var(--ink-3)",
+                      border: "none",
+                      cursor: "pointer",
+                    }}
+                  >
+                    {m}
+                  </button>
+                ))}
+              </div>
             </div>
 
             {/* Numpad */}

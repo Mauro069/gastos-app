@@ -5,6 +5,7 @@ import {
 } from 'recharts'
 import type { Gasto, UsdRates } from '@/types'
 import { fmt, fmtUSD, fmtShort, fmtShortUSD, MONTH_SHORT, getRateForMonth } from './utils'
+import { toARS } from '@/utils/currency'
 import type { Currency } from './utils'
 
 interface ComparacionAnualProps {
@@ -57,14 +58,14 @@ export default function ComparacionAnual({
           const d = new Date(g.fecha + 'T12:00:00')
           return d.getFullYear() === selectedYear && d.getMonth() === idx
         })
-        .reduce((a, g) => a + Number(g.cantidad), 0)
+        .reduce((a, g) => a + toARS(g, usdRates), 0)
 
       const prevRaw = prevYearGastos
         .filter(g => {
           const d = new Date(g.fecha + 'T12:00:00')
           return d.getFullYear() === prevYear && d.getMonth() === idx
         })
-        .reduce((a, g) => a + Number(g.cantidad), 0)
+        .reduce((a, g) => a + toARS(g, usdRates), 0)
 
       const currRate = getRateForMonth(usdRates, selectedYear, idx)
       const prevRate = getRateForMonth(usdRates, prevYear, idx)

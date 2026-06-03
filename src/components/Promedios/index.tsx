@@ -6,6 +6,7 @@ import {
 import type { PromediosProps, PromediosTab } from '@/types'
 import { useUserSettings } from '@/contexts'
 import { getChipHex } from '@/utils/chipColor'
+import { toARS } from '@/utils/currency'
 import {
   MONTH_FULL, fmt, fmtShort, fmtUSD, fmtShortUSD, getRateForMonth,
 } from './utils'
@@ -64,7 +65,7 @@ export default function Promedios({
   const monthlyData = useMemo(() => {
     return MONTH_FULL.map((name, idx) => {
       const items = gastosAno.filter(g => new Date(g.fecha + 'T12:00:00').getMonth() === idx)
-      const total = items.reduce((a, g) => a + Number(g.cantidad), 0)
+      const total = items.reduce((a, g) => a + toARS(g, usdRates), 0)
       const rate = getRateForMonth(usdRates, selectedYear, idx)
       const totalUsd = rate > 0 ? total / rate : 0
       const mk = `${selectedYear}-${String(idx + 1).padStart(2, '0')}`
@@ -77,11 +78,11 @@ export default function Promedios({
     return settings.conceptos
       .map(c => {
         const items = gastosAno.filter(g => g.concepto === c)
-        const total = items.reduce((a, g) => a + Number(g.cantidad), 0)
+        const total = items.reduce((a, g) => a + toARS(g, usdRates), 0)
         const totalUsd = items.reduce((a, g) => {
           const monthIdx = new Date(g.fecha + 'T12:00:00').getMonth()
           const rate = getRateForMonth(usdRates, selectedYear, monthIdx)
-          return a + Number(g.cantidad) / (rate > 0 ? rate : 1)
+          return a + toARS(g, usdRates) / (rate > 0 ? rate : 1)
         }, 0)
         return { name: c, total, totalUsd, count: items.length }
       })
@@ -89,7 +90,7 @@ export default function Promedios({
       .sort((a, b) => b.total - a.total)
   }, [gastosAno, settings.conceptos, usdRates, selectedYear])
 
-  const totalAno = gastosAno.reduce((a, g) => a + Number(g.cantidad), 0)
+  const totalAno = gastosAno.reduce((a, g) => a + toARS(g, usdRates), 0)
   const totalAnoUSD = monthlyData.reduce((a, m) => a + m.totalUsd, 0)
   const monthsWithData = monthlyData.filter(m => m.total > 0).length
   const promedio = monthsWithData > 0 ? totalAno / monthsWithData : 0

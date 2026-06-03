@@ -1,11 +1,13 @@
 import { useMemo } from 'react'
-import type { Gasto } from '@/types'
+import type { Gasto, UsdRates } from '@/types'
 import { MONTH_NAMES } from '@/constants'
+import { toARS } from '@/utils/currency'
 
 export function useMonthlyGastos(
   allGastos: Gasto[],
   selectedYear: number,
   selectedMonth: number,
+  usdRates: UsdRates = {},
 ) {
   const gastosDelMes = useMemo(
     () =>
@@ -37,8 +39,8 @@ export function useMonthlyGastos(
     () =>
       gastosDelMes
         .filter(g => g.concepto !== 'Inversiones')
-        .reduce((acc, g) => acc + Number(g.cantidad), 0),
-    [gastosDelMes],
+        .reduce((acc, g) => acc + toARS(g, usdRates), 0),
+    [gastosDelMes, usdRates],
   )
 
   return {

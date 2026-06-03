@@ -21,6 +21,7 @@ export interface GastosTableProps {
   gastos: Gasto[];
   selectedYear: number;
   selectedMonth?: number;
+  usdRates?: UsdRates;
   demo?: boolean;
   onImport?: () => void;
   externalShowAdd?: boolean;
@@ -40,6 +41,7 @@ export interface GastoModalProps {
       concepto: string;
       nota?: string;
       fijo?: boolean;
+      moneda?: import('./gasto').Moneda;
     },
   ) => Promise<void>;
 }

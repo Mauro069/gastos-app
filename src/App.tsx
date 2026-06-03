@@ -25,6 +25,7 @@ import { useAuth, useUserSettings } from "@/contexts";
 import { useMonthlyGastos } from "@/hooks";
 import { MONTH_FULL, monthKey } from "@/constants";
 import { getChipHex } from "@/utils/chipColor";
+import { toARS } from "@/utils/currency";
 import type { UsdRates } from "@/types";
 
 export { monthKey };
@@ -354,22 +355,22 @@ export default function App() {
   });
 
   const { gastosDelMes, gastosDelMesAnterior, prevMonthLabel, totalMes } =
-    useMonthlyGastos(gastos, selectedYear, selectedMonth);
+    useMonthlyGastos(gastos, selectedYear, selectedMonth, usdRates);
 
   const prevTotalMes = useMemo(
     () =>
       gastosDelMesAnterior
         .filter((g) => g.concepto !== "Inversiones")
-        .reduce((acc, g) => acc + Number(g.cantidad), 0),
-    [gastosDelMesAnterior],
+        .reduce((acc, g) => acc + toARS(g, usdRates), 0),
+    [gastosDelMesAnterior, usdRates],
   );
 
   const inversionesMes = useMemo(
     () =>
       gastosDelMes
         .filter((g) => g.concepto === "Inversiones")
-        .reduce((acc, g) => acc + Number(g.cantidad), 0),
-    [gastosDelMes],
+        .reduce((acc, g) => acc + toARS(g, usdRates), 0),
+    [gastosDelMes, usdRates],
   );
 
   const gastosFijosDelMes = useMemo(
@@ -378,8 +379,8 @@ export default function App() {
   );
 
   const totalFijosMes = useMemo(
-    () => gastosFijosDelMes.reduce((acc, g) => acc + Number(g.cantidad), 0),
-    [gastosFijosDelMes],
+    () => gastosFijosDelMes.reduce((acc, g) => acc + toARS(g, usdRates), 0),
+    [gastosFijosDelMes, usdRates],
   );
 
   const pctFijosDeTotales = totalMes > 0 ? (totalFijosMes / totalMes) * 100 : 0;
@@ -406,7 +407,7 @@ export default function App() {
     const map: Record<number, number> = {};
     gastosDelMes.forEach((g) => {
       const d = new Date(g.fecha + "T12:00:00").getDate();
-      map[d] = (map[d] ?? 0) + Number(g.cantidad);
+      map[d] = (map[d] ?? 0) + toARS(g, usdRates);
     });
     return Array.from({ length: daysInMonth }, (_, i) => ({
       day: i + 1,
@@ -425,11 +426,11 @@ export default function App() {
   );
 
   const byForma = useMemo(() => {
-    const total = gastosDelMes.reduce((a, g) => a + Number(g.cantidad), 0);
+    const total = gastosDelMes.reduce((a, g) => a + toARS(g, usdRates), 0);
     return settings.formas
       .map((f) => {
         const items = gastosDelMes.filter((g) => g.forma === f);
-        const sum = items.reduce((a, g) => a + Number(g.cantidad), 0);
+        const sum = items.reduce((a, g) => a + toARS(g, usdRates), 0);
         return {
           name: f,
           count: items.length,
@@ -451,11 +452,11 @@ export default function App() {
   );
 
   const byConcepto = useMemo(() => {
-    const total = gastosDelMes.reduce((a, g) => a + Number(g.cantidad), 0);
+    const total = gastosDelMes.reduce((a, g) => a + toARS(g, usdRates), 0);
     return settings.conceptos
       .map((c) => {
         const items = gastosDelMes.filter((g) => g.concepto === c);
-        const sum = items.reduce((a, g) => a + Number(g.cantidad), 0);
+        const sum = items.reduce((a, g) => a + toARS(g, usdRates), 0);
         return {
           name: c,
           count: items.length,
@@ -716,7 +717,7 @@ export default function App() {
             {/* ── Budget widget ── */}
             {presupuestoMes && (() => {
               const rate = presupuestoMes.usd_rate || currentRate || 1;
-              const totalGastadoArs = gastosDelMes.reduce((s, g) => s + g.cantidad, 0);
+              const totalGastadoArs = gastosDelMes.reduce((s, g) => s + toARS(g, usdRates), 0);
               const totalGastadoUsd = totalGastadoArs / rate;
               const pct = presupuestoMes.total_usd > 0 ? Math.min((totalGastadoUsd / presupuestoMes.total_usd) * 100, 100) : 0;
               const barColor = pct >= 100 ? "var(--negative)" : pct >= 80 ? "var(--warn)" : "var(--positive)";
@@ -807,7 +808,8 @@ export default function App() {
                       {gastosFijosDelMes
                         .sort((a, b) => Number(b.cantidad) - Number(a.cantidad))
                         .map((g) => {
-                          const pct = totalFijosMes > 0 ? (Number(g.cantidad) / totalFijosMes) * 100 : 0;
+                          const arsVal = toARS(g, usdRates);
+                          const pct = totalFijosMes > 0 ? (arsVal / totalFijosMes) * 100 : 0;
                           return (
                             <div key={g.id} className="flex items-center gap-3">
                               <span className="text-xs truncate flex-1" style={{ color: "var(--ink-2)" }}>
@@ -820,7 +822,10 @@ export default function App() {
                                 <div style={{ width: `${pct}%`, height: "100%", background: "var(--accent)", opacity: 0.6, borderRadius: 99 }} />
                               </div>
                               <span className="num text-xs font-medium text-right" style={{ color: "var(--ink)", minWidth: 80 }}>
-                                {fmtArs(Number(g.cantidad))}
+                                {g.moneda === "USD"
+                                  ? <>{fmtArs(arsVal)} <span style={{ color: "#3B82F6", fontSize: 10 }}>US${Number(g.cantidad).toFixed(2)}</span></>
+                                  : fmtArs(arsVal)
+                                }
                               </span>
                             </div>
                           );
@@ -1245,6 +1250,7 @@ export default function App() {
                 <GastosTable
                   gastos={gastosDelMes}
                   selectedYear={selectedYear}
+                  usdRates={usdRates}
                   externalShowAdd={showAddGasto}
                   onAddClose={() => setShowAddGasto(false)}
                 />

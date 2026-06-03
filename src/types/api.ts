@@ -11,6 +11,7 @@ export interface CreateGastoData {
   forma: Forma
   concepto: Concepto
   nota?: string
+  moneda?: import('./gasto').Moneda
 }
 
 export interface UpdateMonthRateResponse {

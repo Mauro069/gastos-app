@@ -4,6 +4,7 @@ import type { Gasto, UsdRates } from '@/types'
 import { useUserSettings } from '@/contexts'
 import { getChipHex } from '@/utils/chipColor'
 import { fmt, fmtUSD, getRateForMonth } from './utils'
+import { toARS } from '@/utils/currency'
 import type { Currency } from './utils'
 
 interface GastosRecurrentesProps {
@@ -36,7 +37,7 @@ export default function GastosRecurrentes({ gastosAno, selectedYear, usdRates, c
         map[key] = { nota: g.nota || g.concepto, concepto: g.concepto, months: new Set(), amounts: [], amountsUsd: [], total: 0, totalUsd: 0 }
       const month = new Date(g.fecha + 'T12:00:00').getMonth()
       const rate = getRateForMonth(usdRates, selectedYear, month)
-      const ars = Number(g.cantidad)
+      const ars = toARS(g, usdRates)
       const usd = rate > 0 ? ars / rate : 0
       map[key].months.add(month)
       map[key].amounts.push(ars)

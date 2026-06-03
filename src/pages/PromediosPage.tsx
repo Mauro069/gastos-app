@@ -8,6 +8,7 @@ import { useAuth } from "@/contexts";
 import { useYearParam } from "@/hooks";
 import type { UsdRates, PromediosTab } from "@/types";
 import { fmt, fmtUSD, getRateForMonth } from "@/components/Promedios/utils";
+import { toARS } from "@/utils/currency";
 import { MONTH_FULL } from "@/constants";
 
 const VALID_TABS: PromediosTab[] = ["resumen", "categorias", "comparacion"];
@@ -61,14 +62,14 @@ export default function PromediosPage() {
         const items = gastosAno.filter(
           (g) => new Date(g.fecha + "T12:00:00").getMonth() === idx,
         );
-        const total = items.reduce((a, g) => a + Number(g.cantidad), 0);
+        const total = items.reduce((a, g) => a + toARS(g, usdRates), 0);
         const rate = getRateForMonth(usdRates, selectedYear, idx);
         return { total, rate };
       }),
     [gastosAno, usdRates, selectedYear],
   );
 
-  const totalAno = gastosAno.reduce((a, g) => a + Number(g.cantidad), 0);
+  const totalAno = gastosAno.reduce((a, g) => a + toARS(g, usdRates), 0);
   const totalAnoUSD = monthlyData.reduce(
     (a, m) => a + (m.rate > 0 ? m.total / m.rate : 0),
     0,
