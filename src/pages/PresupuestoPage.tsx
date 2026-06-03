@@ -14,8 +14,9 @@ import {
   X,
   Pencil,
   ArrowUpRight,
+  Copy,
 } from "lucide-react"
-import { AppShell, MonthPicker } from "@/components"
+import { AppShell, MonthPicker, CopiarPresupuestoModal } from "@/components"
 import { useUserSettings } from "@/contexts"
 import {
   fetchPresupuesto,
@@ -27,6 +28,7 @@ import {
 } from "@/api"
 import { getChipHex } from "@/utils/chipColor"
 import { MONTH_FULL } from "@/constants"
+import { ModalItem, itemFromExisting } from "@/utils/presupuesto"
 
 import type { Presupuesto } from "@/types"
 
@@ -101,22 +103,6 @@ function ProgressBar({ pct }: { pct: number }) {
 
 // ── Budget Panel (inline, right sidebar) ──────────────────────────────────────
 
-interface ModalItem {
-  tipo: "destino" | "categoria" | "grupo"
-  concepto: string
-  alias: string
-  conceptos: string[]
-  monto_usd: string
-}
-
-function itemFromExisting(i: import("@/types").PresupuestoItem): ModalItem {
-  if (i.es_destino) {
-    return { tipo: "destino", concepto: i.concepto ?? "", alias: i.alias ?? "", conceptos: [], monto_usd: String(i.monto_usd) }
-  }
-  const isGroup = !!(i.conceptos && i.conceptos.length > 0)
-  return { tipo: isGroup ? "grupo" : "categoria", concepto: i.concepto ?? "", alias: i.alias ?? "", conceptos: i.conceptos ?? [], monto_usd: String(i.monto_usd) }
-}
-
 interface BudgetPanelProps {
   year: number
   month: number
@@ -126,9 +112,10 @@ interface BudgetPanelProps {
   onSave: (data: { total_usd: number; usd_rate: number; items: import("@/types").PresupuestoItem[] }) => Promise<void>
   onDelete?: () => void
   deleting?: boolean
+  onCopy?: () => void
 }
 
-function BudgetPanel({ year, month, existing, defaultRate, conceptos, onSave, onDelete, deleting }: BudgetPanelProps) {
+function BudgetPanel({ year, month, existing, defaultRate, conceptos, onSave, onDelete, deleting, onCopy }: BudgetPanelProps) {
   const [isEditing, setIsEditing] = useState(!existing) // read-only when budget exists
   const [totalUsd, setTotalUsd] = useState(existing ? String(existing.total_usd) : "")
   const [usdRate, setUsdRate] = useState(existing ? String(existing.usd_rate) : defaultRate > 0 ? String(defaultRate) : "")
@@ -226,13 +213,24 @@ function BudgetPanel({ year, month, existing, defaultRate, conceptos, onSave, on
             <p className="text-[10px] uppercase tracking-widest" style={{ color: "var(--ink-3)", marginBottom: 2 }}>Presupuesto</p>
             <p className="text-sm font-semibold" style={{ color: "var(--ink)" }}>{MONTH_FULL[month]} {year}</p>
           </div>
-          <button
-            onClick={() => setIsEditing(true)}
-            className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-opacity hover:opacity-70"
-            style={{ background: "var(--surface)", border: "1px solid var(--line)", color: "var(--ink-2)", cursor: "pointer" }}
-          >
-            <Pencil size={12} /> Editar
-          </button>
+          <div className="flex items-center gap-2">
+            {onCopy && (
+              <button
+                onClick={onCopy}
+                className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-opacity hover:opacity-70"
+                style={{ background: "var(--surface)", border: "1px solid var(--line)", color: "var(--ink-2)", cursor: "pointer" }}
+              >
+                <Copy size={12} /> Copiar
+              </button>
+            )}
+            <button
+              onClick={() => setIsEditing(true)}
+              className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-opacity hover:opacity-70"
+              style={{ background: "var(--surface)", border: "1px solid var(--line)", color: "var(--ink-2)", cursor: "pointer" }}
+            >
+              <Pencil size={12} /> Editar
+            </button>
+          </div>
         </div>
 
         {/* Summary */}
@@ -551,6 +549,7 @@ export default function PresupuestoPage() {
   const now = new Date()
   const [year, setYear] = useState(now.getFullYear())
   const [month, setMonth] = useState(now.getMonth()) // 0-indexed
+  const [showCopiar, setShowCopiar] = useState(false)
 
   const navigate = useNavigate()
   const queryClient = useQueryClient()
@@ -1017,6 +1016,7 @@ export default function PresupuestoPage() {
               onSave={async (data) => { await saveMut.mutateAsync(data) }}
               onDelete={() => deleteMut.mutate()}
               deleting={deleteMut.isPending}
+              onCopy={presupuesto ? () => setShowCopiar(true) : undefined}
             />
           )}
           {presLoading && (
@@ -1026,6 +1026,22 @@ export default function PresupuestoPage() {
           )}
         </aside>
       </div>
+
+      {showCopiar && presupuesto && (
+        <CopiarPresupuestoModal
+          sourceYear={year}
+          sourceMonth={month}
+          sourceBudget={presupuesto}
+          conceptos={settings.conceptos}
+          onClose={() => setShowCopiar(false)}
+          onSuccess={(ty, tm) => {
+            setShowCopiar(false)
+            setYear(ty)
+            setMonth(tm)
+            queryClient.invalidateQueries({ queryKey: ["presupuesto", ty, tm + 1] })
+          }}
+        />
+      )}
     </AppShell>
   )
 }
